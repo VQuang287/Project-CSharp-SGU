@@ -1,0 +1,25 @@
+I. Hướng làm Backend (Core Logic & Local Data)
+1. Module  lý Dữ liệu (Local Database)
+- Nhiệm vụ: Lưu trữ toàn bộ thông tin các quán ăn ở Vĩnh Khánh (tọa độ, bán kính, nội dung thuyết minh) để app chạy offline hoàn toàn.
+- Hướng triển khai:
++ Sử dụng SQLite.
++ Tạo bảng PointOfInterest (POI).
++ Viết hàm Seed Data: Khi app mở lần đầu, tự động chèn khoảng 5-10 quán ăn mẫu vào database để có dữ liệu test.
++ Tạo bảng PlayHistory: Lưu lại lịch sử (ID quán + Thời gian phát) để phục vụ cho logic chống spam âm thanh.
+2. Module Theo dõi Vị trí (Location Tracking Service)
+- Nhiệm vụ: Lấy tọa độ GPS (Latitude, Longitude) của người dùng liên tục.
+- Hướng triển khai:
++ Thiết lập quyền truy cập vị trí (Location Permissions) cho Android/iOS.
++ Tạo một Service chạy ngầm định kỳ (ví dụ: cứ mỗi 3-5 giây lấy tọa độ 1 lần).
+*Lưu ý xử lý: Phải có logic lọc nhiễu (noise filtering) vì thỉnh thoảng GPS sẽ bị nhảy sai lệch vài chục mét. Nếu độ sai số (accuracy) quá lớn thì bỏ qua tọa độ đó.
+3. Module Xác định Vùng kích hoạt (Geofence Engine)
+- Nhiệm vụ: Nhận tọa độ từ Module 2, so sánh với dữ liệu từ Module 1 để xem người dùng đã đến quán ăn chưa.
+- Hướng triển khai:
++ Sử dụng công thức toán học (Haversine) để tính khoảng cách đường chim bay từ vị trí người dùng đến từng quán ăn.
++ Logic cốt lõi: Nếu Khoảng cách < Bán kính kích hoạt (ví dụ 20m) -> Phát ra một tín hiệu (Event) là "Đã vào vùng POI_A".
+4. Module Quản lý Âm thanh (Narration & Queue Manager)
+- Nhiệm vụ: Nhận tín hiệu từ Geofence, quyết định xem có được phát âm thanh hay không và phát bằng công cụ gì.
+- Hướng triển khai:
++ Kiểm tra Cooldown (Chống spam): Truy vấn bảng PlayHistory. Nếu quán ăn này vừa được phát trong vòng 30 phút qua -> Bỏ qua.
++ Quản lý hàng đợi (Queue): Nếu người dùng đi vào vùng giao nhau của 2 quán, quán nào có mức độ ưu tiên (Priority) cao hơn hoặc khoảng cách gần hơn sẽ được phát trước, quán kia đưa vào hàng chờ.
++ Gọi API Text-to-Speech (hoặc Play Audio File) để phát ra loa.
