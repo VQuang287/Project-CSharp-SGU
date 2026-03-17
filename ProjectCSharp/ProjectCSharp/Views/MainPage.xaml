@@ -1,0 +1,26 @@
+﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProjectCSharp.Views.MainPage">
+
+    <StackLayout Padding="20" Spacing="25" VerticalOptions="Center">
+
+        <Label Text="Vĩnh Khánh Audio Tour" 
+               FontSize="28" 
+               HorizontalOptions="Center" 
+               TextColor="Red" 
+               FontAttributes="Bold" />
+
+        <Label Text="{Binding LocationText}" 
+               FontSize="18" 
+               HorizontalOptions="Center" 
+               HorizontalTextAlignment="Center" />
+
+        <Button Text="Lấy tọa độ hiện tại" 
+                Command="{Binding GetLocationCommand}" 
+                FontSize="16"
+                Padding="15"
+                CornerRadius="8"/>
+
+    </StackLayout>
+
+</ContentPage>
