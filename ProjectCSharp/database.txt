@@ -1,0 +1,84 @@
+-- 1. TẠO DATABASE
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'VinhKhanhAudioTour')
+BEGIN
+    CREATE DATABASE VinhKhanhAudioTour;
+END
+GO
+
+USE VinhKhanhAudioTour;
+GO
+
+-- 2. XÓA BẢNG CŨ (NẾU CÓ) ĐỂ LÀM MỚI HOÀN TOÀN
+IF OBJECT_ID('AudioResource', 'U') IS NOT NULL DROP TABLE AudioResource;
+IF OBJECT_ID('UserActivityLog', 'U') IS NOT NULL DROP TABLE UserActivityLog;
+IF OBJECT_ID('PointOfInterest', 'U') IS NOT NULL DROP TABLE PointOfInterest;
+GO
+
+-- 3. TẠO BẢNG PointOfInterest (QUẢN LÝ ĐỊA ĐIỂM)
+CREATE TABLE PointOfInterest (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(255) NOT NULL,
+    Description NVARCHAR(MAX),
+    Latitude FLOAT NOT NULL,
+    Longitude FLOAT NOT NULL,
+    -- Cột tính toán GIS để xử lý khoảng cách cực nhanh
+    GeoLocation AS geography::Point(Latitude, Longitude, 4326) PERSISTED,
+    ActivationRadius FLOAT NOT NULL DEFAULT 50, 
+    PriorityLevel INT NOT NULL DEFAULT 1,       
+    Type VARCHAR(50) NOT NULL                   
+);
+GO
+
+-- 4. TẠO BẢNG AudioResource (QUẢN LÝ ÂM THANH)
+CREATE TABLE AudioResource (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    PoiId INT NOT NULL,
+    LanguageCode VARCHAR(10) NOT NULL DEFAULT 'vi-VN',
+    AudioType VARCHAR(20) NOT NULL, -- 'TTS' hoặc 'PreRecorded'
+    ContentUrl NVARCHAR(MAX) NOT NULL,
+    FOREIGN KEY (PoiId) REFERENCES PointOfInterest(Id) ON DELETE CASCADE
+);
+GO
+
+-- 5. TẠO STORED PROCEDURE (BỘ MÁY GEOFENCE)
+IF OBJECT_ID('sp_CheckGeofence', 'P') IS NOT NULL DROP PROCEDURE sp_CheckGeofence;
+GO
+
+CREATE PROCEDURE sp_CheckGeofence
+    @CurrentLat FLOAT,
+    @CurrentLng FLOAT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @UserLocation geography = geography::Point(@CurrentLat, @CurrentLng, 4326);
+
+    SELECT TOP 1
+        Id,
+        Name,
+        ActivationRadius,
+        -- Tính khoảng cách thực tế giữa người dùng và điểm POI
+        GeoLocation.STDistance(@UserLocation) AS DistanceInMeters
+    FROM PointOfInterest
+    WHERE GeoLocation.STDistance(@UserLocation) <= ActivationRadius
+    ORDER BY PriorityLevel DESC, GeoLocation.STDistance(@UserLocation) ASC; 
+END;
+GO
+
+-- 6. CHÈN DỮ LIỆU MẪU (DÙNG IDENTITY_INSERT ĐỂ ĐẢM BẢO ID CHUẨN 1, 2, 3)
+SET IDENTITY_INSERT PointOfInterest ON;
+
+INSERT INTO PointOfInterest (Id, Name, Description, Latitude, Longitude, ActivationRadius, PriorityLevel, Type)
+VALUES 
+(1, N'Quán Ốc Oanh', N'Huyền thoại ốc Vĩnh Khánh.', 10.761759, 106.704250, 30, 1, 'Food'),
+(2, N'Quán Ốc Vũ', N'Không gian rộng rãi, menu đa dạng.', 10.760500, 106.705100, 30, 1, 'Food'),
+(3, N'Trạm xe buýt Hoàng Diệu', N'Điểm dừng xe buýt đầu phố.', 10.762100, 106.703900, 15, 2, 'BusStop');
+
+SET IDENTITY_INSERT PointOfInterest OFF;
+GO
+
+INSERT INTO AudioResource (PoiId, LanguageCode, AudioType, ContentUrl)
+VALUES 
+(1, 'vi-VN', 'TTS', N'Bạn đang ở gần Ốc Oanh. Món tủ ở đây là ốc hương rang muối ớt!'),
+(2, 'vi-VN', 'PreRecorded', N'https://domain.com/audio/oc-vu-intro.mp3'),
+(3, 'vi-VN', 'TTS', N'Chào mừng bạn đến với phố Vĩnh Khánh...');
+GO
