@@ -4,9 +4,9 @@ Tên dự án: Ứng dụng Thuyết minh Địa điểm tự động (Location-
 Nền tảng: Mobile App (.NET MAUI) & Web CMS (ASP.NET Core MVC)  
 Giai đoạn: Đồ án môn học C# 
 
-1. TỔNG QUAN SẢN PHẨM (PRODUCT OVERVIEW) 
+1. TỔNG QUAN SẢN PHẨM (PRODUCT OVERVIEW)
 1.1. Mục tiêu sản phẩm 
-Xây dựng một hệ sinh thái bao gồm ứng dụng di động tự động phát nội dung thuyết minh dựa trên vị trí thời gian thực (Real-time GPS) và hệ thống quản trị nội dung nền web (Web CMS). Ứng dụng phục vụ khách du lịch/người tham quan di chuyển qua các điểm cầu, mang lại trải nghiệm rảnh tay (hands-free) và liền mạch thông qua công nghệ Geofencing. 
+Xây dựng một hệ sinh thái bao gồm ứng dụng di động tự động phát nội dung thuyết minh dựa trên vị trí thời gian thực (Real-time GPS) và hệ thống quản trị nội dung nền web (Web CMS). Ứng dụng phục vụ khách du lịch/người tham quan di chuyển qua các điểm cầu, mang lại trải nghiệm rảnh tay (hands-free) và liền mạch thông qua công nghệ Geofencing.
 
 1.2. Luồng hoạt động cốt lõi (User Flow) 
 Khởi tạo & Đồng bộ: Ứng dụng Mobile gọi luồng API từ Server để tải danh sách POI (Point of Interest) và cấu hình vùng kích hoạt lưu vào Local DB (SQLite). 
@@ -20,12 +20,12 @@ Hệ thống được chia thành 4 lớp (layers) chính:
 Location + Geofencing Layer: Xử lý điều hướng phần cứng GPS và tính toán khoảng cách hình học, phát hiện va chạm vùng địa lý (OnEnter, OnNear). 
 Narration Engine (Xử lý âm thanh): Tiếp nhận sự kiện Geofencing. Quản lý hàng đợi (Audio Queue), chống trùng lặp dội âm (Debounce/Cooldown), và tự động kết nối API của Hệ điều hành. 
 Content Layer (Quản lý dữ liệu): Lưu trữ Offline-First bằng sqlite-net-pcl. Dữ liệu tĩnh luôn có sẵn dưới máy, độc lập với kết nối 4G/Wifi. 
-UI/UX Layer: Render Bản đồ bản địa (OpenStreetMap qua engine Mapsui), vẽ Marker, danh sách POI trực quan, mượt mà trên nền tảng .NET MAUI thuần C#. 
+UI/UX Layer: Render Bản đồ bản địa (OpenStreetMap qua engine Mapsui), vẽ Marker, danh sách POI trực quan, mượt mà trên nền tảng .NET MAUI thuần C#.
 
-3. YÊU CẦU CHỨC NĂNG CƠ BẢN (GIAI ĐOẠN 1 - MOBILE) 
+3. YÊU CẦU CHỨC NĂNG CƠ BẢN (GIAI ĐOẠN 1 - MOBILE)
 3.1. GPS Tracking theo thời gian thực 
 Foreground Tracking: Lấy vị trí liên tục với sai số thấp khi mở màn hình hiển thị. 
-Background Tracking: Hỗ trợ cấu hình FOREGROUND_SERVICE_LOCATION duy trì theo dõi GPS không bị hệ điều hành đóng băng khi tắt màn hình điện thoại. 
+Background Tracking: Hỗ trợ cấu hình FOREGROUND_SERVICE_LOCATION duy trì theo dõi GPS không bị hệ điều hành đóng băng khi tắt màn hình điện thoại.
 
 3.2. Geofence & Kích hoạt điểm (POI Trigger) 
 Thuộc tính POI cơ bản: Id, Title, Tọa độ (Latitude/Longitude), Bán kính kích hoạt (RadiusMeters), Mức độ ưu tiên (Priority). 
@@ -46,10 +46,10 @@ Tích hợp Bản đồ mã nguồn mở OpenStreetMap (thông qua Mapsui.Maui) 
 Tracking vị trí thực tế của người dùng thời gian thực (Blue dot marker). 
 Đổ toàn bộ danh sách POI từ SQLite thành Red Marker (Ghim đỏ). Ống kính bản đồ tự động focus vào người dùng. 
 
-4. YÊU CẦU NÂNG CAO (GIAI ĐOẠN 2 - WEB ADMIN & CLOUD) 
+4. YÊU CẦU NÂNG CAO (GIAI ĐOẠN 2 - WEB ADMIN & CLOUD)
 4.1. Hệ thống Admin CMS (ASP.NET Core MVC) 
 Giao diện Admin quản trị ứng dụng mô hình MVC, kết nối với Database độc lập thông qua Entity Framework Core. 
-Hệ thống CRUD: Thêm, sửa, xóa, quản trị danh sách Điểm tham quan (POI), quản lý thư viện Audio và Text nội dung. 
+Hệ thống CRUD: Thêm, sửa, xóa, quản trị danh sách Điểm tham quan (POI), quản lý thư viện Audio và Text nội dung.
 
 4.2. API & Quản trị Analytics / Phân tích dữ liệu 
 Bổ sung cấu trúc bảng dữ liệu PlaybackHistory (Lịch sử sử dụng). 
