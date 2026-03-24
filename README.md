@@ -10,10 +10,16 @@ Giai đoạn: Đồ án môn học C#
 Xây dựng một hệ sinh thái bao gồm ứng dụng di động tự động phát nội dung thuyết minh dựa trên vị trí thời gian thực (Real-time GPS) và hệ thống quản trị nội dung nền web (Web CMS). Ứng dụng phục vụ khách du lịch/người tham quan di chuyển qua các điểm cầu, mang lại trải nghiệm rảnh tay (hands-free) và liền mạch thông qua công nghệ Geofencing.
 
 1.2. Luồng hoạt động cốt lõi (User Flow) 
+
 Khởi tạo & Đồng bộ: Ứng dụng Mobile gọi luồng API từ Server để tải danh sách POI (Point of Interest) và cấu hình vùng kích hoạt lưu vào Local DB (SQLite). 
+
 Theo dõi vị trí: Khi người dùng di chuyển, Location Service liên tục bắt tọa độ GPS (Foreground/Background). 
-Kích hoạt (Geofence Engine): Tính toán khoảng cách (Haversine formula). Nếu phát hiện người dùng đi vào bán kính kích hoạt của POI có mức ưu tiên cao nhất -> phát sinh sự kiện (Event). 
+
+Kích hoạt (Geofence Engine): Tính toán khoảng cách (Haversine formula). Nếu phát hiện người dùng đi vào bán kính kích hoạt của POI có mức ưu tiên cao nhất -> 
+phát sinh sự kiện (Event). 
+
 Kiểm duyệt (Narration Engine): Kiểm tra trạng thái rủi ro (Nội dung này đã phát trong X phút qua chưa? Tránh Loop/Spam). 
+
 Thực thi & Ghi nhận: Khởi động Text-to-Speech (TTS), đưa vào hàng đợi Audio Queue phát tiếng. Cuối cùng, POST API ngầm trả về Server ghi nhận Lịch sử nghe để phân tích dữ liệu (Analytics). 
 
 2. KIẾN TRÚC HỆ THỐNG GỢI Ý (SYSTEM ARCHITECTURE) 
