@@ -5,6 +5,7 @@ Nền tảng: Mobile App (.NET MAUI) & Web CMS (ASP.NET Core MVC)
 Giai đoạn: Đồ án môn học C# 
 
 1. TỔNG QUAN SẢN PHẨM (PRODUCT OVERVIEW)
+
 1.1. Mục tiêu sản phẩm 
 Xây dựng một hệ sinh thái bao gồm ứng dụng di động tự động phát nội dung thuyết minh dựa trên vị trí thời gian thực (Real-time GPS) và hệ thống quản trị nội dung nền web (Web CMS). Ứng dụng phục vụ khách du lịch/người tham quan di chuyển qua các điểm cầu, mang lại trải nghiệm rảnh tay (hands-free) và liền mạch thông qua công nghệ Geofencing.
 
