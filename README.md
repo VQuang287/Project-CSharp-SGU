@@ -15,7 +15,6 @@ Xây dựng một hệ sinh thái bao gồm ứng dụng di động tự động
 
 ### 1.2. Luồng hoạt động cốt lõi (User Flow)
 
-```mermaid
 graph TD
     A[Khởi tạo & Đồng bộ] -->|Tải POI từ Server| B[(Local DB - SQLite)]
     B --> C[Location Service: Theo dõi GPS]
