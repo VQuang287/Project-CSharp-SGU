@@ -1,6 +1,6 @@
 # 🎵 Audio Tour App — Product Requirements Document (PRD)
 
-> **Phiên bản:** 2.0.0 &nbsp;|&nbsp; **Nền tảng:** .NET MAUI 8.0 (Android / iOS) &nbsp;|&nbsp; **Tháng 3, 2026**
+> &nbsp;|&nbsp; **Nền tảng:** .NET MAUI 8.0 (Android / iOS) &nbsp;|&nbsp; **Tháng 3, 2026**
 
 | Trường | Nội dung |
 |--------|----------|
