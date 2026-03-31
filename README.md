@@ -15,12 +15,12 @@
 - [2. Kiến trúc Hệ thống Tổng quan](#2-kiến-trúc-hệ-thống-tổng-quan)
 - [3. Geofence Engine & Narration Engine](#3-geofence-engine--narration-engine)
 - [4. Hệ thống App Người dùng (Mobile App)](#4-hệ-thống-app-người-dùng-mobile-app)
-- [5. Chiến lược Đồng bộ & Offline-First *(MỚI)*](#5-chiến-lược-đồng-bộ--offline-first-mới)
+- [5. Chiến lược Đồng bộ & Offline-First *(MỚI)*](#5-chiến-lược-đồng-bộ--offline-first)
 - [6. Hệ thống Admin — CMS Web](#6-hệ-thống-admin--cms-web)
 - [7. Thiết kế Cơ sở Dữ liệu](#7-thiết-kế-cơ-sở-dữ-liệu)
 - [8. Thiết kế REST API](#8-thiết-kế-rest-api)
 - [9. Yêu cầu Phi chức năng](#9-yêu-cầu-phi-chức-năng)
-- [10. Kiến trúc Triển khai & Môi trường *(MỚI)*](#10-kiến-trúc-triển-khai--môi-trường-mới)
+- [10. Kiến trúc Triển khai & Môi trường *(MỚI)*](#10-kiến-trúc-triển-khai--môi-trường)
 - [11. Kế hoạch Triển khai & Lộ trình](#11-kế-hoạch-triển-khai--lộ-trình)
 - [12. Rủi ro & Giải pháp Dự phòng](#12-rủi-ro--giải-pháp-dự-phòng)
 - [13. Phụ lục](#13-phụ-lục)
@@ -310,7 +310,7 @@ graph TD
 
 ---
 
-## 5. Chiến lược Đồng bộ & Offline-First *(MỚI)*
+## 5. Chiến lược Đồng bộ & Offline-First
 
 ### 5.1 Mô hình Offline-First
 
@@ -664,7 +664,7 @@ erDiagram
 
 ---
 
-## 10. Kiến trúc Triển khai & Môi trường *(MỚI)*
+## 10. Kiến trúc Triển khai & Môi trường
 
 ### 10.1 Sơ đồ Deployment
 
