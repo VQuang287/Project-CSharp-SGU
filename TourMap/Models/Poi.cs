@@ -14,4 +14,5 @@ public class Poi
     public int Priority { get; set; } = 0;
     public string? ImageUrl { get; set; }
     public string? AudioUrl { get; set; }
+    public string? MapLink { get; set; }
 }

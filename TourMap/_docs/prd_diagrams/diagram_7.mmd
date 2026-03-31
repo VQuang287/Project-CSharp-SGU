@@ -1,0 +1,46 @@
+graph TB
+    subgraph CMS_WEB["💻 Admin CMS Web (ASP.NET Core MVC)"]
+        direction TB
+        
+        subgraph AUTH_LAYER["🔐 Authentication"]
+            LOGIN_PAGE["Trang Đăng nhập"]
+            RBAC["Role-Based Access Control<br/>Super Admin | Content Admin | Editor | Viewer"]
+        end
+        
+        subgraph DASHBOARD["📊 Dashboard"]
+            STATS["Thống kê tổng quan"]
+            TOP_POI["Top POI nghe nhiều nhất"]
+            HEATMAP["Heat Map vị trí user"]
+            TIME_CHART["Biểu đồ Time Spent"]
+        end
+        
+        subgraph POI_MGMT["📍 Quản lý POI"]
+            POI_LIST["Danh sách POI"]
+            POI_CREATE["Tạo mới + Sửa + Xóa"]
+            POI_MAP_PICKER["Map Picker chọn tọa độ"]
+        end
+        
+        subgraph AUDIO_MGMT["🎵 Quản lý Audio"]
+            UPLOAD_MP3["Upload file MP3/WAV"]
+            AI_TTS["Tạo audio bằng AI TTS"]
+            AUDIO_PREVIEW["Nghe thử trên browser"]
+        end
+        
+        subgraph TOUR_MGMT["🗺️ Quản lý Tour (MỚI)"]
+            TOUR_CRUD["CRUD Tour/Lộ trình"]
+            TOUR_POI["Gán POI vào Tour + thứ tự"]
+            TOUR_PREVIEW["Preview tuyến trên bản đồ"]
+        end
+        
+        subgraph QR_MGMT["📱 Quản lý QR Code"]
+            QR_GEN["Sinh QR Code cho POI"]
+            QR_PRINT["Xuất file in ấn PNG/SVG"]
+            QR_MAP["Gán QR → Trạm bus"]
+        end
+        
+        subgraph ANALYTICS["📈 Phân tích dữ liệu"]
+            LISTEN_LOG["Lịch sử phát audio"]
+            USER_ROUTES["Tuyến di chuyển ẩn danh"]
+            EXPORT["Xuất báo cáo CSV/Excel"]
+        end
+    end

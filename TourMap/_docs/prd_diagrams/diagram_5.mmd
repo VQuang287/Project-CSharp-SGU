@@ -1,0 +1,36 @@
+graph TB
+    subgraph APP_LIFECYCLE["📱 App Lifecycle"]
+        SPLASH["Splash Screen"] --> LANG_CHECK{"Lần đầu?"}
+        LANG_CHECK -->|Có| LANG_SELECT["Chọn Ngôn ngữ"]
+        LANG_CHECK -->|Không| AUTH_CHECK{"Token hợp lệ?"}
+        LANG_SELECT --> AUTH_CHECK
+        AUTH_CHECK -->|Có| SYNC_POI["Fast Sync POI"]
+        AUTH_CHECK -->|Không| LOGIN["Đăng nhập / Đăng ký"]
+        LOGIN --> SYNC_POI
+        SYNC_POI --> SETUP_GEO["Khởi tạo Geofence"]
+        SETUP_GEO --> READY["✅ App Ready"]
+    end
+    
+    subgraph MAIN_FEATURES["🎯 Các tính năng chính"]
+        MAP_VIEW["🗺️ Map View<br/>- Hiển thị vị trí user<br/>- Hiển thị POI markers<br/>- Highlight POI gần nhất<br/>- Xem chi tiết POI"]
+        
+        POI_LIST["📋 POI List<br/>- Danh sách điểm tham quan<br/>- Tìm kiếm & lọc<br/>- Xem mô tả, ảnh, audio"]
+        
+        QR_SCAN["📷 QR Scanner<br/>- Quét mã tại trạm bus<br/>- Bypass geofence<br/>- Phát audio ngay"]
+        
+        SETTINGS["⚙️ Cài đặt<br/>- Chọn ngôn ngữ<br/>- Độ nhạy GPS / Bán kính<br/>- Chọn giọng TTS<br/>- Tải gói offline"]
+    end
+    
+    subgraph BG_SERVICE["🔄 Background Processing"]
+        GPS_BG["GPS Background Service"]
+        GEO_ENGINE["Geofence Engine"]
+        NAR_ENGINE["Narration Engine"]
+        EVENT_BUS["App Event Bus"]
+    end
+    
+    READY --> MAIN_FEATURES
+    READY --> BG_SERVICE
+    
+    GPS_BG -->|"Lat, Lng"| GEO_ENGINE
+    GEO_ENGINE -->|"OnPOIEntered"| EVENT_BUS
+    EVENT_BUS -->|"POI Data"| NAR_ENGINE

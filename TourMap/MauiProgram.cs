@@ -17,15 +17,24 @@ namespace TourMap
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Register app services and viewmodels for frontend
+            // === Data & ViewModel ===
             builder.Services.AddSingleton<Services.DatabaseService>();
             builder.Services.AddTransient<ViewModels.MainViewModel>();
+
+            // === Pages ===
             builder.Services.AddTransient<Pages.MapPage>();
             builder.Services.AddTransient<Pages.PoiListPage>();
             builder.Services.AddSingleton<MainPage>();
-            // Register location service (platform implementation on Android)
+
+            // === Phase 1: Core Engines ===
+            builder.Services.AddSingleton<Services.GeofenceEngine>();
+            builder.Services.AddSingleton<Services.NarrationEngine>();
+
+            // === Platform-specific Services (Android) ===
 #if ANDROID
-            builder.Services.AddSingleton<TourMap.Services.ILocationService, TourMap.LocationService_Android>();
+            builder.Services.AddSingleton<Services.ILocationService, LocationService_Android>();
+            builder.Services.AddSingleton<Services.IGpsTrackingService, GpsTrackingService_Android>();
+            builder.Services.AddSingleton<Services.ITtsService, TtsService_Android>();
 #endif
 
 #if DEBUG

@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Du Lịch Ẩm Thực Quận 4 — Presentation</title>
+    <style>
+        :root {
+            --primary: #0288d1;
+            --primary-light: #4fc3f7;
+            --primary-dark: #01579b;
+            --accent: #ff8f00;
+            --accent-light: #ffb300;
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --text: #212121;
+            --text-secondary: #616161;
+            --border: #e0e0e0;
+            --code-bg: #263238;
+            --code-text: #eeffff;
+            --success: #2e7d32;
+            --warning: #f57f17;
+            --info: #1565c0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--primary);
+            color: white;
+            padding: 0 2rem;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+        }
+
+        nav .logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: -.5px;
+        }
+
+        nav .nav-links {
+            display: flex;
+            gap: .5rem;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+
+        nav .nav-links a {
+            color: rgba(255, 255, 255, .85);
+            text-decoration: none;
+            font-size: .82rem;
+            padding: .35rem .7rem;
+            border-radius: 4px;
+            transition: background .2s;
+        }
+
+        nav .nav-links a:hover,
+        nav .nav-links a.active {
+            background: rgba(255, 255, 255, .15);
+            color: #fff;
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            margin-top: 56px;
+            background: linear-gradient(120deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 5rem 3rem 4rem;
+            text-align: left;
+            border-bottom: 6px solid var(--accent);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        /* ===== SECTIONS ===== */
+        section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        section:nth-child(even) {
+            background: var(--surface);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px dashed var(--border);
+        }
+        .section-header .icon {
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+.section-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .section-header .section-num {
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* ===== CARDS ===== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.2rem;
+            margin: 1.5rem 0;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--primary);
+            border-radius: 30px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-4px);
+            border-left-color: var(--accent);
+        }
+
+        .card h3 {
+            font-size: 1.05rem;
+            margin-bottom: .4rem;
+            color: var(--primary-dark);
+        }
+
+        .card p,
+        .card li {
+            font-size: .9rem;
+            color: var(--text-secondary);
+        }
+
+        .card ul {
+            padding-left: 1.2rem;
+            margin-top: .4rem;
+        }
+
+        .card li {
+            margin-bottom: .2rem;
+        }
+
+        /* ===== TABLES ===== */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .88rem;
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            padding: .6rem .8rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: .55rem .8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover td {
+            background: #fff3e0;
+        }
+
+        /* ===== CODE ===== */
+        .code-block {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.2rem 1.5rem;
+            border-radius: 30px;
+            overflow-x: auto;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: .82rem;
+            line-height: 1.7;
+            margin: 1rem 0;
+        }
+
+        .code-block .comment {
+            color: #546e7a;
+        }
+
+        .code-block .keyword {
+            color: #c792ea;
+        }
+
+        .code-block .string {
+            color: #c3e88d;
+        }
+
+        .code-block .number {
+            color: #f78c6c;
+        }
+
+        .code-block .fn {
+            color: #82aaff;
+        }
+
+        code {
+            background: #eceff1;
+            padding: .15rem .4rem;
+            border-radius: 3px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: .85em;
+        }
+
+        /* ===== FLOW DIAGRAMS ===== */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .flow-step {
+            background: var(--primary);
+            color: white;
+            padding: .4rem .9rem;
+            border-radius: 30px;
+            font-size: .82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .flow-step.alt {
+            background: var(--accent);
+        }
+
+        .flow-step.success {
+            background: var(--success);
+        }
+
+        .flow-step.warning {
+            background: var(--warning);
+            color: var(--text);
+        }
+
+        .flow-arrow {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        /* ===== TIER BARS ===== */
+        .tier-list {
+            margin: 1rem 0;
+        }
+
+        .tier-item {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: .6rem;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .tier-label {
+            width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .85rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .tier-content {
+            flex: 1;
+            padding: .7rem 1rem;
+            background: var(--surface);
+        }
+
+        .tier-content strong {
+            display: block;
+            font-size: .9rem;
+            margin-bottom: .2rem;
+        }
+
+        .tier-content span {
+            font-size: .82rem;
+            color: var(--text-secondary);
+        }
+
+        /* ===== STATS ROW ===== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1.2rem .8rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .stat-card .label {
+            font-size: .78rem;
+            color: var(--text-secondary);
+            margin-top: .2rem;
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--primary);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            background: var(--primary);
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+
+        .timeline-item h4 {
+            font-size: .95rem;
+            color: var(--primary-dark);
+            margin-bottom: .3rem;
+        }
+
+        .timeline-item p {
+            font-size: .85rem;
+            color: var(--text-secondary);
+        }
+
+        /* ===== HIGHLIGHT BOX ===== */
+        .highlight {
+            border-left: 4px solid var(--primary);
+            background: #fff3e0;
+            padding: 1rem 1.2rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .highlight.info {
+            border-color: var(--info);
+            background: #e3f2fd;
+        }
+
+        .highlight.success {
+            border-color: var(--success);
+            background: #e8f5e9;
+        }
+
+        .highlight strong {
+            color: var(--text);
+        }
+
+        /* ===== MERMAID ===== */
+        .mermaid-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        /* ===== ARCHITECTURE DIAGRAM ===== */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: .8rem;
+            margin: 1.5rem 0;
+        }
+
+        .arch-module {
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: all .2s;
+        }
+
+        .arch-module:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 12px rgba(230, 81, 0, .15);
+        }
+
+        .arch-module .mod-icon {
+            font-size: 1.8rem;
+            margin-bottom: .3rem;
+        }
+
+        .arch-module .mod-name {
+            font-weight: 700;
+            font-size: .9rem;
+            color: var(--primary-dark);
+        }
+
+        .arch-module .mod-desc {
+            font-size: .75rem;
+            color: var(--text-secondary);
+            margin-top: .2rem;
+        }
+
+        .arch-module.reserved {
+            opacity: .5;
+            border-style: dashed;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: var(--code-bg);
+            color: rgba(255, 255, 255, .6);
+            font-size: .8rem;
+        }
+
+        footer strong {
+            color: rgba(255, 255, 255, .9);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 1.6rem;
+            }
+
+            section {
+                padding: 2rem 1rem;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .arch-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            nav .nav-links {
+                display: none;
+            }
+
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ===== DIAGRAM BUTTONS & MODAL ===== */
+        .diagram-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .diagram-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: white;
+            border: none;
+            padding: .5rem 1.1rem;
+            border-radius: 22px;
+            font-size: .82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .25s;
+            box-shadow: 0 2px 6px rgba(0, 131, 143, .2);
+        }
+
+        .diagram-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(0, 131, 143, .35);
+        }
+
+        .diagram-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, .65);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .diagram-overlay.active {
+            display: flex;
+        }
+
+        .diagram-modal {
+            background: white;
+            border-radius: 16px;
+            width: 96vw;
+            height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, .4);
+            animation: modalIn .3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                transform: scale(.92);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .dm-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .7rem 1.2rem;
+            background: var(--primary);
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .dm-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .dm-ctrl {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+
+        .dm-ctrl button {
+            background: rgba(255, 255, 255, .18);
+            color: white;
+            border: none;
+            width: 34px;
+            height: 34px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+        }
+
+        .dm-ctrl button:hover {
+            background: rgba(255, 255, 255, .32);
+        }
+
+        .dm-ctrl .zpct {
+            font-size: .78rem;
+            min-width: 3.5rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .dm-body {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+            background: #fafafa;
+        }
+
+        .dm-body:active {
+            cursor: grabbing;
+        }
+
+        .dm-body .vp {
+            position: absolute;
+            transform-origin: 0 0;
+            padding: 2rem;
+            display: inline-block;
+        }
+
+        .dm-body .vp svg {
+            max-width: none !important;
+            height: auto !important;
+        }
+
+        .dm-body .loading-msg {
+            color: var(--text-secondary);
+            font-size: .9rem;
+            padding: 3rem;
+        }
+    </style>
+</head>
+
+
+<body>
+    <!-- NAV -->
+    <nav>
+        <div class="logo">📱 Quan4 Culinary Tourism - PRD</div>
+        <ul class="nav-links">
+            <li><a href="#overview">Kiến trúc</a></li>
+            <li><a href="#startup">Khởi động</a></li>
+            <li><a href="#sync">Offline/Sync</a></li>
+            <li><a href="#gps">GPS/Geofence</a></li>
+            <li><a href="#audio">Audio TTS</a></li>
+            <li><a href="#content">Quản lý POI</a></li>
+            <li><a href="#map">Map/QR</a></li>
+            <li><a href="#settings">Cài đặt</a></li>
+            <li><a href="#admin">CMS Admin</a></li>
+            <li><a href="#workflow">Luồng mẫu</a></li>
+            <li><a href="#nfr">NFR</a></li>
+            <li><a href="#deployment">Triển khai</a></li>
+        </ul>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+        <h1>Product Requirements Document (PRD)</h1>
+        <p class="subtitle">Tài liệu Đặc tả Yêu cầu Phát triển: Khám phá Ẩm thực Quận 4 Toàn Diện</p>
+        <div class="badges">
+            <span class="badge">Background GPS</span>
+            <span class="badge">Geofencing Engine</span>
+            <span class="badge">Smart Audio Queue</span>
+            <span class="badge">Map View & QR</span>
+            <span class="badge">Analytics Dashboard</span>
+            <span class="badge">Offline-First Sync</span>
+            <span class="badge">Tour Management</span>
+        </div>
+    </div>
+
+    <!-- 1. OVERVIEW -->
+    <section id="overview">
+        <div class="section-header">
+            <div class="icon" style="background:#e3f2fd;color:var(--info);">🏗️</div>
+            <div>
+                <div class="section-num">Phần 01</div>
+                <h2>Kiến trúc Tổng quan & Tech Stack</h2>
+            </div>
+        </div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);">Hệ thống thiết kế theo mô hình <strong>Offline-First & Background Processing</strong>, cho phép lấy vị trí người dùng liên tục ngay cả khi tắt màn hình.</p>
+        
+        <div class="arch-grid">
+            <div class="arch-module">
+                <div class="mod-icon">📱</div>
+                <div class="mod-name">Client App</div>
+                <div class="mod-desc">Nhận diện Geofence, Background Service GPS, Map View, Audio Queue.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">💻</div>
+                <div class="mod-name">CMS Web Portal</div>
+                <div class="mod-desc">Quản lý POI, Audio, Theo dõi Heat map và Thống kê luồng di chuyển.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🧠</div>
+                <div class="mod-name">Core Services</div>
+                <div class="mod-desc">Text-to-Speech (TTS), Phân giải địa điểm, AI Chatbot (Mở rộng).</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. STARTUP FLOW -->
+    <section id="startup">
+        <div class="section-header">
+            <div class="icon" style="background:#e8f5e9;color:var(--success);">🚀</div>
+            <div>
+                <div class="section-num">Phần 02</div>
+                <h2>Luồng Khởi động (Frontend & Backend)</h2>
+            </div>
+        </div>
+
+        <div class="flow" style="margin-bottom: 2rem;">
+            <div class="flow-step">1. Backend Init</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step alt">2. App Load POI List</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step warning">3. Xin quyền định vị</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step success">4. Khởi động Service</div>
+        </div>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <h4>Backend & CMS (Web)</h4>
+                <p>Khởi chạy hệ thống API cho Web quản trị. Quản trị viên truy cập trang web để cập nhật toàn bộ database các <strong>Point of Interest (POI)</strong>, đăng tải file MP3 thuyết minh hoặc điền văn bản kịch bản (Text).</p>
+            </div>
+            <div class="timeline-item">
+                <h4>App Tải Danh sách POI</h4>
+                <p>Người dùng mở App lần đầu, quá trình <strong>Fast Sync</strong> tiến hành thu thập toàn bộ list điểm POI cập nhật mới nhất lưu vào Local SQL nhằm hỗ trợ trải nghiệm dùng bản đồ khi rớt mạng.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>Cấp quyền Vị trí Nền (Background Setup)</h4>
+                <p>Hệ thống tự động bật luồng cài đặt bảo mật, yêu cầu bật GPS ở chế độ "Always Allow" (Luôn cho phép) để hệ thống hoạt động xuyên suốt tuyến du lịch.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2.5 OFFLINE & SYNC STRATEGY -->
+    <section id="sync">
+        <div class="section-header">
+            <div class="icon" style="background:#e0f7fa;color:#00838f;">🔄</div>
+            <div>
+                <div class="section-num">Phần 02.5</div>
+                <h2>Chiến lược Đồng bộ & Offline-First</h2>
+            </div>
+        </div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);">Hệ thống áp dụng mô hình <strong>Offline-First</strong>: mọi dữ liệu POI, audio, và bản đồ đều được cache cục bộ trên SQLite & file system, đảm bảo ứng dụng vận hành mượt mà ngay cả khi mất kết nối mạng.</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>1. Full Sync (Lần đầu tiên)</h3>
+                <ul>
+                    <li>Khi người dùng mở app lần đầu, hệ thống thực hiện <strong>Full Sync</strong>: tải toàn bộ danh sách POI cùng bản dịch theo ngôn ngữ đã chọn.</li>
+                    <li>Lưu trọn vẹn vào <strong>SQLite Local Database</strong> kèm timestamp.</li>
+                    <li>Tải song song các file audio MP3 từ CDN/Storage về bộ nhớ máy.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>2. Delta Sync (Các lần sau)</h3>
+                <ul>
+                    <li>App gửi <code>last_sync_timestamp</code> lên API Backend.</li>
+                    <li>Server chỉ trả về các POI <strong>mới tạo, cập nhật, hoặc bị xóa</strong> kể từ timestamp đó → giảm tải băng thông và thời gian đồng bộ.</li>
+                    <li>Audio files chỉ tải lại nếu URL thay đổi hoặc file mới được thêm.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>3. Offline Mode</h3>
+                <ul>
+                    <li>Khi mất mạng hoàn toàn, app sử dụng 100% dữ liệu từ <strong>SQLite cache</strong>.</li>
+                    <li>Bản đồ sử dụng tile cache đã tải sẵn (hoặc tích hợp <strong>Mapbox/Here SDK</strong> hỗ trợ offline map tiles).</li>
+                    <li>Audio đã tải sẵn phát bình thường; nếu audio chưa cache, hệ thống fallback sang <strong>TTS nội bộ (Android TextToSpeech)</strong> đọc từ script đã lưu.</li>
+                    <li>Các log analytics được ghi tạm vào SQLite, tự động sync lên server khi có mạng trở lại.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight info" style="margin-top:20px;">
+            <strong>Cơ chế Xung đột (Conflict Resolution):</strong>
+            <ul style="margin-top: 10px;">
+                <li><strong>Server-wins:</strong> Mọi thay đổi từ Admin CMS đều là nguồn sự thật duy nhất (Single Source of Truth). Khi delta sync, dữ liệu server luôn ghi đè local cache.</li>
+                <li><strong>Tải gói theo Tour:</strong> Người dùng có thể chủ động chọn Tour cụ thể để tải trước toàn bộ audio pack, đảm bảo trải nghiệm liền mạch khi offline.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 3. GPS & GEOFENCE -->
+    <section id="gps">
+        <div class="section-header">
+            <div class="icon" style="background:#fff3e0;color:var(--warning);">📍</div>
+            <div>
+                <div class="section-num">Phần 03</div>
+                <h2>GPS Tracking & Geofence Engine</h2>
+            </div>
+        </div>
+        
+        <div class="card-grid">
+            <div class="card">
+                <h3>1. Lấy tọa độ liên tục (Real-time)</h3>
+                <ul>
+                    <li>Lấy vị trí người dùng liên tục trong cả <strong>Foreground</strong> và <strong>Background</strong>.</li>
+                    <li>Sử dụng Code Truyền thống phối hợp với các phương pháp giảm thiểu hao hụt pin tối đa (như Vibe Code) để nâng cấp độ nhạy.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>2. Logic Kích hoạt POI (Geofence)</h3>
+                <ul>
+                    <li>Mỗi POI cấu tạo 3 thành phần Trigger: <strong>Tọa độ</strong>, <strong>Bán kính vạch vùng</strong>, và <strong>Mức ưu tiên</strong>.</li>
+                    <li>Tự động đánh thức lệnh phát nội dung khi người dùng lọt vào vòng bán kính đã định hoặc rà sát đến gần tọa độ.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>3. Cơ chế Khóa Chống Spam</h3>
+                <ul>
+                    <li>Thiết lập Debounce & Cooldown: Hạn chế tiếng còi thông báo liên hồi khi khách di chuyển quanh ranh giới mập mờ, bảo đảm sự yên tĩnh thông minh.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. AUDIO & NARRATION -->
+    <section id="audio">
+        <div class="section-header">
+            <div class="icon" style="background:#e1bee7;color:#8e24aa;">🎧</div>
+            <div>
+                <div class="section-num">Phần 04</div>
+                <h2>Thuyết minh Tự động: Narration & Audio</h2>
+            </div>
+        </div>
+
+        <div class="tier-list">
+            <div class="tier-item">
+                <div class="tier-label" style="background:var(--success);">TTS</div>
+                <div class="tier-content">
+                    <strong>Text-To-Speech Linh Hoạt</strong>
+                    <span>Dung lượng siêu nhẹ, hỗ trợ nhiều ngôn ngữ dựa trên Script văn bản. Dễ dàng đổi giọng đọc mà máy không bị quá tải bộ nhớ.</span>
+                </div>
+            </div>
+            <div class="tier-item">
+                <div class="tier-label" style="background:var(--primary-dark);">AUDIO</div>
+                <div class="tier-content">
+                    <strong>File Nhạc Thu Sẵn (MP3/WAV)</strong>
+                    <span>Chất lượng cực cao, giọng điệu tự nhiên truyền tải xuất sắc cái Hồn của văn hóa. Bù lại dung lượng gốc khá nặng.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight info" style="margin-top:20px;">
+            <strong>Quản lý Hàng chờ (Audio Queue) thông minh:</strong>
+            <ul style="margin-top: 10px;">
+                <li>App quản trị <strong>Audio Queue</strong>, xử lý nối luồng mượt mà, cắt rụng các bản sao âm thanh thừa thãi trùng nhau (Đứt quãng).</li>
+                <li><strong>Tự động Stop:</strong> Dừng ngay lập tức âm thanh đang nghe dang dở nếu Geofence báo động có POI khác có mức Cảnh báo Ưu tiên hơn đè lên.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 5. POI CONTENT -->
+    <section id="content">
+        <div class="section-header">
+            <div class="icon" style="background:#e0f2f1;color:#00897b;">📦</div>
+            <div>
+                <div class="section-num">Phần 05</div>
+                <h2>Quản lý Nội dung Dữ liệu POI</h2>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>Khối Dữ Liệu 1 Điểm (POI Record)</h3>
+                <ul style="margin-top: 10px;">
+                    <li><strong>Mô tả Text:</strong> Nội dung bài viết thuyết minh thông tin.</li>
+                    <li><strong>Ảnh minh họa:</strong> Avatar điểm đến đính kèm.</li>
+                    <li><strong>Link bản đồ:</strong> Vector Map / Google Map URL.</li>
+                    <li><strong>Nguồn phát:</strong> Gắn link script TTS hoặc gắn Audio thu sẵn.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Hiển thị & Đồng bộ</h3>
+                <ul style="margin-top: 10px;">
+                    <li>Dữ liệu được bọc gói tinh gọn để đồng bộ xuống App nhanh gọn.</li>
+                    <li>Tối ưu để hỗ trợ thay đổi text hiển thị trên UI ngay khi người dùng chọn xem chi tiết Point of Interest.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. MAP & QR -->
+    <section id="map">
+        <div class="section-header">
+            <div class="icon" style="background:#fbe9e7;color:#d84315;">🗺️</div>
+            <div>
+                <div class="section-num">Phần 06</div>
+                <h2>Map View & Kích hoạt QR Code</h2>
+            </div>
+        </div>
+
+        <div class="arch-grid">
+            <div class="arch-module">
+                <div class="mod-icon">🧭</div>
+                <div class="mod-name">Giao diện Bản Đồ</div>
+                <div class="mod-desc">Hiển thị Chóp định vị của bạn. List toàn bộ POI kèm thao tác <strong>Highlight rực rỡ</strong> điểm gần nhất khi ở lân cận. Click 1 chạm mở bảng chi tiết.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🔳</div>
+                <div class="mod-name">Định danh Trạm QR</div>
+                <div class="mod-desc">Đính QR Code tại trạm lên xuống Bus Phường Khánh Hội. Dùng tính năng phụ quẹt qua mã là tự động kích phát nội dung không cần đo Geofence.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🤖</div>
+                <div class="mod-name">Chat Bot Hỗ trợ</div>
+                <div class="mod-desc"><em>(Tính năng chờ: Plus)</em> Tích hợp Chatbot Cloud Server để người du lịch tư vấn hỏi đáp về món ăn trực tiếp trên Map View.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6.5 SETTINGS UI -->
+    <section id="settings">
+        <div class="section-header">
+            <div class="icon" style="background:#f3e5f5;color:#7b1fa2;">⚙️</div>
+            <div>
+                <div class="section-num">Phần 06.5</div>
+                <h2>Màn hình Cài đặt & Tùy chỉnh Trải nghiệm</h2>
+            </div>
+        </div>
+        <p style="margin-bottom:1rem;color:var(--text-secondary);">Cho phép người dùng tùy biến hành vi ứng dụng theo sở thích cá nhân, giúp nâng cao đáng kể trải nghiệm du lịch.</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>1. Cài đặt GPS & Bán kính</h3>
+                <ul>
+                    <li><strong>Độ nhạy GPS:</strong> Cho phép chọn chế độ High Accuracy (chính xác cao, tốn pin hơn) hoặc Battery Saver (tiết kiệm pin, giảm tần suất cập nhật).</li>
+                    <li><strong>Bán kính kích hoạt:</strong> Tùy chỉnh khoảng cách trigger (20m / 50m / 100m) phù hợp với tốc độ di chuyển (đi bộ vs xe buýt).</li>
+                    <li><strong>Chu kỳ GPS:</strong> Điều chỉnh tần suất lấy tọa độ (3s / 5s / 10s).</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>2. Cài đặt Giọng đọc TTS</h3>
+                <ul>
+                    <li><strong>Chọn giọng:</strong> Nam / Nữ, giọng miền Bắc / Nam (tùy TTS engine hỗ trợ).</li>
+                    <li><strong>Tốc độ đọc:</strong> Chậm / Bình thường / Nhanh (0.75x - 1.5x).</li>
+                    <li><strong>Âm lượng tự động:</strong> Tự điều chỉnh volume theo môi trường ồn ào.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>3. Quản lý Gói Offline</h3>
+                <ul>
+                    <li><strong>Danh sách Tour khả dụng:</strong> Hiển thị các tour có thể tải trước.</li>
+                    <li><strong>Tải / Xóa gói:</strong> Chọn tour → Download toàn bộ audio + data → Sẵn sàng dùng offline.</li>
+                    <li><strong>Dung lượng hiển thị:</strong> Mỗi gói hiện rõ kích thước (VD: "Tour Ẩm thực Đêm - 45 MB").</li>
+                    <li><strong>Trạng thái cache:</strong> Hiển thị tổng dung lượng đã cache, nút xóa cache.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>4. Ngôn ngữ & Giao diện</h3>
+                <ul>
+                    <li><strong>Đổi ngôn ngữ:</strong> Tiếng Việt / English / 한국어 / 中文 — re-sync POI translations khi đổi.</li>
+                    <li><strong>Chế độ tối (Dark Mode):</strong> Hỗ trợ bản đồ Dark Theme cho di chuyển ban đêm.</li>
+                    <li><strong>Thông báo:</strong> Bật/tắt notification khi tiến gần POI.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. ADMIN & ANALYTICS -->
+    <section id="admin">
+        <div class="section-header">
+            <div class="icon" style="background:#eceff1;color:#546e7a;">📊</div>
+            <div>
+                <div class="section-num">Phần 07</div>
+                <h2>CMS Nâng cao & Phân tích Dữ liệu Analytics</h2>
+            </div>
+        </div>
+        
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="value">Track</div>
+                <div class="label">Lưu tuyến đường Ẩn danh</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">TOP POI</div>
+                <div class="label">Biểu đồ POI nghe nhiều</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">Time</div>
+                <div class="label">Time Spent trung bình / Trạm</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">Heat</div>
+                <div class="label">Map Nhiệt định vị Đám đông</div>
+            </div>
+        </div>
+
+        <div class="highlight success">
+            <strong>Hệ thống CMS Admin độc lập:</strong> Cho phép nhân sự biên tập (Admin) vận hành các Modules dễ dàng: CRUD POI, Quản lý Nhạc Âm thanh, Điều tiết các bản dịch ngôn ngữ khác, và truy xét toàn bộ Lịch sử các log di chuyển qua Dashboard biểu đồ chuẩn xác (Analytics).
+        </div>
+
+        <h3 style="margin-top:2rem;color:var(--primary-dark);font-size:1.15rem;">📋 Các Module CMS Mở rộng</h3>
+        <div class="card-grid" style="margin-top:1rem;">
+            <div class="card">
+                <h3>🗺️ Quản lý Tour (Lộ trình)</h3>
+                <ul>
+                    <li><strong>CRUD Tour:</strong> Tạo / Sửa / Xóa lộ trình tham quan (VD: "Tour Ẩm thực Ban Đêm", "Tour Phố Ốc Quận 4").</li>
+                    <li><strong>Gán POI vào Tour:</strong> Kéo thả hoặc chọn checkbox POI → sắp xếp thứ tự ghé thăm (order_index).</li>
+                    <li><strong>Preview tuyến:</strong> Xem tuyến tour trên bản đồ mini trong CMS, kiểm tra logic trước khi publish.</li>
+                    <li><strong>Kích hoạt / Vô hiệu:</strong> Toggle trạng thái active cho từng tour.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>📱 Quản lý QR Code</h3>
+                <ul>
+                    <li><strong>Sinh QR tự động:</strong> Khi tạo POI mới, hệ thống auto-generate mã QR tương ứng (payload chứa POI_ID + checksum).</li>
+                    <li><strong>Gán vị trí trạm:</strong> Liên kết QR → trạm xe buýt cụ thể (VD: Trạm 3, Phường Khánh Hội).</li>
+                    <li><strong>Xuất file in ấn:</strong> Download QR dạng PNG/SVG với kích thước chuẩn in poster (A4 / A3).</li>
+                    <li><strong>Quản lý danh sách QR:</strong> Bảng hiển thị tất cả QR đã tạo, trạng thái POI tương ứng, lượt quét thống kê.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>👥 Quản lý Tài khoản & Phân quyền</h3>
+                <ul>
+                    <li><strong>Vai trò (Roles):</strong> Admin (toàn quyền), Editor (CRUD POI/Audio/Tour), SubAdmin (chỉ xem Analytics).</li>
+                    <li><strong>CRUD User CMS:</strong> Thêm / Sửa / Khóa / Xóa tài khoản quản trị viên.</li>
+                    <li><strong>Nhật ký hoạt động:</strong> Log mọi thao tác chỉnh sửa (ai, khi nào, thay đổi gì) để audit trail.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. WORKFLOW -->
+    <section id="workflow">
+        <div class="section-header">
+            <div class="icon" style="background:#fff3e0;color:var(--warning);">⚡</div>
+            <div>
+                <div class="section-num">Phần 08</div>
+                <h2>Luồng Hoạt động Trải nghiệm Chi tiết</h2>
+            </div>
+        </div>
+        
+        <div class="timeline" style="margin-top: 2rem;">
+            <div class="timeline-item">
+                <h4>B1: Tải về và Setup</h4>
+                <p>App nạp toàn bộ danh sách POI, bản đồ. Giao diện Map hiện lên với Icon User ở giữa và các điểm rải rác xung quanh.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>B2: Dò tìm ngầm (Background Location)</h4>
+                <p>Khách du lịch cất máy vào túi. App liên tục tính toán tọa độ đo đạc không phát sinh thao tác bằng tay.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>B3: Động cơ Geofence Quét sự cố</h4>
+                <p>Giả sử khách đứng tại trạm X có bán kính 30m, <strong>Geofence Engine</strong> lập tức bắn Event. Nếu đè lên 2 bán kính, nó tiến hành cân nhắc độ Ưu tiên (Priority) -> Đưa 1 POI duy nhất ra xử lý.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>B4: Động cơ Thuyết minh Phán quyết</h4>
+                <p><strong>Narration Engine</strong> vào cuộc. Kiểm duyệt trạng thái: Máy đang bận hay đang im lặng? POI này đã từng phát cách đây 5 phút chưa? -> Nếu hợp quy, ném Data vào Audio Queue.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>B5: Play Audio & Write Log</h4>
+                <p>Thực hiện phát Audio hoặc chạy nền TTS êm tai. Đồng thời ném sự kiện Đã Phát (Log success) về lại cục trung tâm để lập hồ sơ Tuyến Di chuyển và đo đạc Time Spent / Heat map cho CMS Admin.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. NON-FUNCTIONAL REQUIREMENTS -->
+    <section id="nfr">
+        <div class="section-header">
+            <div class="icon" style="background:#fce4ec;color:#c62828;">🛡️</div>
+            <div>
+                <div class="section-num">Phần 09</div>
+                <h2>Yêu cầu Phi chức năng (Non-Functional Requirements)</h2>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>⚡ Hiệu năng (Performance)</h3>
+                <ul>
+                    <li>Thời gian khởi động app (cold start) ≤ <strong>3 giây</strong>.</li>
+                    <li>Phản hồi GPS → Geofence trigger ≤ <strong>5 giây</strong>.</li>
+                    <li>Delta Sync hoàn tất trong ≤ <strong>2 giây</strong> (Wi-Fi) / ≤ <strong>5 giây</strong> (4G).</li>
+                    <li>Audio bắt đầu phát trong ≤ <strong>1 giây</strong> sau khi Narration Engine quyết định.</li>
+                    <li>Pin tiêu thụ background GPS ≤ <strong>5%/giờ</strong>.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>🔒 Bảo mật (Security)</h3>
+                <ul>
+                    <li><strong>HTTPS bắt buộc</strong> cho mọi giao tiếp Client-Server.</li>
+                    <li>Mật khẩu CMS mã hóa <strong>BCrypt</strong> (salt + hash).</li>
+                    <li>Token xác thực <strong>JWT</strong> có thời hạn (expiry) + refresh token.</li>
+                    <li>Dữ liệu vị trí người dùng <strong>ẩn danh hóa</strong> (không gắn thông tin cá nhân).</li>
+                    <li>SQLite local có thể mã hóa bằng <strong>SQLCipher</strong> (tùy chọn).</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>📈 Khả năng mở rộng (Scalability)</h3>
+                <ul>
+                    <li>Hỗ trợ tối thiểu <strong>500 POI</strong> đồng thời trên bản đồ.</li>
+                    <li>Backend xử lý <strong>≥ 100 request/giây</strong> đồng thời.</li>
+                    <li>Analytics log xử lý <strong>≥ 10,000 bản ghi/ngày</strong>.</li>
+                    <li>Kiến trúc cho phép thêm ngôn ngữ mới mà <strong>không cần thay đổi code</strong> (chỉ thêm record POI_TRANSLATIONS).</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>♿ Khả dụng & Trải nghiệm (UX/Accessibility)</h3>
+                <ul>
+                    <li>App hoạt động ổn định <strong>offline 100%</strong> (với data đã cache).</li>
+                    <li>Font size đủ lớn, contrast ratio đạt chuẩn <strong>WCAG AA</strong>.</li>
+                    <li>Hỗ trợ <strong>Screen Reader</strong> (TalkBack/VoiceOver) cho người khiếm thị.</li>
+                    <li>Responsive UI: hỗ trợ màn hình từ <strong>5" đến 10" tablet</strong>.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10. DEPLOYMENT ARCHITECTURE -->
+    <section id="deployment">
+        <div class="section-header">
+            <div class="icon" style="background:#e8eaf6;color:#283593;">🚀</div>
+            <div>
+                <div class="section-num">Phần 10</div>
+                <h2>Kiến trúc Triển khai & Môi trường</h2>
+            </div>
+        </div>
+
+        <div class="arch-grid">
+            <div class="arch-module">
+                <div class="mod-icon">📱</div>
+                <div class="mod-name">Mobile Client</div>
+                <div class="mod-desc">.NET MAUI App → Build APK (Android) & IPA (iOS). Phân phối qua Google Play / TestFlight.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🖥️</div>
+                <div class="mod-name">Web Server</div>
+                <div class="mod-desc">ASP.NET Core chạy trên Kestrel / IIS. Serve cả CMS Admin (MVC) và REST API (Sync/Auth).</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🗄️</div>
+                <div class="mod-name">Database</div>
+                <div class="mod-desc">SQL Server (Production) hoặc SQLite (Development). EF Core migrations quản lý schema.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">📁</div>
+                <div class="mod-name">File Storage</div>
+                <div class="mod-desc">Audio MP3 & ảnh POI lưu trên Object Storage (Local disk / S3 / GCP Bucket) + CDN phân phối.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">☁️</div>
+                <div class="mod-name">Cloud AI TTS</div>
+                <div class="mod-desc">Google Cloud Text-to-Speech hoặc Azure Cognitive Services. Gọi API khi Admin tạo audio bằng AI.</div>
+            </div>
+            <div class="arch-module">
+                <div class="mod-icon">🗺️</div>
+                <div class="mod-name">Map Platform</div>
+                <div class="mod-desc">Google Maps SDK (Android/iOS) cho Map Tiles. Mapbox/Here nếu cần offline map caching.</div>
+            </div>
+        </div>
+
+        <h3 style="margin-top:2rem;color:var(--primary-dark);font-size:1.05rem;">Quy trình Triển khai (CI/CD)</h3>
+        <div class="flow" style="margin-top: 1rem;">
+            <div class="flow-step">1. Code Push (Git)</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step alt">2. Build & Test</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step warning">3. Staging Deploy</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step success">4. Production Release</div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:1.5rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Môi trường</th>
+                        <th>Mục đích</th>
+                        <th>Database</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Development</strong></td>
+                        <td>Dev cá nhân, debug</td>
+                        <td>SQLite local</td>
+                        <td>Hot reload, debug mode</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Staging</strong></td>
+                        <td>Test tích hợp, UAT</td>
+                        <td>SQL Server (test)</td>
+                        <td>Dữ liệu mẫu, test geofence</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Production</strong></td>
+                        <td>Người dùng thật</td>
+                        <td>SQL Server (prod)</td>
+                        <td>HTTPS, backup hàng ngày</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</body>
+
+
+</html>

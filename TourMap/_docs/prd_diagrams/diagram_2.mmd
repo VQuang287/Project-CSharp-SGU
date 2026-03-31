@@ -1,0 +1,9 @@
+flowchart TD
+    A["User GPS Position (lat, lng)"] --> B["Lọc POI trong vùng R_max = 500m"]
+    B --> C["Tính khoảng cách Haversine<br/>d = haversine(user, poi)"]
+    C --> D{"d < radius kích hoạt?"}
+    D -->|Không| E["Không trigger — bỏ qua"]
+    D -->|Có| F{"Cooldown OK?<br/>(debounce 30s)"}
+    F -->|Không| G["Bỏ qua — chống spam"]
+    F -->|Có| H["Priority check<br/>(POI ưu tiên cao nhất trong vùng)"]
+    H --> I["Gửi Event → Narration Engine"]

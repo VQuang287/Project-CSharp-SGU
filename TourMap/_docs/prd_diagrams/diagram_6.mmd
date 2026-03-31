@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant App as 📱 Mobile App
+    participant Cache as 💾 SQLite Local
+    participant API as 🖥️ Backend API
+    participant DB as 🗄️ Server DB
+    participant CDN as ☁️ CDN Storage
+
+    Note over App,CDN: === Lần đầu mở App (Full Sync) ===
+    
+    App->>API: GET /api/sync/full
+    API->>DB: Query all active POI + Translations
+    DB-->>API: POI Data List
+    API-->>App: JSON Response (POI + metadata)
+    App->>Cache: Lưu toàn bộ vào SQLite
+    
+    loop Mỗi POI có audio_url
+        App->>CDN: Download MP3 file
+        CDN-->>App: Audio binary
+        App->>Cache: Lưu file vào local storage
+    end
+    
+    Note over App,CDN: === Mở App các lần sau (Delta Sync) ===
+    
+    App->>Cache: Đọc last_sync_timestamp
+    App->>API: GET /api/sync/delta?since=timestamp
+    API->>DB: Query POI updated since timestamp
+    DB-->>API: Changed POI list
+    API-->>App: Delta JSON
+    
+    alt Có thay đổi
+        App->>Cache: Upsert POI mới/cập nhật
+        App->>Cache: Xóa POI đã bị vô hiệu
+        loop Audio mới hoặc cập nhật
+            App->>CDN: Download MP3 mới
+            App->>Cache: Thay thế audio cũ
+        end
+    end
+    
+    Note over App,CDN: === Khi mất mạng (Offline Mode) ===
+    App->>Cache: Đọc 100% từ SQLite
+    App->>App: Phát audio đã tải / fallback TTS offline
