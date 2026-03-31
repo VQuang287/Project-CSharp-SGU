@@ -1,4 +1,4 @@
-# 🎵 Audio Tour App — Product Requirements Document (PRD)
+# Audio Tour App — Product Requirements Document (PRD)
 
 > **Nền tảng:** .NET MAUI 10.0 (Android / iOS)
 
