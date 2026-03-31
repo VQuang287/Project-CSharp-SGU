@@ -4,10 +4,8 @@
 
 | Trường | Nội dung |
 |--------|----------|
-| **Môn học** | Đồ án Lập trình Mobile |
-| **Nhóm** | Nhóm Audio Tour |
+| **Môn học** | Đồ án C# |
 | **Framework** | .NET MAUI 8.0 — Android & iOS |
-| **Trạng thái** | Bản cập nhật v2.0 — Bổ sung Offline Sync, Settings, Tour/QR Management, NFR, Deployment |
 
 ---
 
