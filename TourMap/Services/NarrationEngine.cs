@@ -1,5 +1,10 @@
 using TourMap.Models;
 
+#if ANDROID
+using Android.Media;
+using Android.Content;
+#endif
+
 namespace TourMap.Services;
 
 /// <summary>
@@ -19,13 +24,18 @@ public enum NarrationState
 
 /// <summary>
 /// Narration Engine — quản lý vòng đời audio.
-/// Nhận tín hiệu từ Geofence → phát TTS → chuyển trạng thái IDLE → PLAYING → COOLDOWN.
+/// Nhận tín hiệu từ Geofence → phát Audio file hoặc TTS → chuyển trạng thái.
+/// Ưu tiên: Audio file MP3 (nếu có) → fallback TTS.
 /// </summary>
 public class NarrationEngine
 {
     private readonly ITtsService _ttsService;
+    private readonly IAudioPlayerService _audioPlayer;
+    private readonly DatabaseService _databaseService;
     private NarrationState _state = NarrationState.Idle;
     private Poi? _currentPoi;
+    private string _currentTriggerType = "Unknown";
+    private string _currentAudioSource = "TTS";
 
     /// <summary>Sự kiện khi trạng thái thay đổi (cho UI cập nhật).</summary>
     public event Action<NarrationState, Poi?>? StateChanged;
@@ -33,16 +43,28 @@ public class NarrationEngine
     public NarrationState CurrentState => _state;
     public Poi? CurrentPoi => _currentPoi;
 
-    public NarrationEngine(ITtsService ttsService)
+    public NarrationEngine(
+        ITtsService ttsService,
+        IAudioPlayerService audioPlayer,
+        DatabaseService databaseService)
     {
         _ttsService = ttsService;
-        _ttsService.SpeechCompleted += OnSpeechCompleted;
+        _audioPlayer = audioPlayer;
+        _databaseService = databaseService;
+
+        _ttsService.SpeechCompleted += OnPlaybackCompleted;
+        _audioPlayer.AudioCompleted += OnPlaybackCompleted;
+
+#if ANDROID
+        // Đăng ký AudioFocus listener để tự động Pause khi có cuộc gọi / ứng dụng khác lấy focus
+        InitAudioFocus();
+#endif
     }
 
     /// <summary>
     /// Gọi khi Geofence Engine phát hiện user đi vào vùng POI.
     /// </summary>
-    public async Task OnPOITriggeredAsync(Poi poi)
+    public async Task OnPOITriggeredAsync(Poi poi, string triggerType = "GPS")
     {
         // Nếu đang PLAYING → chỉ chấp nhận POI có priority cao hơn
         if (_state == NarrationState.Playing)
@@ -51,8 +73,7 @@ public class NarrationEngine
             {
                 Console.WriteLine($"[Narration] ⏩ Ngắt POI \"{_currentPoi.Title}\" " +
                                   $"→ chuyển sang POI ưu tiên cao hơn: \"{poi.Title}\"");
-                _ttsService.Stop();
-                // Sẽ phát POI mới ngay bên dưới
+                StopCurrent();
             }
             else
             {
@@ -69,15 +90,44 @@ public class NarrationEngine
             return;
         }
 
-        // === Phát TTS ===
+        // === Phát audio ===
         _currentPoi = poi;
+        _currentTriggerType = triggerType;
         SetState(NarrationState.Playing);
 
-        // Tạo nội dung đọc: Tên + Mô tả
-        var speechText = $"{poi.Title}. {poi.Description}";
-        Console.WriteLine($"[Narration] 🔊 Phát TTS: \"{speechText}\"");
+#if ANDROID
+        RequestAudioFocus();
+#endif
 
-        await _ttsService.SpeakAsync(speechText);
+        var lang = LocalizationService.Current.CurrentLanguage;
+        
+        bool playedFile = false;
+        // Ưu tiên 1: File audio MP3 đã cache trên thiết bị (Chỉ dùng khi ngôn ngữ là vi)
+        if (lang == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
+        {
+            _currentAudioSource = "AudioFile";
+            Console.WriteLine($"[Narration] 🔊 Phát Audio File: {Path.GetFileName(poi.AudioLocalPath)}");
+            await _audioPlayer.PlayAsync(poi.AudioLocalPath);
+            playedFile = true;
+        }
+
+        if (!playedFile)
+        {
+            // Fallback: TTS từ Description được dịch
+            _currentAudioSource = "TTS";
+            var localizedDesc = lang switch {
+                "en" => poi.DescriptionEn,
+                "zh" => poi.DescriptionZh,
+                "ko" => poi.DescriptionKo,
+                "ja" => poi.DescriptionJa,
+                "fr" => poi.DescriptionFr,
+                _ => poi.Description
+            } ?? poi.Description;
+
+            var speechText = $"{poi.Title}. {localizedDesc}";
+            Console.WriteLine($"[Narration] 🔊 Phát TTS: \"{speechText}\" ({lang})");
+            await _ttsService.SpeakAsync(speechText, lang);
+        }
     }
 
     /// <summary>Dừng phát thủ công.</summary>
@@ -85,20 +135,32 @@ public class NarrationEngine
     {
         if (_state == NarrationState.Playing)
         {
-            _ttsService.Stop();
+            StopCurrent();
             SetState(NarrationState.Idle);
             _currentPoi = null;
         }
     }
 
-    /// <summary>Callback khi TTS đọc xong.</summary>
-    private void OnSpeechCompleted()
+    private void StopCurrent()
     {
-        Console.WriteLine($"[Narration] ✅ Đọc xong POI \"{_currentPoi?.Title}\" → COOLDOWN");
+        _ttsService.Stop();
+        _audioPlayer.Stop();
+#if ANDROID
+        AbandonAudioFocus();
+#endif
+    }
+
+    /// <summary>Callback khi audio hoặc TTS phát xong.</summary>
+    private void OnPlaybackCompleted()
+    {
+        if (_state != NarrationState.Playing) return; // Tránh gọi trùng
+
+        _ = SavePlaybackHistoryAsync();
+        Console.WriteLine($"[Narration] ✅ Phát xong POI \"{_currentPoi?.Title}\" → COOLDOWN");
         SetState(NarrationState.Cooldown);
 
-        // Sau 10 giây cooldown (giảm từ 10 phút của Geofence, vì Narration Engine chỉ cần ngắt tạm) 
-        // → quay lại IDLE. Lưu ý: cooldown 10 phút thực sự đã được xử lý bởi GeofenceEngine.
+        // Sau 10 giây cooldown → quay lại IDLE.
+        // Lưu ý: cooldown 10 phút thực sự đã được xử lý bởi GeofenceEngine.
         _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
         {
             if (_state == NarrationState.Cooldown)
@@ -118,4 +180,80 @@ public class NarrationEngine
         _state = newState;
         StateChanged?.Invoke(_state, _currentPoi);
     }
+
+    private async Task SavePlaybackHistoryAsync()
+    {
+        if (_currentPoi == null) return;
+
+        try
+        {
+            await _databaseService.AddPlaybackHistoryAsync(new PlaybackHistoryEntry
+            {
+                PoiId = _currentPoi.Id,
+                PoiTitle = _currentPoi.Title,
+                TriggerType = _currentTriggerType,
+                AudioSource = _currentAudioSource,
+                PlayedAtUtc = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Narration] ⚠️ Không lưu được playback history: {ex.Message}");
+        }
+    }
+
+#if ANDROID
+    private AudioFocusRequestClass? _focusRequest;
+    private AudioManager? _audioManager;
+
+    private void InitAudioFocus()
+    {
+        _audioManager = (AudioManager?)Android.App.Application.Context.GetSystemService(Context.AudioService);
+    }
+
+    private void RequestAudioFocus()
+    {
+        if (_audioManager == null) return;
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+            _focusRequest = new AudioFocusRequestClass.Builder(AudioFocus.Gain)
+                .SetOnAudioFocusChangeListener(new AudioFocusListener(this))
+                .Build();
+            _audioManager.RequestAudioFocus(_focusRequest!);
+        }
+    }
+
+    private void AbandonAudioFocus()
+    {
+        if (_audioManager == null || _focusRequest == null) return;
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+            _audioManager.AbandonAudioFocusRequest(_focusRequest);
+        }
+    }
+
+    internal void OnAudioFocusLost()
+    {
+        if (_state == NarrationState.Playing)
+        {
+            Console.WriteLine("[Narration] ⏸️ AudioFocus mất — tạm dừng audio");
+            StopCurrent();
+            SetState(NarrationState.Idle);
+        }
+    }
+
+    private class AudioFocusListener : Java.Lang.Object, AudioManager.IOnAudioFocusChangeListener
+    {
+        private readonly NarrationEngine _engine;
+        public AudioFocusListener(NarrationEngine engine) => _engine = engine;
+
+        public void OnAudioFocusChange(AudioFocus focusChange)
+        {
+            if (focusChange == AudioFocus.Loss || focusChange == AudioFocus.LossTransient)
+            {
+                MainThread.BeginInvokeOnMainThread(() => _engine.OnAudioFocusLost());
+            }
+        }
+    }
+#endif
 }

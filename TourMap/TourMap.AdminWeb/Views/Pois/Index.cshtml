@@ -36,10 +36,7 @@
                     </td>
                     <td class="align-middle">
                         <small class="fw-bold">@item.Latitude</small><br />
-                        <small class="fw-bold">@item.Longitude</small><br/>
-                        @if(!string.IsNullOrEmpty(item.MapLink)){
-                            <a href="@item.MapLink" target="_blank" class="badge bg-success text-decoration-none shadow-sm"><small>🔗 Google Maps</small></a>
-                        }
+                        <small class="fw-bold">@item.Longitude</small>
                     </td>
                     <td class="align-middle">
                         @if(!string.IsNullOrEmpty(item.AudioUrl)){

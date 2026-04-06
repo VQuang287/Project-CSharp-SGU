@@ -65,9 +65,16 @@ public class PoisController : Controller
 
                 poi.DescriptionKo = await _aiService.TranslateTextAsync(poi.Description, "ko");
                 poi.AudioUrlKo = await _aiService.GenerateTtsAudioAsync(poi.DescriptionKo, "ko", _env.WebRootPath);
+
+                poi.DescriptionJa = await _aiService.TranslateTextAsync(poi.Description, "ja");
+                poi.AudioUrlJa = await _aiService.GenerateTtsAudioAsync(poi.DescriptionJa, "ja", _env.WebRootPath);
+
+                poi.DescriptionFr = await _aiService.TranslateTextAsync(poi.Description, "fr");
+                poi.AudioUrlFr = await _aiService.GenerateTtsAudioAsync(poi.DescriptionFr, "fr", _env.WebRootPath);
             }
 
             poi.Id = Guid.NewGuid().ToString();
+            poi.UpdatedAt = DateTime.UtcNow;
             _context.Add(poi);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
@@ -99,9 +106,13 @@ public class PoisController : Controller
             poi.AudioUrlEn = existingPoi.AudioUrlEn;
             poi.AudioUrlZh = existingPoi.AudioUrlZh;
             poi.AudioUrlKo = existingPoi.AudioUrlKo;
+            poi.AudioUrlJa = existingPoi.AudioUrlJa;
+            poi.AudioUrlFr = existingPoi.AudioUrlFr;
             poi.DescriptionEn = existingPoi.DescriptionEn;
             poi.DescriptionZh = existingPoi.DescriptionZh;
             poi.DescriptionKo = existingPoi.DescriptionKo;
+            poi.DescriptionJa = existingPoi.DescriptionJa;
+            poi.DescriptionFr = existingPoi.DescriptionFr;
 
             if (ImageFile != null)
             {
@@ -121,7 +132,8 @@ public class PoisController : Controller
                 poi.AudioUrl = "/uploads/audio/" + fileName;
             }
 
-            if (autoAI && !string.IsNullOrWhiteSpace(poi.Description))
+            // Chỉ sinh lại AI nếu description thực sự thay đổi
+            if (autoAI && !string.IsNullOrWhiteSpace(poi.Description) && poi.Description != existingPoi.Description)
             {
                 poi.DescriptionEn = await _aiService.TranslateTextAsync(poi.Description, "en");
                 poi.AudioUrlEn = await _aiService.GenerateTtsAudioAsync(poi.DescriptionEn, "en", _env.WebRootPath);
@@ -131,10 +143,17 @@ public class PoisController : Controller
 
                 poi.DescriptionKo = await _aiService.TranslateTextAsync(poi.Description, "ko");
                 poi.AudioUrlKo = await _aiService.GenerateTtsAudioAsync(poi.DescriptionKo, "ko", _env.WebRootPath);
+
+                poi.DescriptionJa = await _aiService.TranslateTextAsync(poi.Description, "ja");
+                poi.AudioUrlJa = await _aiService.GenerateTtsAudioAsync(poi.DescriptionJa, "ja", _env.WebRootPath);
+
+                poi.DescriptionFr = await _aiService.TranslateTextAsync(poi.Description, "fr");
+                poi.AudioUrlFr = await _aiService.GenerateTtsAudioAsync(poi.DescriptionFr, "fr", _env.WebRootPath);
             }
 
             try
             {
+                poi.UpdatedAt = DateTime.UtcNow;
                 _context.Update(poi);
                 await _context.SaveChangesAsync();
             }

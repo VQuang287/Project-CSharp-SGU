@@ -57,10 +57,20 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         }
     }
 
-    public async Task SpeakAsync(string text)
+    public async Task SpeakAsync(string text, string langCode = "vi")
     {
         if (!_initialized || _tts == null || string.IsNullOrWhiteSpace(text))
             return;
+
+        var locale = langCode switch {
+            "en" => JavaLocale.Us,
+            "zh" => JavaLocale.China,
+            "ko" => JavaLocale.Korea,
+            "ja" => JavaLocale.Japan,
+            "fr" => JavaLocale.France,
+            _ => new JavaLocale("vi", "VN")
+        };
+        _tts.SetLanguage(locale);
 
         // Dừng phát cũ nếu đang nói
         Stop();

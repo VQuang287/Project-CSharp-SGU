@@ -1,8 +1,86 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model TourMap.AdminWeb.Models.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="dashboard-grid">
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tong POI</p>
+            <p class="metric-value">@Model.TotalPois</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tour dang hoat dong</p>
+            <p class="metric-value">@Model.ActiveTours</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tong luot phat</p>
+            <p class="metric-value">@Model.TotalPlays.ToString("N0")</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Mobile users</p>
+            <p class="metric-value">@Model.ActiveMobileUsers</p>
+        </div>
+    </article>
+</section>
+
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <h2 class="h6 mb-3">Top POI theo luot phat</h2>
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>POI</th>
+                    <th>Luot phat</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TopPois.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2">Chua co du lieu playback.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var poi in Model.TopPois)
+                    {
+                        <tr>
+                            <td>@poi.PoiTitle</td>
+                            <td>@poi.PlayCount.ToString("N0")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <h2 class="h6 mb-3">Quick Action Form</h2>
+        <div class="dashboard-form-grid">
+            <div>
+                <label class="form-label">Ten POI</label>
+                <input class="form-control" placeholder="Nhap ten POI" />
+            </div>
+            <div>
+                <label class="form-label">Ban kinh (m)</label>
+                <input class="form-control" type="number" placeholder="50" />
+            </div>
+            <div class="full">
+                <label class="form-label">Mo ta ngan</label>
+                <textarea class="form-control" rows="3" placeholder="Mo ta cho POI"></textarea>
+            </div>
+            <div class="full">
+                <button class="btn btn-primary">Luu nhap</button>
+            </div>
+        </div>
+    </div>
+</section>

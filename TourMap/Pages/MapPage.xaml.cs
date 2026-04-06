@@ -1,6 +1,7 @@
 using TourMap.ViewModels;
 using TourMap.Services;
 using TourMap.Models;
+using Mapsui;
 using Mapsui.UI.Maui;
 using Mapsui.Tiling;
 using Mapsui.Layers;
@@ -21,6 +22,12 @@ public partial class MapPage : ContentPage
     // UI: thanh trạng thái narration ở phía dưới
     private readonly Label _statusLabel;
     private readonly Border _statusBar;
+    private readonly Border _poiPreviewCard;
+    private readonly Label _poiPreviewTitle;
+    private readonly Label _poiPreviewDescription;
+    private readonly Button _poiPreviewOpenButton;
+    private MemoryLayer? _poiLayer;
+    private Poi? _selectedPreviewPoi;
 
     // ID của POI gần nhất đang highlight (để tránh re-render liên tục)
     private string? _highlightedPoiId;
@@ -36,6 +43,9 @@ public partial class MapPage : ContentPage
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
 
+        // Ẩn thanh tiêu đề mặc định của ứng dụng trên page này
+        Shell.SetNavBarIsVisible(this, false);
+
         // === Khởi tạo bản đồ Mapsui (OpenStreetMap) ===
         _mapControl = new MapControl();
         var tileLayer = OpenStreetMap.CreateTileLayer();
@@ -45,7 +55,7 @@ public partial class MapPage : ContentPage
         // === Thanh trạng thái narration (bottom bar) ===
         _statusLabel = new Label
         {
-            Text = "🎧 Sẵn sàng — Di chuyển đến điểm tham quan",
+            Text = LocalizationService.Current["ReadyToMove"],
             FontSize = 14,
             TextColor = Colors.White,
             HorizontalOptions = LayoutOptions.Center,
@@ -63,6 +73,52 @@ public partial class MapPage : ContentPage
             Content = _statusLabel
         };
 
+        _poiPreviewTitle = new Label
+        {
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.Black
+        };
+
+        _poiPreviewDescription = new Label
+        {
+            FontSize = 13,
+            TextColor = Colors.Gray,
+            LineBreakMode = LineBreakMode.WordWrap,
+            MaxLines = 3
+        };
+
+        _poiPreviewOpenButton = new Button
+        {
+            Text = "Xem chi tiết",
+            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#1565C0"),
+            TextColor = Colors.White,
+            CornerRadius = 10
+        };
+        _poiPreviewOpenButton.Clicked += OnOpenPreviewPoiClicked;
+
+        _poiPreviewCard = new Border
+        {
+            IsVisible = false,
+            BackgroundColor = Colors.White,
+            Stroke = Microsoft.Maui.Graphics.Color.FromArgb("#D9E2F2"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 14 },
+            Padding = new Thickness(14),
+            Margin = new Thickness(12),
+            VerticalOptions = LayoutOptions.End,
+            HorizontalOptions = LayoutOptions.Fill,
+            Shadow = new Shadow { Brush = Colors.Black, Offset = new Point(1, 2), Radius = 4, Opacity = 0.15f },
+            Content = new VerticalStackLayout
+            {
+                Spacing = 8,
+                Children = { _poiPreviewTitle, _poiPreviewDescription, _poiPreviewOpenButton }
+            }
+        };
+
+        var mapHost = new Grid();
+        mapHost.Children.Add(_mapControl);
+        mapHost.Children.Add(_poiPreviewCard);
+
         // === Layout: Map + Status Bar ===
         Content = new Grid
         {
@@ -73,11 +129,11 @@ public partial class MapPage : ContentPage
             },
             Children =
             {
-                _mapControl,   // Row 0
+                mapHost,       // Row 0
                 _statusBar     // Row 1
             }
         };
-        Grid.SetRow(_mapControl, 0);
+        Grid.SetRow(mapHost, 0);
         Grid.SetRow(_statusBar, 1);
 
         BindingContext = vm;
@@ -86,6 +142,9 @@ public partial class MapPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        HidePoiPreview();
+        _mapControl.MapTapped -= OnMapTapped;
+        _mapControl.MapTapped += OnMapTapped;
 
         // 1. Load danh sách POI từ SQLite
         await _vm.LoadAsync();
@@ -100,21 +159,19 @@ public partial class MapPage : ContentPage
         // 4. Subscribe Narration state → cập nhật status bar
         _narrationEngine.StateChanged += OnNarrationStateChanged;
 
-        // 5. Subscribe Geofence trigger → phát narration
-        _geofenceEngine.POITriggered += OnPoiTriggered;
-
-        // 6. Bắt đầu tracking GPS liên tục
+        // 5. Bắt đầu tracking GPS liên tục (runtime-level service đã đảm bảo idempotent).
         await _gpsService.StartTrackingAsync();
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        HidePoiPreview();
 
         // Gỡ event handlers & dừng tracking
         _gpsService.LocationChanged -= OnGpsLocationChanged;
         _narrationEngine.StateChanged -= OnNarrationStateChanged;
-        _geofenceEngine.POITriggered -= OnPoiTriggered;
+        _mapControl.MapTapped -= OnMapTapped;
         _gpsService.StopTracking();
     }
 
@@ -125,18 +182,8 @@ public partial class MapPage : ContentPage
         // Cập nhật vị trí user trên bản đồ (real-time)
         UpdateMyLocationOnMap(location.Latitude, location.Longitude);
 
-        // Gửi vị trí cho Geofence Engine kiểm tra
-        _geofenceEngine.OnLocationChanged(location);
-
         // Highlight POI gần nhất
         HighlightNearestPoi(location.Latitude, location.Longitude);
-    }
-
-    // ========== Geofence Trigger → Narration ==========
-
-    private async void OnPoiTriggered(Poi poi)
-    {
-        await _narrationEngine.OnPOITriggeredAsync(poi);
     }
 
     // ========== Narration State Changed → UI ==========
@@ -148,17 +195,17 @@ public partial class MapPage : ContentPage
             switch (state)
             {
                 case NarrationState.Idle:
-                    _statusLabel.Text = "🎧 Sẵn sàng — Di chuyển đến điểm tham quan";
+                    _statusLabel.Text = LocalizationService.Current["ReadyToMove"];
                     _statusBar.BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#2D2D2D");
                     break;
 
                 case NarrationState.Playing:
-                    _statusLabel.Text = $"🔊 Đang phát: {poi?.Title ?? "..."}";
+                    _statusLabel.Text = $"{LocalizationService.Current["PlayingAudio"]}: {poi?.Title ?? "..."}";
                     _statusBar.BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#1B5E20");
                     break;
 
                 case NarrationState.Cooldown:
-                    _statusLabel.Text = $"✅ Đã nghe: {poi?.Title ?? "..."}";
+                    _statusLabel.Text = $"{LocalizationService.Current["Cooldown"]}: {poi?.Title ?? "..."}";
                     _statusBar.BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#37474F");
                     break;
             }
@@ -181,6 +228,7 @@ public partial class MapPage : ContentPage
 
             var feature = new PointFeature(mapPoint)
             {
+                Data = poi.Id,
                 Styles = new[] {
                     new SymbolStyle {
                         Fill = new Mapsui.Styles.Brush(Mapsui.Styles.Color.Red),
@@ -193,7 +241,7 @@ public partial class MapPage : ContentPage
             poiFeatures.Add(feature);
         }
 
-        var poiLayer = new MemoryLayer
+        _poiLayer = new MemoryLayer
         {
             Name = "PoiLayer",
             Features = poiFeatures,
@@ -201,7 +249,7 @@ public partial class MapPage : ContentPage
         };
 
         RemoveLayer("PoiLayer");
-        _mapControl.Map.Layers.Add(poiLayer);
+        _mapControl.Map.Layers.Add(_poiLayer);
     }
 
     private void UpdateMyLocationOnMap(double lat, double lng)
@@ -273,6 +321,49 @@ public partial class MapPage : ContentPage
     {
         var existing = _mapControl.Map?.Layers.FirstOrDefault(l => l.Name == name);
         if (existing != null) _mapControl.Map?.Layers.Remove(existing);
+    }
+
+    private void OnMapTapped(object? sender, MapEventArgs e)
+    {
+        if (_poiLayer == null)
+            return;
+
+        var mapInfo = _mapControl.GetMapInfo(e.ScreenPosition, new[] { _poiLayer });
+        var poiId = mapInfo?.Feature?.Data?.ToString();
+
+        if (string.IsNullOrWhiteSpace(poiId))
+        {
+            HidePoiPreview();
+            return;
+        }
+
+        var poi = _vm.Pois.FirstOrDefault(x => x.Id == poiId);
+        if (poi == null)
+        {
+            HidePoiPreview();
+            return;
+        }
+
+        _selectedPreviewPoi = poi;
+        _poiPreviewTitle.Text = poi.Title;
+        _poiPreviewDescription.Text = poi.Description;
+        _poiPreviewCard.IsVisible = true;
+    }
+
+    private async void OnOpenPreviewPoiClicked(object? sender, EventArgs e)
+    {
+        if (_selectedPreviewPoi == null)
+            return;
+
+        var poiId = _selectedPreviewPoi.Id;
+        HidePoiPreview();
+        await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
+    }
+
+    private void HidePoiPreview()
+    {
+        _selectedPreviewPoi = null;
+        _poiPreviewCard.IsVisible = false;
     }
 }
 

@@ -1,0 +1,146 @@
+@model TourMap.AdminWeb.ViewModels.AnalyticsDashboardViewModel
+
+@{
+    ViewData["Title"] = "Analytics Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Analytics Dashboard</h2>
+    <div class="d-flex align-items-center gap-3">
+        <a asp-action="ExportCsv" asp-route-days="30" class="btn btn-sm btn-outline-primary">Export CSV (30 days)</a>
+        <span class="text-muted">Last update: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Total plays (7 days)</div>
+                <div class="fs-4 fw-bold">@Model.TotalPlays7Days</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Total plays (30 days)</div>
+                <div class="fs-4 fw-bold">@Model.TotalPlays30Days</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Avg duration (sec)</div>
+                <div class="fs-4 fw-bold">@Model.AverageDurationSeconds</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Completion rate</div>
+                <div class="fs-4 fw-bold">@Model.CompletionRatePercent%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Top 10 POI (7 days)</div>
+            <div class="card-body p-0">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>POI</th>
+                            <th class="text-end">Plays</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.TopPois7Days.Count == 0)
+                    {
+                        <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.TopPois7Days)
+                        {
+                            <tr>
+                                <td>@item.PoiTitle</td>
+                                <td class="text-end">@item.PlayCount</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Trigger breakdown (7 days)</div>
+            <div class="card-body p-0">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Trigger</th>
+                            <th class="text-end">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.TriggerTypeBreakdown7Days.Count == 0)
+                    {
+                        <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.TriggerTypeBreakdown7Days)
+                        {
+                            <tr>
+                                <td>@item.TriggerType</td>
+                                <td class="text-end">@item.Count</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Daily plays (7 days)</div>
+            <div class="card-body p-0">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th class="text-end">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.DailyPlays7Days.Count == 0)
+                    {
+                        <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.DailyPlays7Days)
+                        {
+                            <tr>
+                                <td>@item.Day.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">@item.Count</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -15,6 +15,13 @@ public class PlaybackHistory
 
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
+    [MaxLength(32)]
+    public string TriggerType { get; set; } = "GPS";
+
+    public int DurationSeconds { get; set; }
+
+    public bool IsCompleted { get; set; }
+
     [ForeignKey("PoiId")]
     public Poi? Poi { get; set; }
 }

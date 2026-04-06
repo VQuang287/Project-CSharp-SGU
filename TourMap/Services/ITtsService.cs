@@ -6,7 +6,7 @@ namespace TourMap.Services;
 public interface ITtsService
 {
     /// <summary>Phát giọng đọc văn bản. Trả về khi đọc xong.</summary>
-    Task SpeakAsync(string text);
+    Task SpeakAsync(string text, string langCode = "vi");
 
     /// <summary>Dừng phát ngay lập tức.</summary>
     void Stop();

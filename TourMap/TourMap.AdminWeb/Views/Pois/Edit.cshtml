@@ -5,7 +5,7 @@
 }
 
 <div class="container mt-4">
-    <h2 class="text-warning fw-bold">Chỉnh Sửa Địa Điểm</h2>
+    <h2 class="text-warning fw-bold">✏️ Chỉnh Sửa Địa Điểm</h2>
     <hr />
     <div class="row">
         <div class="col-md-8">
@@ -25,51 +25,51 @@
                     <span asp-validation-for="Description" class="text-danger"></span>
 
                     <div class="form-check mt-3 border p-2 rounded bg-light">
-                        <input type="checkbox" name="autoAI" value="true" class="form-check-input" id="autoAI_check" />
+                        <input type="checkbox" name="autoAI" value="true" class="form-check-input" id="autoAI_check" checked />
                         <label class="form-check-label text-success fw-bold" for="autoAI_check">
-                            🤖 Đọc thông qua AI (Dịch & Tạo lại Audio Đa ngôn ngữ)
+                            🤖 Dịch & Tạo lại Audio AI (5 ngôn ngữ)
                         </label>
-                        <small class="d-block text-muted">Tích vào đây nếu bạn vừa sửa nội dung và muốn AI tự động sinh lại bản dịch/Audio (Tiếng Anh, Trung, Hàn).</small>
+                        <small class="d-block text-muted">Chỉ sinh lại khi nội dung Scripts thực sự thay đổi. AI sẽ dịch sang EN, ZH, KO, JA, FR và tạo sẵn file Audio.</small>
                     </div>
                 </div>
 
-                @if(!string.IsNullOrEmpty(Model.AudioUrlEn) || !string.IsNullOrEmpty(Model.AudioUrlZh) || !string.IsNullOrEmpty(Model.AudioUrlKo))
+                @if(Model.AudioUrlEn != null || Model.AudioUrlJa != null || Model.AudioUrlFr != null)
                 {
                     <div class="alert alert-info mt-3">
                         <h5 class="fw-bold mb-3">🌐 Dữ liệu Đa ngôn ngữ (AI Generated)</h5>
-                        
                         @if(!string.IsNullOrEmpty(Model.DescriptionEn)) {
-                            <div class="mt-2"><strong>🇬🇧 Tiếng Anh:</strong> <span class="text-muted">@Model.DescriptionEn</span></div>
+                            <div class="mt-2"><strong>🇬🇧 EN:</strong> <span class="text-muted small">@Model.DescriptionEn</span></div>
                             @if(!string.IsNullOrEmpty(Model.AudioUrlEn)) { <audio controls src="@Model.AudioUrlEn" class="w-100 mt-1" style="height:35px;"></audio> }
                         }
-                        
                         @if(!string.IsNullOrEmpty(Model.DescriptionZh)) {
-                            <div class="mt-3"><strong>🇨🇳 Tiếng Trung:</strong> <span class="text-muted">@Model.DescriptionZh</span></div>
+                            <div class="mt-2"><strong>🇨🇳 ZH:</strong> <span class="text-muted small">@Model.DescriptionZh</span></div>
                             @if(!string.IsNullOrEmpty(Model.AudioUrlZh)) { <audio controls src="@Model.AudioUrlZh" class="w-100 mt-1" style="height:35px;"></audio> }
                         }
-                        
                         @if(!string.IsNullOrEmpty(Model.DescriptionKo)) {
-                            <div class="mt-3"><strong>🇰🇷 Tiếng Hàn:</strong> <span class="text-muted">@Model.DescriptionKo</span></div>
+                            <div class="mt-2"><strong>🇰🇷 KO:</strong> <span class="text-muted small">@Model.DescriptionKo</span></div>
                             @if(!string.IsNullOrEmpty(Model.AudioUrlKo)) { <audio controls src="@Model.AudioUrlKo" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionJa)) {
+                            <div class="mt-2"><strong>🇯🇵 JA:</strong> <span class="text-muted small">@Model.DescriptionJa</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlJa)) { <audio controls src="@Model.AudioUrlJa" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionFr)) {
+                            <div class="mt-2"><strong>🇫🇷 FR:</strong> <span class="text-muted small">@Model.DescriptionFr</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlFr)) { <audio controls src="@Model.AudioUrlFr" class="w-100 mt-1" style="height:35px;"></audio> }
                         }
                     </div>
                 }
 
-                <div class="form-group mb-3">
-                    <label asp-for="MapLink" class="form-label fw-bold">Link bản đồ Google Maps (Tuỳ chọn)</label>
-                    <input asp-for="MapLink" class="form-control" />
-                </div>
-                
-                <div class="row border p-3 rounded bg-light mb-4 mx-0">
-                    <h5 class="fw-bold mb-3 text-secondary">Tải lên Thay thế Đa phương tiện</h5>
+                <div class="row border p-3 rounded bg-light mb-4 mx-0 mt-3">
+                    <h5 class="fw-bold mb-3 text-secondary">Tải lên Đa phương tiện</h5>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Ảnh minh họa (Bỏ trống nếu giữ cũ)</label>
-                        @if(!string.IsNullOrEmpty(Model.ImageUrl)){ <small class="text-success d-block mb-1">Đã có ảnh.</small> }
+                        @if(!string.IsNullOrEmpty(Model.ImageUrl)){ <small class="text-success d-block mb-1">✅ Đã có ảnh.</small> }
                         <input type="file" name="ImageFile" class="form-control" accept="image/*" />
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">File Audio Thu sẵn (Bỏ trống nếu giữ cũ)</label>
-                        @if(!string.IsNullOrEmpty(Model.AudioUrl)){ <small class="text-success d-block mb-1">Đã có Audio mp3.</small> }
+                        @if(!string.IsNullOrEmpty(Model.AudioUrl)){ <small class="text-success d-block mb-1">✅ Đã có Audio mp3.</small> }
                         <input type="file" name="AudioFile" class="form-control" accept="audio/*" />
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                         <input asp-for="Longitude" class="form-control" />
                     </div>
                     <div class="col">
-                        <label asp-for="RadiusMeters" class="form-label fw-bold">Bán kính quét</label>
+                        <label asp-for="RadiusMeters" class="form-label fw-bold">Bán kính (m)</label>
                         <input asp-for="RadiusMeters" class="form-control" />
                     </div>
                     <div class="col">

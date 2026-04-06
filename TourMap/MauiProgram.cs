@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
+using BarcodeScanning;
 
 namespace TourMap
 {
@@ -11,6 +12,7 @@ namespace TourMap
             builder
                 .UseMauiApp<App>()
                 .UseSkiaSharp()
+                .UseBarcodeScanning()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -24,11 +26,20 @@ namespace TourMap
             // === Pages ===
             builder.Services.AddTransient<Pages.MapPage>();
             builder.Services.AddTransient<Pages.PoiListPage>();
+            builder.Services.AddTransient<Pages.PoiDetailPage>();
+            builder.Services.AddTransient<Pages.QrScannerPage>();
+            builder.Services.AddTransient<Pages.SettingsPage>();
             builder.Services.AddSingleton<MainPage>();
 
             // === Phase 1: Core Engines ===
             builder.Services.AddSingleton<Services.GeofenceEngine>();
             builder.Services.AddSingleton<Services.NarrationEngine>();
+            builder.Services.AddSingleton<Services.TourRuntimeService>();
+
+            // === Phase 2 & 3: Audio Player, Sync & Auth ===
+            builder.Services.AddSingleton<Services.IAudioPlayerService, Services.AudioPlayerService>();
+            builder.Services.AddSingleton<Services.AuthService>();
+            builder.Services.AddSingleton<Services.SyncService>();
 
             // === Platform-specific Services (Android) ===
 #if ANDROID
@@ -45,3 +56,4 @@ namespace TourMap
         }
     }
 }
+

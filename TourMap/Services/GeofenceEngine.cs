@@ -48,6 +48,7 @@ public class GeofenceEngine
 
         // Bước 2: Lọc POI trong vùng R_max = 500m và tính khoảng cách
         var nearbyPois = _pois
+            .Where(p => p.IsActive && p.RadiusMeters > 0)
             .Select(poi => new
             {
                 Poi = poi,

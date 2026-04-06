@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TourMap
 {
@@ -11,7 +11,8 @@ namespace TourMap
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            // Hiển thị SplashPage trước — nếu đã chọn ngôn ngữ rồi thì auto-skip sang AppShell
+            return new Window(new Pages.SplashPage());
         }
     }
 }
