@@ -87,13 +87,22 @@ public class SplashPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        // Nếu đã chọn ngôn ngữ rồi → tự chuyển sang AppShell
-        var savedLang = Preferences.Default.Get("selected_language", string.Empty);
-        if (!string.IsNullOrEmpty(savedLang))
+        try
         {
-            LocalizationService.Current.CurrentLanguage = savedLang;
-            await Task.Delay(600);
-            Application.Current!.Windows[0].Page = new AppShell();
+            // Nếu đã chọn ngôn ngữ rồi → tự chuyển sang AppShell
+            var savedLang = Preferences.Default.Get("selected_language", string.Empty);
+            if (!string.IsNullOrEmpty(savedLang))
+            {
+                LocalizationService.Current.CurrentLanguage = savedLang;
+                await Task.Delay(600);
+                Application.Current!.MainPage = new AppShell();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex.Message}");
+            // Fallback: proceed to main app
+            Application.Current!.MainPage = new AppShell();
         }
     }
 
@@ -102,6 +111,6 @@ public class SplashPage : ContentPage
         Preferences.Default.Set("selected_language", lang);
         LocalizationService.Current.CurrentLanguage = lang;
         await Task.Delay(200);
-        Application.Current!.Windows[0].Page = new AppShell();
+        Application.Current!.MainPage = new AppShell();
     }
 }

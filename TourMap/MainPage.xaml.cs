@@ -126,9 +126,17 @@ namespace TourMap
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            await RunFirstLaunchFlowAsync();
-            await RequestLocationPermissionAsync();
-            await TrySyncAsync();
+            try
+            {
+                await RunFirstLaunchFlowAsync();
+                await RequestLocationPermissionAsync();
+                await TrySyncAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainPage] Error in OnAppearing: {ex.Message}");
+                // Show user-friendly error if needed
+            }
         }
 
         private async Task RunFirstLaunchFlowAsync()
@@ -230,17 +238,38 @@ namespace TourMap
 
         private async void OpenMap_Clicked(object? sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(Pages.MapPage));
+            try
+            {
+                await Shell.Current.GoToAsync(nameof(Pages.MapPage));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainPage] Error navigating to MapPage: {ex.Message}");
+            }
         }
 
         private async void OpenPoiList_Clicked(object? sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(Pages.PoiListPage));
+            try
+            {
+                await Shell.Current.GoToAsync(nameof(Pages.PoiListPage));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainPage] Error navigating to PoiListPage: {ex.Message}");
+            }
         }
 
         private async void OpenQrScanner_Clicked(object? sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(Pages.QrScannerPage));
+            try
+            {
+                await Shell.Current.GoToAsync(nameof(Pages.QrScannerPage));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainPage] Error navigating to QrScannerPage: {ex.Message}");
+            }
         }
     }
 }

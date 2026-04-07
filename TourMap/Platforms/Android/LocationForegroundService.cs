@@ -33,19 +33,49 @@ public class LocationForegroundService : Service
         CreateNotificationChannel();
 
         // Intent khi user nhấn vào Notification (mở lại app)
-        var pendingIntent = PendingIntent.GetActivity(this, 0, 
-            new Intent(this, typeof(MainActivity)), 
-            PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+        try
+        {
+            // Android 12+ requires immutable pending intents for security
+            PendingIntentFlags pendingFlags = OperatingSystem.IsAndroidVersionAtLeast(31) 
+                ? PendingIntentFlags.Immutable 
+                : PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable;
+                
+            var pendingIntent = PendingIntent.GetActivity(this, 0, 
+                new Intent(this, typeof(MainActivity)), 
+                pendingFlags);
 
-        var notification = new NotificationCompat.Builder(this, ChannelId)
-            .SetContentTitle("TourMap đang hoạt động")
-            .SetContentText("Đang dò tìm tọa độ GPS để phát Audio Guide...")
-            .SetSmallIcon(Resource.Mipmap.appicon) // Icon mặc định của MAUI app
-            .SetContentIntent(pendingIntent)
-            .SetOngoing(true)
-            .Build();
+            var notification = new NotificationCompat.Builder(this, ChannelId)
+                .SetContentTitle("TourMap đang hoạt động")
+                .SetContentText("Đang dò tìm tọa độ GPS để phát Audio Guide...")
+                .SetSmallIcon(Resource.Mipmap.appicon) // Icon mặc định của MAUI app
+                .SetContentIntent(pendingIntent)
+                .SetOngoing(true)
+                .Build();
 
-        StartForeground(NotificationId, notification);
+            if (notification != null)
+            {
+                StartForeground(NotificationId, notification);
+            }
+        }
+        catch (Java.Lang.Exception jex)
+        {
+            Console.WriteLine($"[LocationService] Java exception creating notification: {jex.Message}");
+            Console.WriteLine($"[LocationService] Java exception type: {jex.GetType().Name}");
+            // Still try to start service with minimal notification
+            var notification = new NotificationCompat.Builder(this, ChannelId)
+                .SetContentTitle("TourMap")
+                .SetContentText("GPS Tracking Active")
+                .SetSmallIcon(Resource.Mipmap.appicon)
+                .SetOngoing(true)
+                .Build();
+            StartForeground(NotificationId, notification);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LocationService] Exception creating notification: {ex.Message}");
+            Console.WriteLine($"[LocationService] Exception type: {ex.GetType().Name}");
+            throw;
+        }
 
         // Báo cho OS biết service này muốn sống dai
         return StartCommandResult.Sticky;
@@ -53,14 +83,25 @@ public class LocationForegroundService : Service
 
     private void CreateNotificationChannel()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+        try
         {
-            var channel = new NotificationChannel(ChannelId, "TourMap GPS Tracking", NotificationImportance.Low)
+            if (OperatingSystem.IsAndroidVersionAtLeast(26)) // Android 8.0+
             {
-                Description = "Thông báo khi ứng dụng đang dò GPS ngầm"
-            };
-            var manager = (NotificationManager?)GetSystemService(NotificationService);
-            manager?.CreateNotificationChannel(channel);
+                var channel = new NotificationChannel(ChannelId, "TourMap GPS Tracking", NotificationImportance.Low)
+                {
+                    Description = "Thông báo khi ứng dụng đang dò GPS ngầm"
+                };
+                var manager = (NotificationManager?)GetSystemService(NotificationService);
+                manager?.CreateNotificationChannel(channel);
+            }
+        }
+        catch (Java.Lang.Exception jex)
+        {
+            Console.WriteLine($"[LocationService] Java exception creating notification channel: {jex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LocationService] Exception creating notification channel: {ex.Message}");
         }
     }
 }

@@ -6,22 +6,37 @@
     xmlns:pages="clr-namespace:TourMap.Pages"
     xmlns:services="clr-namespace:TourMap.Services"
     xmlns:local="clr-namespace:TourMap"
-    Shell.TabBarBackgroundColor="#1A237E"
-    Shell.TabBarForegroundColor="White"
-    Shell.TabBarTitleColor="White"
-    Shell.TabBarUnselectedColor="#B0BEC5">
+    Shell.TabBarBackgroundColor="#FFFFFF"
+    Shell.TabBarForegroundColor="#0D7A5F"
+    Shell.TabBarTitleColor="#0D7A5F"
+    Shell.TabBarUnselectedColor="#9CA3AF">
 
     <TabBar>
+        <!-- Tab 1: Map (Bản đồ) -->
         <ShellContent
             Title="{Binding [MapBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:MapPage}"
             Route="MapPage" />
 
+        <!-- Tab 2: POI List (Địa điểm) -->
+        <ShellContent
+            Title="Địa điểm"
+            ContentTemplate="{DataTemplate pages:PoiListPage}"
+            Route="PoiListPage" />
+
+        <!-- Tab 3: QR Scanner -->
         <ShellContent
             Title="{Binding [QrBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:QrScannerPage}"
             Route="QrScannerPage" />
 
+        <!-- Tab 4: Offline Packs -->
+        <ShellContent
+            Title="Offline"
+            ContentTemplate="{DataTemplate pages:OfflinePacksPage}"
+            Route="OfflinePacksPage" />
+
+        <!-- Tab 5: Settings (Cài đặt) -->
         <ShellContent
             Title="{Binding [SettingsTitle], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:SettingsPage}"
@@ -29,4 +44,3 @@
     </TabBar>
 
 </Shell>
-

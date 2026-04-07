@@ -17,15 +17,15 @@ builder.Services.AddControllersWithViews();
 
 var jwtSecret =
     builder.Configuration["JwtSettings:SecretKey"]
-    ?? builder.Configuration["Jwt:Key"]
+    ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
     ?? "ChangeThisJwtKey_ToAtLeast32Characters_2026!";
 var jwtIssuer =
     builder.Configuration["JwtSettings:Issuer"]
-    ?? builder.Configuration["Jwt:Issuer"]
+    ?? Environment.GetEnvironmentVariable("JWT_ISSUER")
     ?? "TourMap.AdminWeb";
 var jwtAudience =
     builder.Configuration["JwtSettings:Audience"]
-    ?? builder.Configuration["Jwt:Audience"]
+    ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE")
     ?? "TourMap.MobileApp";
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

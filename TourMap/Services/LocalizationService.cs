@@ -9,6 +9,9 @@ public class LocalizationService : INotifyPropertyChanged
     private const string SelectedLanguageKey = "selected_language";
     private static LocalizationService? _instance;
     public static LocalizationService Current => _instance ??= new LocalizationService();
+    
+    // Event for language changes
+    public event Action? LanguageChanged;
 
     // 5 languages supported
     public static readonly IReadOnlyList<(string Code, string DisplayName, string Flag)> SupportedLanguages =
@@ -32,9 +35,16 @@ public class LocalizationService : INotifyPropertyChanged
             {
                 _currentLanguage = value;
                 Preferences.Default.Set(SelectedLanguageKey, value);
-                CultureInfo.CurrentUICulture = new CultureInfo(value == "zh" ? "zh-CN" : value);
+                
+                // Set culture for entire app
+                var culture = new CultureInfo(value == "zh" ? "zh-CN" : value);
+                CultureInfo.CurrentCulture = culture;
+                CultureInfo.CurrentUICulture = culture;
+                
+                // Notify all listeners
                 OnPropertyChanged("Item");
                 OnPropertyChanged(nameof(CurrentLanguage));
+                LanguageChanged?.Invoke();
             }
         }
     }
@@ -75,6 +85,17 @@ public class LocalizationService : INotifyPropertyChanged
     {
         { "AppTitle", "🎧 Audio Guide Tour" },
         { "AppSubtitle", "Phố Ẩm thực Vĩnh Khánh, Quận 4" },
+        { "MapTitle", "Audio Tour" },
+        { "MapSubtitle", "Khánh Hội" },
+        { "SearchPlaceholder", "Tìm điểm tham quan..." },
+        { "GpsOn", "GPS đang bật" },
+        { "GpsOff", "GPS đang tắt" },
+        { "Ready", "Sẵn sàng" },
+        { "TapPoiHint", "Chạm điểm tham quan" },
+        { "AutoPlayHint", "Chuẩn bị phát tự động" },
+        { "AudioTour", "Audio Tour" },
+        { "Playing", "Đang phát..." },
+        { "Finished", "Đã phát xong" },
         { "MapBtn", "🗺️ Mở Bản Đồ" },
         { "QrBtn", "📷 Quét QR Code" },
         { "Syncing", "🔄 Đang đồng bộ dữ liệu..." },
@@ -99,12 +120,60 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheCancel", "Hủy" },
         { "ClearCacheSuccess", "Đã xóa toàn bộ cache audio." },
         { "InfoSection", "ℹ️ Thông tin" },
+        { "OfflineTitle", "Tour Offline" },
+        { "StorageHeader", "Dung lượng thiết bị" },
+        { "StorageUsage", "TourMap đang dùng: 0 MB" },
+        { "StorageAvailable", "Dung lượng trống còn nhiều (khoảng 32 GB)" },
+        { "PacksHeader", "Các gói nội dung" },
+        { "PackQ4Title", "Phố Ẩm Thực Vĩnh Khánh" },
+        { "PackQ4Desc", "Audio, Hình ảnh & Bản đồ" },
+        { "Download", "Tải xuống" },
+        { "Delete", "Xóa" },
+        { "DownloadSuccessTitle", "Thành công" },
+        { "DownloadSuccessMsg", "Đã tải xong toàn bộ Audio và Bản đồ điểm đến. Bạn có thể dùng ngoại tuyến." },
+        { "Awesome", "Tuyệt vời" },
+        // Offline page - Network & Storage
+        { "NetworkSection", "KẾT NỐI" },
+        { "CheckingNetwork", "Đang kiểm tra kết nối..." },
+        { "WifiConnected", "✓ Đã kết nối WiFi" },
+        { "MobileData", "⚠ Đang dùng dữ liệu di động" },
+        { "NoNetwork", "✗ Không có kết nối" },
+        { "AutoDownload", "Tự động tải khi có WiFi" },
+        { "NeverSynced", "Chưa đồng bộ" },
+        { "JustNow", "Vừa xong" },
+        { "MinutesAgo", "{0} phút trước" },
+        { "HoursAgo", "{0} giờ trước" },
+        { "DaysAgo", "{0} ngày trước" },
+        { "StorageUsingFormat", "TourMap đang dùng: {0}" },
+        { "StorageEmpty", "TourMap đang dùng: 0 MB" },
+        { "DeleteConfirmTitle", "Xóa gói tải xuống" },
+        { "DeleteConfirmMsg", "Việc xóa sẽ khiến bạn không thể nghe Audio khi không có mạng. Bạn chắc chắn chứ?" },
+        { "Deleting", "Đang xóa..." },
+        { "DeleteSuccessTitle", "Thành công" },
+        { "DeleteSuccessMsg", "Đã xóa gói Tour tham quan." },
+        { "NeedNetwork", "Cần kết nối internet để tải nội dung." },
+        { "Cancel", "Hủy" },
+        { "OK", "OK" },
+        { "Error", "Lỗi" },
+        { "DownloadError", "Có lỗi xảy ra khi tải xuống." },
+        { "ComingSoon", "Sắp ra mắt" },
     };
 
     private static readonly Dictionary<string, string> English = new()
     {
         { "AppTitle", "🎧 Audio Guide Tour" },
         { "AppSubtitle", "Vinh Khanh Food Street, District 4" },
+        { "MapTitle", "Audio Tour" },
+        { "MapSubtitle", "Vinh Khanh" },
+        { "SearchPlaceholder", "Search for places..." },
+        { "GpsOn", "GPS is on" },
+        { "GpsOff", "GPS is off" },
+        { "Ready", "Ready" },
+        { "TapPoiHint", "Tap a point of interest" },
+        { "AutoPlayHint", "Auto-play ready" },
+        { "AudioTour", "Audio Tour" },
+        { "Playing", "Playing..." },
+        { "Finished", "Finished playing" },
         { "MapBtn", "🗺️ Open Map" },
         { "QrBtn", "📷 Scan QR Code" },
         { "Syncing", "🔄 Syncing data..." },
@@ -129,12 +198,60 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheCancel", "Cancel" },
         { "ClearCacheSuccess", "All audio cache cleared." },
         { "InfoSection", "ℹ️ Info" },
+        { "OfflineTitle", "Offline Tour" },
+        { "StorageHeader", "Device Storage" },
+        { "StorageUsage", "TourMap using: 0 MB" },
+        { "StorageAvailable", "Plenty of space left (about 32 GB)" },
+        { "PacksHeader", "Content Packs" },
+        { "PackQ4Title", "Vinh Khanh Food Street" },
+        { "PackQ4Desc", "Audio, Images & Maps" },
+        { "Download", "Download" },
+        { "Delete", "Delete" },
+        { "DownloadSuccessTitle", "Success" },
+        { "DownloadSuccessMsg", "All Audio and Maps downloaded. You can use offline." },
+        { "Awesome", "Great" },
+        // Offline page - Network & Storage
+        { "NetworkSection", "CONNECTION" },
+        { "CheckingNetwork", "Checking connection..." },
+        { "WifiConnected", "✓ WiFi connected" },
+        { "MobileData", "⚠ Using mobile data" },
+        { "NoNetwork", "✗ No connection" },
+        { "AutoDownload", "Auto-download on WiFi" },
+        { "NeverSynced", "Never synced" },
+        { "JustNow", "Just now" },
+        { "MinutesAgo", "{0} minutes ago" },
+        { "HoursAgo", "{0} hours ago" },
+        { "DaysAgo", "{0} days ago" },
+        { "StorageUsingFormat", "TourMap using: {0}" },
+        { "StorageEmpty", "TourMap using: 0 MB" },
+        { "DeleteConfirmTitle", "Delete download pack?" },
+        { "DeleteConfirmMsg", "Deleting will prevent you from listening offline. Are you sure?" },
+        { "Deleting", "Deleting..." },
+        { "DeleteSuccessTitle", "Success" },
+        { "DeleteSuccessMsg", "Tour pack deleted." },
+        { "NeedNetwork", "Internet connection required to download content." },
+        { "Cancel", "Cancel" },
+        { "OK", "OK" },
+        { "Error", "Error" },
+        { "DownloadError", "An error occurred while downloading." },
+        { "ComingSoon", "Coming soon" },
     };
 
     private static readonly Dictionary<string, string> Chinese = new()
     {
         { "AppTitle", "🎧 语音导览" },
         { "AppSubtitle", "荣庆美食街，第四郡" },
+        { "MapTitle", "语音导览" },
+        { "MapSubtitle", "荣庆" },
+        { "SearchPlaceholder", "搜索景点..." },
+        { "GpsOn", "GPS已开启" },
+        { "GpsOff", "GPS已关闭" },
+        { "Ready", "准备就绪" },
+        { "TapPoiHint", "点击景点" },
+        { "AutoPlayHint", "自动播放就绪" },
+        { "AudioTour", "语音导览" },
+        { "Playing", "播放中..." },
+        { "Finished", "播放完成" },
         { "MapBtn", "🗺️ 打开地图" },
         { "QrBtn", "📷 扫描二维码" },
         { "Syncing", "🔄 正在同步数据..." },
@@ -165,6 +282,17 @@ public class LocalizationService : INotifyPropertyChanged
     {
         { "AppTitle", "🎧 오디오 가이드 투어" },
         { "AppSubtitle", "빈칸 푸드 스트리트, 4군" },
+        { "MapTitle", "오디오 투어" },
+        { "MapSubtitle", "빈칸" },
+        { "SearchPlaceholder", "장소 검색..." },
+        { "GpsOn", "GPS 켜짐" },
+        { "GpsOff", "GPS 꺼짐" },
+        { "Ready", "준비 완료" },
+        { "TapPoiHint", "관심 지점 탭" },
+        { "AutoPlayHint", "자동 재생 준비" },
+        { "AudioTour", "오디오 투어" },
+        { "Playing", "재생 중..." },
+        { "Finished", "재생 완료" },
         { "MapBtn", "🗺️ 지도 열기" },
         { "QrBtn", "📷 QR 코드 스캔" },
         { "Syncing", "🔄 데이터 동기화 중..." },
@@ -195,6 +323,17 @@ public class LocalizationService : INotifyPropertyChanged
     {
         { "AppTitle", "🎧 音声ガイドツアー" },
         { "AppSubtitle", "ヴィンカン グルメ通り、4区" },
+        { "MapTitle", "オーディオツアー" },
+        { "MapSubtitle", "ヴィンカン" },
+        { "SearchPlaceholder", "スポットを検索..." },
+        { "GpsOn", "GPSオン" },
+        { "GpsOff", "GPSオフ" },
+        { "Ready", "準備完了" },
+        { "TapPoiHint", "スポットをタップ" },
+        { "AutoPlayHint", "自動再生準備" },
+        { "AudioTour", "オーディオツアー" },
+        { "Playing", "再生中..." },
+        { "Finished", "再生完了" },
         { "MapBtn", "🗺️ 地図を開く" },
         { "QrBtn", "📷 QRコードをスキャン" },
         { "Syncing", "🔄 データを同期中..." },
@@ -225,6 +364,17 @@ public class LocalizationService : INotifyPropertyChanged
     {
         { "AppTitle", "🎧 Visite Audio Guidée" },
         { "AppSubtitle", "Rue Gastronomique Vinh Khanh, Arrondissement 4" },
+        { "MapTitle", "Visite Audio" },
+        { "MapSubtitle", "Vinh Khanh" },
+        { "SearchPlaceholder", "Rechercher des lieux..." },
+        { "GpsOn", "GPS activé" },
+        { "GpsOff", "GPS désactivé" },
+        { "Ready", "Prêt" },
+        { "TapPoiHint", "Touchez un point d'intérêt" },
+        { "AutoPlayHint", "Lecture auto prête" },
+        { "AudioTour", "Visite Audio" },
+        { "Playing", "Lecture..." },
+        { "Finished", "Lecture terminée" },
         { "MapBtn", "🗺️ Ouvrir la carte" },
         { "QrBtn", "📷 Scanner QR Code" },
         { "Syncing", "🔄 Synchronisation en cours..." },

@@ -69,6 +69,28 @@ public class TourRuntimeService
         catch (Exception ex)
         {
             Console.WriteLine($"[Runtime] Narration trigger failed: {ex.Message}");
+            Console.WriteLine($"[Runtime] Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[Runtime] POI ID: {poi.Id}, Title: {poi.Title}");
+            
+            // Handle specific error types
+            if (ex is ArgumentNullException)
+            {
+                Console.WriteLine($"[Runtime] POI data is null or invalid");
+            }
+            else if (ex is InvalidOperationException invalidEx)
+            {
+                Console.WriteLine($"[Runtime] Narration engine in invalid state: {invalidEx.Message}");
+                Console.WriteLine($"[Runtime] Try restarting narration engine or check audio system");
+            }
+            else if (ex is TaskCanceledException)
+            {
+                Console.WriteLine($"[Runtime] Narration task was cancelled");
+            }
+            else if (ex is System.IO.IOException ioEx)
+            {
+                Console.WriteLine($"[Runtime] Audio IO error: {ioEx.Message}");
+                Console.WriteLine($"[Runtime] Check audio file availability and storage");
+            }
         }
     }
 }

@@ -17,6 +17,10 @@ namespace TourMap
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                    fonts.AddFont("Inter-Regular.ttf", "InterRegular");
+                    fonts.AddFont("Inter-Medium.ttf", "InterMedium");
+                    fonts.AddFont("Inter-SemiBold.ttf", "InterSemiBold");
+                    fonts.AddFont("Inter-Bold.ttf", "InterBold");
                 });
 
             // === Data & ViewModel ===
@@ -29,6 +33,9 @@ namespace TourMap
             builder.Services.AddTransient<Pages.PoiDetailPage>();
             builder.Services.AddTransient<Pages.QrScannerPage>();
             builder.Services.AddTransient<Pages.SettingsPage>();
+            builder.Services.AddTransient<Pages.OfflinePacksPage>();
+            builder.Services.AddTransient<Pages.SplashPage>(); // BUG-05 fix
+            builder.Services.AddTransient<AppShell>(); // BUG-05 fix
             builder.Services.AddSingleton<MainPage>();
 
             // === Phase 1: Core Engines ===
@@ -40,6 +47,9 @@ namespace TourMap
             builder.Services.AddSingleton<Services.IAudioPlayerService, Services.AudioPlayerService>();
             builder.Services.AddSingleton<Services.AuthService>();
             builder.Services.AddSingleton<Services.SyncService>();
+            
+            // === Phase 3.3: Logging Framework ===
+            builder.Services.AddSingleton<Services.ILoggerService, Services.LoggerService>();
 
             // === Platform-specific Services (Android) ===
 #if ANDROID

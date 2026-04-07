@@ -8,6 +8,7 @@ namespace TourMap.Services;
 public class AudioPlayerService : IAudioPlayerService, IDisposable
 {
     private IAudioPlayer? _player;
+    private bool _disposed = false;
     public bool IsPlaying => _player?.IsPlaying ?? false;
     public event Action? AudioCompleted;
 
@@ -24,7 +25,7 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
             }
 
             var stream = File.OpenRead(filePath);
-            _player = AudioManager.Current.CreatePlayer(stream);
+            _player = Plugin.Maui.Audio.AudioManager.Current.CreatePlayer(stream);
             _player.PlaybackEnded += OnPlaybackEnded;
             _player.Play();
 
@@ -39,6 +40,30 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
         catch (Exception ex)
         {
             Console.WriteLine($"[AudioPlayer] ❌ Lỗi phát audio: {ex.Message}");
+            Console.WriteLine($"[AudioPlayer] Stack trace: {ex.StackTrace}");
+            
+            // Handle specific error types
+            if (ex is FileNotFoundException fileEx)
+            {
+                Console.WriteLine($"[AudioPlayer] Audio file not found: {fileEx.FileName}");
+                Console.WriteLine($"[AudioPlayer] Check if audio file was downloaded successfully");
+            }
+            else if (ex is UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[AudioPlayer] Permission denied accessing audio file");
+                Console.WriteLine($"[AudioPlayer] Check app storage permissions");
+            }
+            else if (ex is System.PlatformNotSupportedException)
+            {
+                Console.WriteLine($"[AudioPlayer] Audio format not supported on this platform");
+            }
+            else if (ex is InvalidOperationException invalidEx)
+            {
+                Console.WriteLine($"[AudioPlayer] Invalid audio operation: {invalidEx.Message}");
+                Console.WriteLine($"[AudioPlayer] Audio player may be in invalid state");
+            }
+            
+            // Notify completion even on error to prevent UI hanging
             AudioCompleted?.Invoke();
         }
     }
@@ -70,6 +95,9 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        
         Stop();
+        _disposed = true;
     }
 }

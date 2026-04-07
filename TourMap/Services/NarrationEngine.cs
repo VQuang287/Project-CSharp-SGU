@@ -101,8 +101,18 @@ public class NarrationEngine
 
         var lang = LocalizationService.Current.CurrentLanguage;
         
+        // 0: Ưu tiên cao nhất - TTS script từ database (nếu có)
+        var ttsScript = await _databaseService.GetPoiTtsScriptAsync(poi.Id, lang);
+        if (!string.IsNullOrWhiteSpace(ttsScript))
+        {
+            _currentAudioSource = "TTS-DB";
+            Console.WriteLine($"[Narration] 🔊 Phát TTS từ DB: \"{ttsScript.Substring(0, Math.Min(50, ttsScript.Length))}...\" ({lang})");
+            await _ttsService.SpeakAsync(ttsScript, lang);
+            return;
+        }
+        
         bool playedFile = false;
-        // Ưu tiên 1: File audio MP3 đã cache trên thiết bị (Chỉ dùng khi ngôn ngữ là vi)
+        // 1: File audio MP3 đã cache trên thiết bị (Chỉ dùng khi ngôn ngữ là vi)
         if (lang == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
         {
             _currentAudioSource = "AudioFile";
@@ -140,6 +150,66 @@ public class NarrationEngine
             _currentPoi = null;
         }
     }
+    
+    /// <summary>Set language for TTS service dynamically</summary>
+    public async Task SetLanguageAsync(string languageCode)
+    {
+        if (_ttsService is TtsService_Android androidTts)
+        {
+            await androidTts.SetLanguageAsync(languageCode);
+        }
+    }
+    
+    /// <summary>Play specific POI with specified language</summary>
+    public async Task PlayPoiAsync(Poi poi, string languageCode)
+    {
+        _currentPoi = poi;
+        _currentTriggerType = "Manual";
+        SetState(NarrationState.Playing);
+
+#if ANDROID
+        RequestAudioFocus();
+#endif
+
+        bool playedFile = false;
+        
+        // 0: Ưu tiên cao nhất - TTS script từ database (nếu có)
+        var ttsScript = await _databaseService.GetPoiTtsScriptAsync(poi.Id, languageCode);
+        if (!string.IsNullOrWhiteSpace(ttsScript))
+        {
+            _currentAudioSource = "TTS-DB";
+            Console.WriteLine($"[Narration] Phát TTS từ DB: \"{ttsScript.Substring(0, Math.Min(50, ttsScript.Length))}...\" ({languageCode})");
+            await _ttsService.SpeakAsync(ttsScript, languageCode);
+            return;
+        }
+        
+        // 1: File audio MP3 cache (Chí dùng khi ngôn ngữ là vi)
+        if (languageCode == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
+        {
+            _currentAudioSource = "AudioFile";
+            Console.WriteLine($"[Narration] Phát Audio File: {Path.GetFileName(poi.AudioLocalPath)}");
+            await _audioPlayer.PlayAsync(poi.AudioLocalPath);
+            playedFile = true;
+        }
+
+        if (!playedFile)
+        {
+            // Fallback: TTS from localized description
+            _currentAudioSource = "TTS";
+            var localizedDesc = languageCode switch {
+                "en" => poi.DescriptionEn,
+                "zh" => poi.DescriptionZh,
+                "ko" => poi.DescriptionKo,
+                "ja" => poi.DescriptionJa,
+                "fr" => poi.DescriptionFr,
+                _ => poi.Description
+            } ?? poi.Description;
+
+            var speechText = $"{poi.Title}. {localizedDesc}";
+            Console.WriteLine($"[Narration] Phát TTS: \"{speechText}\" ({languageCode})");
+            await _ttsService.SpeakAsync(speechText, languageCode);
+        }
+    }
 
     private void StopCurrent()
     {
@@ -151,28 +221,36 @@ public class NarrationEngine
     }
 
     /// <summary>Callback khi audio hoặc TTS phát xong.</summary>
-    private void OnPlaybackCompleted()
+    private async void OnPlaybackCompleted()
     {
         if (_state != NarrationState.Playing) return; // Tránh gọi trùng
 
-        _ = SavePlaybackHistoryAsync();
+        try
+        {
+            var historyTask = SavePlaybackHistoryAsync();
+            await historyTask; // Wait for completion to ensure data is saved
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Narration] Error saving playback history: {ex.Message}");
+        }
         Console.WriteLine($"[Narration] ✅ Phát xong POI \"{_currentPoi?.Title}\" → COOLDOWN");
         SetState(NarrationState.Cooldown);
 
-        // Sau 10 giây cooldown → quay lại IDLE.
-        // Lưu ý: cooldown 10 phút thực sự đã được xử lý bởi GeofenceEngine.
-        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
+        try
         {
+            await Task.Delay(TimeSpan.FromSeconds(10));
             if (_state == NarrationState.Cooldown)
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    _currentPoi = null;
-                    SetState(NarrationState.Idle);
-                    Console.WriteLine("[Narration] 🔄 Cooldown xong → IDLE, sẵn sàng nhận trigger mới");
-                });
+                SetState(NarrationState.Idle);
             }
-        });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Narration] Error in cooldown transition: {ex.Message}");
+        }
+        _currentPoi = null;
+        Console.WriteLine("[Narration] 🔄 Cooldown xong → IDLE, sẵn sàng nhận trigger mới");
     }
 
     private void SetState(NarrationState newState)
@@ -199,6 +277,29 @@ public class NarrationEngine
         catch (Exception ex)
         {
             Console.WriteLine($"[Narration] ⚠️ Không lưu được playback history: {ex.Message}");
+            Console.WriteLine($"[Narration] Stack trace: {ex.StackTrace}");
+            
+            if (_currentPoi != null)
+            {
+                Console.WriteLine($"[Narration] Failed POI ID: {_currentPoi.Id}, Title: {_currentPoi.Title}");
+            }
+            
+            // Handle specific error types
+            if (ex is SQLite.SQLiteException sqliteEx)
+            {
+                Console.WriteLine($"[Narration] SQLite error: {sqliteEx.Result}");
+                Console.WriteLine($"[Narration] Database may be locked or corrupted");
+            }
+            else if (ex is System.IO.IOException ioEx)
+            {
+                Console.WriteLine($"[Narration] IO error saving history: {ioEx.Message}");
+                Console.WriteLine($"[Narration] Check storage space and permissions");
+            }
+            else if (ex is InvalidOperationException invalidEx)
+            {
+                Console.WriteLine($"[Narration] Invalid operation saving history: {invalidEx.Message}");
+                Console.WriteLine($"[Narration] Database may not be initialized properly");
+            }
         }
     }
 

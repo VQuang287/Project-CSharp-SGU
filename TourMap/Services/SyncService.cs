@@ -107,6 +107,19 @@ public class SyncService
         catch (Exception ex)
         {
             Console.WriteLine($"[Sync] ❌ Lỗi đồng bộ: {ex.Message}");
+            // Log full exception for debugging
+            Console.WriteLine($"[Sync] Stack trace: {ex.StackTrace}");
+            
+            // Consider different error types for better handling
+            if (ex is HttpRequestException httpEx)
+            {
+                Console.WriteLine($"[Sync] Network error: {httpEx.StatusCode}");
+            }
+            else if (ex is TaskCanceledException)
+            {
+                Console.WriteLine($"[Sync] Request timeout");
+            }
+            
             return false;
         }
     }
@@ -146,6 +159,25 @@ public class SyncService
         catch (Exception ex)
         {
             Console.WriteLine($"[Sync] ⚠️ Không tải được audio: {ex.Message}");
+            
+            // Handle specific error types
+            if (ex is HttpRequestException httpEx)
+            {
+                Console.WriteLine($"[Sync] Audio download network error: {httpEx.StatusCode}");
+            }
+            else if (ex is TaskCanceledException)
+            {
+                Console.WriteLine($"[Sync] Audio download timeout");
+            }
+            else if (ex is UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[Sync] Audio download - permission denied");
+            }
+            else if (ex is IOException ioEx)
+            {
+                Console.WriteLine($"[Sync] Audio download IO error: {ioEx.Message}");
+            }
+            
             return null;
         }
     }

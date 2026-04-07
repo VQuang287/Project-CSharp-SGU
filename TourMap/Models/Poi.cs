@@ -31,6 +31,15 @@ public class Poi
     public string? AudioUrlJa { get; set; }
     public string? DescriptionFr { get; set; }
     public string? AudioUrlFr { get; set; }
+    
+    // TTS Scripts - stored in database for offline TTS generation
+    public string? TtsScriptVi { get; set; }
+    public string? TtsScriptEn { get; set; }
+    public string? TtsScriptZh { get; set; }
+    public string? TtsScriptKo { get; set; }
+    public string? TtsScriptJa { get; set; }
+    public string? TtsScriptFr { get; set; }
+    
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
