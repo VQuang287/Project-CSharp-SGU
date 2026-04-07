@@ -70,4 +70,17 @@ public class QrController : Controller
             .Select(x => new SelectListItem(x.Title, x.Id))
             .ToListAsync();
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var qr = await _context.QrCodeEntries.FindAsync(id);
+        if (qr != null)
+        {
+            _context.QrCodeEntries.Remove(qr);
+            await _context.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
+    }
 }

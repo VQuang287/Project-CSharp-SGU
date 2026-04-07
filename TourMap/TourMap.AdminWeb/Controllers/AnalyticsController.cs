@@ -82,6 +82,21 @@ public class AnalyticsController : Controller
             .OrderBy(x => x.Day)
             .ToListAsync();
 
+        var heatmapLogs = await _context.UserLocationLogs
+            .AsNoTracking()
+            .Where(x => x.RecordedAt >= from7Days)
+            .ToListAsync();
+
+        var heatmapPoints = heatmapLogs
+            .GroupBy(x => new { Lat = Math.Round(x.Latitude, 4), Lng = Math.Round(x.Longitude, 4) })
+            .Select(g => new HeatmapPoint
+            {
+                Lat = g.Key.Lat,
+                Lng = g.Key.Lng,
+                Intensity = Math.Min(g.Count() * 0.2, 1.0)
+            })
+            .ToList();
+
         var vm = new AnalyticsDashboardViewModel
         {
             TotalPlays7Days = total7Days,
@@ -90,7 +105,8 @@ public class AnalyticsController : Controller
             CompletionRatePercent = Math.Round(completionRate, 2),
             TopPois7Days = topPoiItems,
             TriggerTypeBreakdown7Days = triggerBreakdown,
-            DailyPlays7Days = dailyPlays
+            DailyPlays7Days = dailyPlays,
+            HeatmapPoints = heatmapPoints
         };
 
         return View(vm);

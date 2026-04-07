@@ -16,6 +16,7 @@
             <th>POI</th>
             <th>Deep Link</th>
             <th>Created</th>
+            <th class="text-end">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -26,6 +27,11 @@
             <td>@item.PoiId</td>
             <td><code>@item.DeepLink</code></td>
             <td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+            <td class="text-end">
+                <form asp-action="Delete" asp-route-id="@item.Id" method="post" onclick="return confirm('Bạn có chắc chắn muốn xóa QR này?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
         </tr>
     }
     </tbody>

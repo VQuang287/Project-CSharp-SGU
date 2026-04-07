@@ -6,11 +6,11 @@ namespace TourMap.AdminWeb.Controllers.Api;
 
 [Route("api/v1/tours")]
 [ApiController]
-public class ToursController : ControllerBase
+public class ToursApiController : ControllerBase
 {
     private readonly AdminDbContext _context;
 
-    public ToursController(AdminDbContext context)
+    public ToursApiController(AdminDbContext context)
     {
         _context = context;
     }

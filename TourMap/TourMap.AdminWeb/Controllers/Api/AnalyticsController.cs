@@ -9,11 +9,11 @@ namespace TourMap.AdminWeb.Controllers.Api;
 
 [Route("api/v1/analytics")]
 [ApiController]
-public class AnalyticsController : ControllerBase
+public class AnalyticsApiController : ControllerBase
 {
     private readonly AdminDbContext _context;
 
-    public AnalyticsController(AdminDbContext context)
+    public AnalyticsApiController(AdminDbContext context)
     {
         _context = context;
     }
@@ -42,6 +42,29 @@ public class AnalyticsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { success = true, id = request.Id });
+    }
+
+    [HttpPost("location")]
+    public async Task<IActionResult> LogLocation([FromBody] List<UserLocationLog> logs)
+    {
+        if (logs == null || !logs.Any())
+        {
+            return BadRequest(new { success = false, message = "Empty payload." });
+        }
+
+        foreach (var log in logs)
+        {
+            log.Id = 0;
+            if (log.RecordedAt == default)
+            {
+                log.RecordedAt = DateTime.UtcNow;
+            }
+        }
+
+        _context.UserLocationLogs.AddRange(logs);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { success = true, count = logs.Count });
     }
 
     [HttpGet("dashboard")]

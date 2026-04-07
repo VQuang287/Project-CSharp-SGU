@@ -8,11 +8,11 @@ namespace TourMap.AdminWeb.Controllers.Api;
 
 [Route("api/v1/pois")]
 [ApiController]
-public class PoisController : ControllerBase
+public class PoisApiController : ControllerBase
 {
     private readonly AdminDbContext _context;
 
-    public PoisController(AdminDbContext context)
+    public PoisApiController(AdminDbContext context)
     {
         _context = context;
     }

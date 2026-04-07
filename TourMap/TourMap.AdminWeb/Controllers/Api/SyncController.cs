@@ -3,17 +3,18 @@ using Microsoft.EntityFrameworkCore;
 using TourMap.AdminWeb.Data;
 using TourMap.AdminWeb.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace TourMap.AdminWeb.Controllers.Api;
 
 [Route("api/v1/pois/sync")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [ApiController]
-public class SyncController : ControllerBase
+public class SyncApiController : ControllerBase
 {
     private readonly AdminDbContext _context;
 
-    public SyncController(AdminDbContext context)
+    public SyncApiController(AdminDbContext context)
     {
         _context = context;
     }

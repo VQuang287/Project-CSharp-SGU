@@ -110,6 +110,47 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
+    // MOCK DATA for analytics
+    if (!db.PlaybackHistories.Any())
+    {
+        var rnd = new Random();
+        var poiIds = db.Pois.Select(p => p.Id).ToList();
+        var triggers = new[] { "GPS", "GPS", "GPS", "QR", "QR", "MANUAL" };
+        var plays = new List<PlaybackHistory>();
+        for (int i = 0; i < 150; i++)
+        {
+            plays.Add(new PlaybackHistory
+            {
+                PoiId = poiIds[rnd.Next(poiIds.Count)],
+                Timestamp = DateTime.UtcNow.AddDays(-rnd.Next(0, 7)),
+                TriggerType = triggers[rnd.Next(triggers.Length)],
+                DurationSeconds = rnd.Next(30, 180),
+                IsCompleted = rnd.Next(0, 2) == 1
+            });
+        }
+        db.PlaybackHistories.AddRange(plays);
+        db.SaveChanges();
+    }
+
+    if (!db.UserLocationLogs.Any())
+    {
+        var rnd = new Random();
+        var logs = new List<UserLocationLog>();
+        // Mock points around Q4 Vinh Khanh (Latitude: ~10.761, Longitude: ~106.704)
+        for (int i = 0; i < 500; i++)
+        {
+            logs.Add(new UserLocationLog
+            {
+                UserAnonId = "device_" + rnd.Next(1, 10),
+                Latitude = 10.761 + (rnd.NextDouble() - 0.5) * 0.005,
+                Longitude = 106.704 + (rnd.NextDouble() - 0.5) * 0.005,
+                RecordedAt = DateTime.UtcNow.AddHours(-rnd.Next(0, 72))
+            });
+        }
+        db.UserLocationLogs.AddRange(logs);
+        db.SaveChanges();
+    }
+
     if (!db.AdminUsers.Any())
     {
         var username = app.Configuration["AdminBootstrap:Username"] ?? "admin";
@@ -213,6 +254,17 @@ static void EnsureCompatibilityTables(AdminDbContext db)
             "CreatedAt" TEXT NOT NULL
         );
         """);
+
+    db.Database.ExecuteSqlRaw(
+        """
+        CREATE TABLE IF NOT EXISTS "UserLocationLogs" (
+            "Id" INTEGER NOT NULL CONSTRAINT "PK_UserLocationLogs" PRIMARY KEY AUTOINCREMENT,
+            "UserAnonId" TEXT NULL,
+            "Latitude" REAL NOT NULL,
+            "Longitude" REAL NOT NULL,
+            "RecordedAt" TEXT NOT NULL
+        );
+        """);
 }
 
 static void EnsureCompatibilityColumns(AdminDbContext db)
@@ -221,6 +273,7 @@ static void EnsureCompatibilityColumns(AdminDbContext db)
     EnsureColumn(db, "PlaybackHistories", "DurationSeconds", "INTEGER NOT NULL DEFAULT 0");
     EnsureColumn(db, "PlaybackHistories", "IsCompleted", "INTEGER NOT NULL DEFAULT 0");
     EnsureColumn(db, "Pois", "UpdatedAt", "TEXT NOT NULL DEFAULT '2026-01-01T00:00:00Z'");
+    EnsureColumn(db, "Pois", "AudioLocalPath", "TEXT NULL");
 
     // Multilingual AI
     EnsureColumn(db, "Pois", "DescriptionEn", "TEXT NULL");

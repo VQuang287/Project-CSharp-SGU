@@ -1,0 +1,12 @@
+﻿[2026-04-07T18:48:23.5943579+07:00] Starting run-android.ps1
+[2026-04-07T18:48:23.6172943+07:00] Project root: C:\Users\Admin\Downloads\Project-CSharp-SGU-test\TourMap
+[2026-04-07T18:48:23.6360143+07:00] Android SDK root: C:\Users\Admin\AppData\Local\Android\Sdk
+[2026-04-07T18:48:23.6387462+07:00] ADB: C:\Users\Admin\AppData\Local\Android\Sdk\platform-tools\adb.exe
+[2026-04-07T18:48:23.6404992+07:00] Running: adb start-server
+* daemon not running; starting now at tcp:5037
+* daemon started successfully
+[2026-04-07T18:48:26.2371507+07:00] Running: adb devices
+List of devices attached
+
+[2026-04-07T18:48:26.2861649+07:00] FAILED: No authorized Android device detected. Reconnect USB, set File Transfer mode, and tap 'Allow USB debugging' on phone.
+[2026-04-07T18:48:26.2881598+07:00] See log file: C:\Users\Admin\Downloads\Project-CSharp-SGU-test\TourMap\logs\run-android.log

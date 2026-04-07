@@ -8,11 +8,11 @@ namespace TourMap.AdminWeb.Controllers.Api;
 
 [Route("api/v1/qr")]
 [ApiController]
-public class QrController : ControllerBase
+public class QrApiController : ControllerBase
 {
     private readonly AdminDbContext _context;
 
-    public QrController(AdminDbContext context)
+    public QrApiController(AdminDbContext context)
     {
         _context = context;
     }
