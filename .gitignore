@@ -1,0 +1,53 @@
+# Build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+
+# .NET local SDK/tools cache created in repo root
+.dotnet/
+.dotnet-cli/
+
+# IDE/editor folders
+.vs/
+.vscode/
+.idea/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+
+# Logs and diagnostics
+*.log
+*.out.log
+*.err.log
+
+# AdminWeb generated/runtime data
+TourMap.AdminWeb/App_Data/keys/
+TourMap.AdminWeb/*.db
+TourMap.AdminWeb/wwwroot/uploads/
+
+# Test and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# MAUI / mobile artifacts
+*.apk
+*.aab
+*.ipa
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+
+# OS files
+.DS_Store
+Thumbs.db

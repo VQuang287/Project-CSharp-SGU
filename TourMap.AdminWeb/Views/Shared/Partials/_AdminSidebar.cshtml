@@ -1,0 +1,34 @@
+@{
+    var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty).ToLowerInvariant();
+    var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty).ToLowerInvariant();
+    bool IsActive(string c, string a = "index") => controller == c && action == a;
+}
+
+<aside class="admin-sidebar">
+    <div class="admin-brand">
+        <div class="admin-brand-icon">AT</div>
+        <div>
+            <p class="admin-brand-title">Audio Tour CMS</p>
+            <p class="admin-brand-subtitle">ASP.NET Core MVC</p>
+        </div>
+    </div>
+
+    <nav class="admin-nav">
+        <p class="admin-nav-label">Menu Chính</p>
+        <a asp-controller="Home" asp-action="Index" class="admin-nav-link @(IsActive("home") ? "is-active" : null)">
+            <span>Bảng điều khiển</span>
+        </a>
+        <a asp-controller="Pois" asp-action="Index" class="admin-nav-link @(IsActive("pois") ? "is-active" : null)">
+            <span>Quản lý POI</span>
+        </a>
+        <a asp-controller="Tours" asp-action="Index" class="admin-nav-link @(IsActive("tours") ? "is-active" : null)">
+            <span>Quản lý Tour</span>
+        </a>
+        <a asp-controller="Qr" asp-action="Index" class="admin-nav-link @(IsActive("qr") ? "is-active" : null)">
+            <span>Mã QR</span>
+        </a>
+        <a asp-controller="Analytics" asp-action="Index" class="admin-nav-link @(IsActive("analytics") ? "is-active" : null)">
+            <span>Thống kê</span>
+        </a>
+    </nav>
+</aside>
