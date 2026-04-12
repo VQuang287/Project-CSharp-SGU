@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 
@@ -12,6 +13,12 @@ public class LocalizationService : INotifyPropertyChanged
     
     // Event for language changes
     public event Action? LanguageChanged;
+
+#if DEBUG
+    private static readonly object FallbackLogLock = new();
+    private static readonly HashSet<string> LoggedFallbacks = new();
+    private static bool _dictionaryValidationLogged;
+#endif
     
     // 5 languages supported
     public static readonly IReadOnlyList<(string Code, string DisplayName, string Flag)> SupportedLanguages =
@@ -94,6 +101,10 @@ public class LocalizationService : INotifyPropertyChanged
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+    #if DEBUG
+        ValidateDictionariesOnce();
+    #endif
     }
 
     public string this[string key] => GetString(key);
@@ -109,8 +120,100 @@ public class LocalizationService : INotifyPropertyChanged
             "fr" => French,
             _ => Vietnamese
         };
-        return dict.TryGetValue(key, out var text) ? text : (Vietnamese.TryGetValue(key, out var vi) ? vi : key);
+
+        if (dict.TryGetValue(key, out var text))
+            return text;
+
+        // For non-Vietnamese UI, prefer English fallback over Vietnamese.
+        if (_currentLanguage != "vi" && English.TryGetValue(key, out var en))
+        {
+            LogFallbackOnce(key, _currentLanguage, "en");
+            return en;
+        }
+
+        if (Vietnamese.TryGetValue(key, out var vi))
+        {
+            LogFallbackOnce(key, _currentLanguage, "vi");
+            return vi;
+        }
+
+        LogMissingKeyOnce(key, _currentLanguage);
+        return key;
     }
+
+#if DEBUG
+    private static void ValidateDictionariesOnce()
+    {
+        if (_dictionaryValidationLogged) return;
+        _dictionaryValidationLogged = true;
+
+        var baseline = Vietnamese.Keys.ToHashSet(StringComparer.Ordinal);
+        ValidateDictionary("en", English, baseline);
+        ValidateDictionary("zh", Chinese, baseline);
+        ValidateDictionary("ko", Korean, baseline);
+        ValidateDictionary("ja", Japanese, baseline);
+        ValidateDictionary("fr", French, baseline);
+    }
+
+    private static void ValidateDictionary(string language, Dictionary<string, string> dict, HashSet<string> baseline)
+    {
+        var dictKeys = dict.Keys.ToHashSet(StringComparer.Ordinal);
+
+        var missing = baseline.Where(k => !dictKeys.Contains(k)).OrderBy(k => k).ToList();
+        var extra = dictKeys.Where(k => !baseline.Contains(k)).OrderBy(k => k).ToList();
+
+        if (missing.Count == 0 && extra.Count == 0)
+        {
+            var message = $"[LocalizationService] Dictionary OK: {language} ({dict.Count} keys)";
+            Debug.WriteLine(message);
+            Console.WriteLine(message);
+            return;
+        }
+
+        if (missing.Count > 0)
+        {
+            var message = $"[LocalizationService] Missing keys in {language}: {string.Join(", ", missing)}";
+            Debug.WriteLine(message);
+            Console.WriteLine(message);
+        }
+
+        if (extra.Count > 0)
+        {
+            var message = $"[LocalizationService] Extra keys in {language}: {string.Join(", ", extra)}";
+            Debug.WriteLine(message);
+            Console.WriteLine(message);
+        }
+    }
+
+    private static void LogFallbackOnce(string key, string fromLanguage, string fallbackLanguage)
+    {
+        var marker = $"{fromLanguage}|{key}|{fallbackLanguage}";
+        lock (FallbackLogLock)
+        {
+            if (!LoggedFallbacks.Add(marker)) return;
+        }
+
+        var message = $"[LocalizationService] Fallback: '{key}' from '{fromLanguage}' -> '{fallbackLanguage}'";
+        Debug.WriteLine(message);
+        Console.WriteLine(message);
+    }
+
+    private static void LogMissingKeyOnce(string key, string language)
+    {
+        var marker = $"missing|{language}|{key}";
+        lock (FallbackLogLock)
+        {
+            if (!LoggedFallbacks.Add(marker)) return;
+        }
+
+        var message = $"[LocalizationService] Missing key: '{key}' in '{language}', no fallback found";
+        Debug.WriteLine(message);
+        Console.WriteLine(message);
+    }
+#else
+    private static void LogFallbackOnce(string key, string fromLanguage, string fallbackLanguage) { }
+    private static void LogMissingKeyOnce(string key, string language) { }
+#endif
 
     private static readonly Dictionary<string, string> Vietnamese = new()
     {
@@ -197,6 +300,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "Error", "Lỗi" },
         { "DownloadError", "Có lỗi xảy ra khi tải xuống." },
         { "ComingSoon", "Sắp ra mắt" },
+        { "PackNguyenHueTitle", "Phố Đi Bộ Nguyễn Huệ" },
+        { "FilesUnit", "tệp" },
+        { "PoiListTitle", "Địa điểm" },
+        { "PoiNearbyFormat", "📍 {0} gần bạn" },
+        { "PoiVisitedFormat", "🎧 {0} đã nghe" },
+        { "PoiTotalFormat", "{0} tổng cộng" },
+        { "PoiFilterAll", "Tất cả" },
+        { "PoiFilterFood", "Ẩm thực" },
+        { "PoiFilterHeritage", "Di tích" },
+        { "PoiFilterTemple", "Chùa" },
+        { "PoiFilterMarket", "Chợ" },
+        { "PoiFilterPark", "Công viên" },
+        { "PoiFilterCulture", "Văn hóa" },
+        { "PoiEmptyTitle", "Không tìm thấy" },
+        { "PoiEmptyHint", "Thử đổi bộ lọc hoặc từ khóa" },
+        { "PoiPriorityHigh", "⭐ Ưu tiên cao" },
+        { "PoiPriorityFeatured", "📍 Nổi bật" },
+        { "PoiPriorityDefault", "📍 Điểm tham quan" },
+        { "PoiCategoryDefault", "📍 ĐIỂM THAM QUAN" },
+        { "PoiAudioRecorded", "🎙️ Audio thu sẵn" },
+        { "PoiAudioTts", "🤖 Giọng TTS" },
+        { "PoiStatusAudioReady", "🎵 MP3 sẵn sàng" },
+        { "PoiStatusTtsReady", "🗣️ TTS sẵn sàng" },
+        { "AudioTts", "🎧 TTS" },
+        { "QrHeader", "Quét mã QR" },
+        { "QrInstructions", "Đưa mã vào khung để quét" },
+        { "QrScanHint", "Tự động nhận diện mã QR" },
+        { "QrSuccessTitle", "Mã QR đã nhận diện!" },
+        { "QrPlayButton", "Mở và phát thuyết minh" },
+        { "QrScanAgain", "Quét mã khác" },
+        { "PoiDetailDescription", "Giới thiệu" },
+        // Camera errors
+        { "CameraCheckingPermission", "Đang kiểm tra quyền camera..." },
+        { "CameraRequesting", "Đang yêu cầu quyền camera..." },
+        { "CameraPermissionDenied", "Cần quyền camera để tiếp tục. Vui lòng cấp quyền trong Settings." },
+        { "CameraPermissionDeniedShort", "Quyền camera bị từ chối" },
+        { "CameraStartingFormat", "Đang khởi động camera... ({0}/{1})" },
+        { "CameraStartError", "Lỗi khởi động camera. Vui lòng thử lại." },
+        { "CameraStartFailed", "Không thể khởi động camera" },
+        { "CameraErrorAfterRetry", "Lỗi sau {0} lần thử: {1}" },
+        { "CameraRetry", "Thử lại" },
+        { "CameraRetrying", "Đang thử..." },
+        { "CameraInvalidQr", "Mã QR không hợp lệ. Đang quét lại..." },
     };
 
     private static readonly Dictionary<string, string> English = new()
@@ -284,6 +430,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "Error", "Error" },
         { "DownloadError", "An error occurred while downloading." },
         { "ComingSoon", "Coming soon" },
+        { "PackNguyenHueTitle", "Nguyen Hue Walking Street" },
+        { "FilesUnit", "files" },
+        { "PoiListTitle", "Places" },
+        { "PoiNearbyFormat", "📍 {0} nearby" },
+        { "PoiVisitedFormat", "🎧 {0} listened" },
+        { "PoiTotalFormat", "{0} total" },
+        { "PoiFilterAll", "All" },
+        { "PoiFilterFood", "Food" },
+        { "PoiFilterHeritage", "Heritage" },
+        { "PoiFilterTemple", "Temple" },
+        { "PoiFilterMarket", "Market" },
+        { "PoiFilterPark", "Park" },
+        { "PoiFilterCulture", "Culture" },
+        { "PoiEmptyTitle", "No results" },
+        { "PoiEmptyHint", "Try a different filter or keyword" },
+        { "PoiPriorityHigh", "⭐ High priority" },
+        { "PoiPriorityFeatured", "📍 Featured" },
+        { "PoiPriorityDefault", "📍 Point of interest" },
+        { "PoiCategoryDefault", "📍 POINT OF INTEREST" },
+        { "PoiAudioRecorded", "🎙️ Recorded audio" },
+        { "PoiAudioTts", "🤖 TTS voice" },
+        { "PoiStatusAudioReady", "🎵 MP3 ready" },
+        { "PoiStatusTtsReady", "🗣️ TTS ready" },
+        { "AudioTts", "🎧 TTS" },
+        { "QrHeader", "Scan QR Code" },
+        { "QrInstructions", "Point camera at QR code" },
+        { "QrScanHint", "Auto-detecting QR code" },
+        { "QrSuccessTitle", "QR code recognized!" },
+        { "QrPlayButton", "Open and play narration" },
+        { "QrScanAgain", "Scan another code" },
+        { "PoiDetailDescription", "Description" },
+        // Camera errors
+        { "CameraCheckingPermission", "Checking camera permission..." },
+        { "CameraRequesting", "Requesting camera permission..." },
+        { "CameraPermissionDenied", "Camera permission required. Please grant permission in Settings." },
+        { "CameraPermissionDeniedShort", "Camera permission denied" },
+        { "CameraStartingFormat", "Starting camera... ({0}/{1})" },
+        { "CameraStartError", "Error starting camera. Please try again." },
+        { "CameraStartFailed", "Unable to start camera" },
+        { "CameraErrorAfterRetry", "Error after {0} attempts: {1}" },
+        { "CameraRetry", "Retry" },
+        { "CameraRetrying", "Retrying..." },
+        { "CameraInvalidQr", "Invalid QR code. Rescanning..." },
     };
 
     private static readonly Dictionary<string, string> Chinese = new()
@@ -334,6 +523,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheSuccess", "缓存已清除。" },
         { "InfoSection", "ℹ️ 信息" },
         { "VersionLabel", "版本" },
+        { "PackNguyenHueTitle", "阮惠步行街" },
+        { "FilesUnit", "文件" },
+        { "PoiListTitle", "景点" },
+        { "PoiNearbyFormat", "📍 {0}附近" },
+        { "PoiVisitedFormat", "🎧 {0}已听" },
+        { "PoiTotalFormat", "{0}总数" },
+        { "PoiFilterAll", "全部" },
+        { "PoiFilterFood", "美食" },
+        { "PoiFilterHeritage", "遗迹" },
+        { "PoiFilterTemple", "寺庙" },
+        { "PoiFilterMarket", "市场" },
+        { "PoiFilterPark", "公园" },
+        { "PoiFilterCulture", "文化" },
+        { "PoiEmptyTitle", "未找到结果" },
+        { "PoiEmptyHint", "尝试更改筛选条件或关键词" },
+        { "PoiPriorityHigh", "⭐ 高优先级" },
+        { "PoiPriorityFeatured", "📍 精选" },
+        { "PoiPriorityDefault", "📍 景点" },
+        { "PoiCategoryDefault", "📍 景点" },
+        { "PoiAudioRecorded", "🎙️ 录制音频" },
+        { "PoiAudioTts", "🤖 TTS语音" },
+        { "PoiStatusAudioReady", "🎵 MP3已就绪" },
+        { "PoiStatusTtsReady", "🗣️ TTS已就绪" },
+        { "AudioTts", "🎧 文本转语音" },
+        { "QrHeader", "扫描二维码" },
+        { "QrInstructions", "将摄像头对准二维码" },
+        { "QrScanHint", "自动识别二维码" },
+        { "QrSuccessTitle", "二维码已识别！" },
+        { "QrPlayButton", "打开并播放解说" },
+        { "QrScanAgain", "扫描另一个代码" },
+        { "PoiDetailDescription", "介绍" },
+        // Camera errors
+        { "CameraCheckingPermission", "正在检查相机权限..." },
+        { "CameraRequesting", "正在请求相机权限..." },
+        { "CameraPermissionDenied", "需要相机权限。请在设置中授予权限。" },
+        { "CameraPermissionDeniedShort", "相机权限被拒绝" },
+        { "CameraStartingFormat", "正在启动相机... ({0}/{1})" },
+        { "CameraStartError", "相机启动错误。请重试。" },
+        { "CameraStartFailed", "无法启动相机" },
+        { "CameraErrorAfterRetry", "{0}次尝试后出错：{1}" },
+        { "CameraRetry", "重试" },
+        { "CameraRetrying", "正在重试..." },
+        { "CameraInvalidQr", "无效的二维码。正在重新扫描..." },
     };
 
     private static readonly Dictionary<string, string> Korean = new()
@@ -384,6 +616,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheSuccess", "캐시가 삭제되었습니다." },
         { "InfoSection", "ℹ️ 정보" },
         { "VersionLabel", "버전" },
+        { "PackNguyenHueTitle", "응우옌휘 보행자 거리" },
+        { "FilesUnit", "파일" },
+        { "PoiListTitle", "장소" },
+        { "PoiNearbyFormat", "📍 {0}근처" },
+        { "PoiVisitedFormat", "🎧 {0}들었음" },
+        { "PoiTotalFormat", "{0}총" },
+        { "PoiFilterAll", "모두" },
+        { "PoiFilterFood", "음식" },
+        { "PoiFilterHeritage", "유산" },
+        { "PoiFilterTemple", "사찰" },
+        { "PoiFilterMarket", "시장" },
+        { "PoiFilterPark", "공원" },
+        { "PoiFilterCulture", "문화" },
+        { "PoiEmptyTitle", "결과 없음" },
+        { "PoiEmptyHint", "필터 또는 검색어를 변경해 보세요" },
+        { "PoiPriorityHigh", "⭐ 높은 우선순위" },
+        { "PoiPriorityFeatured", "📍 추천" },
+        { "PoiPriorityDefault", "📍 관심 장소" },
+        { "PoiCategoryDefault", "📍 관심 장소" },
+        { "PoiAudioRecorded", "🎙️ 녹음 오디오" },
+        { "PoiAudioTts", "🤖 TTS 음성" },
+        { "PoiStatusAudioReady", "🎵 MP3 준비됨" },
+        { "PoiStatusTtsReady", "🗣️ TTS 준비됨" },
+        { "AudioTts", "🎧 TTS" },
+        { "QrHeader", "QR 코드 스캔" },
+        { "QrInstructions", "카메라를 QR 코드에 향하세요" },
+        { "QrScanHint", "QR 코드 자동 감지 중" },
+        { "QrSuccessTitle", "QR 코드 인식됨!" },
+        { "QrPlayButton", "열기 및 해설 재생" },
+        { "QrScanAgain", "다른 코드 스캔" },
+        { "PoiDetailDescription", "소개" },
+        // Camera errors
+        { "CameraCheckingPermission", "카메라 권한 확인 중..." },
+        { "CameraRequesting", "카메라 권한 요청 중..." },
+        { "CameraPermissionDenied", "카메라 권한이 필요합니다. 설정에서 권한을 부여해주세요." },
+        { "CameraPermissionDeniedShort", "카메라 권한이 거부되었습니다" },
+        { "CameraStartingFormat", "카메라 시작 중... ({0}/{1})" },
+        { "CameraStartError", "카메라 시작 오류입니다. 다시 시도해주세요." },
+        { "CameraStartFailed", "카메라를 시작할 수 없습니다." },
+        { "CameraErrorAfterRetry", "{0}번 시도 후 오류: {1}" },
+        { "CameraRetry", "재시도" },
+        { "CameraRetrying", "재시도 중..." },
+        { "CameraInvalidQr", "유효하지 않은 QR 코드입니다. 다시 스캔 중..." },
     };
 
     private static readonly Dictionary<string, string> Japanese = new()
@@ -434,6 +709,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheSuccess", "キャッシュが削除されました。" },
         { "InfoSection", "ℹ️ 情報" },
         { "VersionLabel", "バージョン" },
+        { "PackNguyenHueTitle", "応援グエン通行歩道" },
+        { "FilesUnit", "ファイル" },
+        { "PoiListTitle", "スポット" },
+        { "PoiNearbyFormat", "📍 {0}近く" },
+        { "PoiVisitedFormat", "🎧 {0}聞きました" },
+        { "PoiTotalFormat", "{0}合計" },
+        { "PoiFilterAll", "すべて" },
+        { "PoiFilterFood", "食べ物" },
+        { "PoiFilterHeritage", "遺産" },
+        { "PoiFilterTemple", "寺院" },
+        { "PoiFilterMarket", "市場" },
+        { "PoiFilterPark", "公園" },
+        { "PoiFilterCulture", "文化" },
+        { "PoiEmptyTitle", "結果がありません" },
+        { "PoiEmptyHint", "フィルターまたはキーワードを変更してみてください" },
+        { "PoiPriorityHigh", "⭐ 高優先度" },
+        { "PoiPriorityFeatured", "📍 おすすめ" },
+        { "PoiPriorityDefault", "📍 スポット" },
+        { "PoiCategoryDefault", "📍 スポット" },
+        { "PoiAudioRecorded", "🎙️ 録音済み音声" },
+        { "PoiAudioTts", "🤖 TTS音声" },
+        { "PoiStatusAudioReady", "🎵 MP3準備完了" },
+        { "PoiStatusTtsReady", "🗣️ TTS準備完了" },
+        { "AudioTts", "🎧 テキスト音声" },
+        { "QrHeader", "QRコードをスキャン" },
+        { "QrInstructions", "カメラをQRコードに向けてください" },
+        { "QrScanHint", "QRコード自動検出中" },
+        { "QrSuccessTitle", "QRコードが認識されました！" },
+        { "QrPlayButton", "開いて解説を再生" },
+        { "QrScanAgain", "別のコードをスキャン" },
+        { "PoiDetailDescription", "説明" },
+        // Camera errors
+        { "CameraCheckingPermission", "カメラの許可を確認中..." },
+        { "CameraRequesting", "カメラの許可をリクエスト中..." },
+        { "CameraPermissionDenied", "カメラの許可が必要です。設定で許可を付与してください。" },
+        { "CameraPermissionDeniedShort", "カメラ権限が拒否されました" },
+        { "CameraStartingFormat", "カメラを起動中... ({0}/{1})" },
+        { "CameraStartError", "カメラの起動に失敗しました。もう一度お試しください。" },
+        { "CameraStartFailed", "カメラを起動できません" },
+        { "CameraErrorAfterRetry", "{0}回の試行後にエラー：{1}" },
+        { "CameraRetry", "再試行" },
+        { "CameraRetrying", "再試行中..." },
+        { "CameraInvalidQr", "無効なQRコード。再スキャン中..." },
     };
 
     private static readonly Dictionary<string, string> French = new()
@@ -484,6 +802,49 @@ public class LocalizationService : INotifyPropertyChanged
         { "ClearCacheSuccess", "Cache audio vidé." },
         { "InfoSection", "ℹ️ Infos" },
         { "VersionLabel", "Version" },
+        { "PackNguyenHueTitle", "Rue piétonne Nguyen Hue" },
+        { "FilesUnit", "fichiers" },
+        { "PoiListTitle", "Lieux" },
+        { "PoiNearbyFormat", "📍 {0} à proximité" },
+        { "PoiVisitedFormat", "🎧 {0} écouté" },
+        { "PoiTotalFormat", "{0} total" },
+        { "PoiFilterAll", "Tous" },
+        { "PoiFilterFood", "Nourriture" },
+        { "PoiFilterHeritage", "Patrimoine" },
+        { "PoiFilterTemple", "Temple" },
+        { "PoiFilterMarket", "Marché" },
+        { "PoiFilterPark", "Parc" },
+        { "PoiFilterCulture", "Culture" },
+        { "PoiEmptyTitle", "Aucun résultat" },
+        { "PoiEmptyHint", "Essayez un filtre ou un mot-clé différent" },
+        { "PoiPriorityHigh", "⭐ Haute priorité" },
+        { "PoiPriorityFeatured", "📍 En vedette" },
+        { "PoiPriorityDefault", "📍 Point d'intérêt" },
+        { "PoiCategoryDefault", "📍 POINT D'INTÉRÊT" },
+        { "PoiAudioRecorded", "🎙️ Audio enregistré" },
+        { "PoiAudioTts", "🤖 Voix TTS" },
+        { "PoiStatusAudioReady", "🎵 MP3 prêt" },
+        { "PoiStatusTtsReady", "🗣️ TTS prêt" },
+        { "AudioTts", "🎧 TTS" },
+        { "QrHeader", "Scanner QR Code" },
+        { "QrInstructions", "Pointez la caméra en direction du QR code" },
+        { "QrScanHint", "Détection automatique du QR code" },
+        { "QrSuccessTitle", "QR code reconnu!" },
+        { "QrPlayButton", "Ouvrir et lire la narration" },
+        { "QrScanAgain", "Scaner un autre code" },
+        { "PoiDetailDescription", "Description" },
+        // Camera errors
+        { "CameraCheckingPermission", "Vérification de la permission caméra..." },
+        { "CameraRequesting", "Demande de permission caméra..." },
+        { "CameraPermissionDenied", "Permission caméra requise. Veuillez accorder la permission dans Paramètres." },
+        { "CameraPermissionDeniedShort", "Permission caméra refusée" },
+        { "CameraStartingFormat", "Démarrage de la caméra... ({0}/{1})" },
+        { "CameraStartError", "Erreur de démarrage de la caméra. Veuillez réessayer." },
+        { "CameraStartFailed", "Impossible de démarrer la caméra" },
+        { "CameraErrorAfterRetry", "Erreur après {0} tentatives: {1}" },
+        { "CameraRetry", "Réessayer" },
+        { "CameraRetrying", "Nouvelle tentative..." },
+        { "CameraInvalidQr", "QR code invalide. Nouvelle tentative de scan..." },
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

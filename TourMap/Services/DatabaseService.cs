@@ -78,6 +78,59 @@ public class DatabaseService
             await _db.InsertAllAsync(seedData);
             Console.WriteLine("[Database] Seeded 4 POIs with multilingual TTS scripts");
         }
+
+        await BackfillLocalizedDescriptionsAsync();
+    }
+
+    private async Task BackfillLocalizedDescriptionsAsync()
+    {
+        if (_db is null) return;
+
+        var pois = await _db.Table<Poi>().ToListAsync();
+        var updated = 0;
+
+        foreach (var poi in pois)
+        {
+            var dirty = false;
+
+            if (string.IsNullOrWhiteSpace(poi.DescriptionEn) && !string.IsNullOrWhiteSpace(poi.TtsScriptEn))
+            {
+                poi.DescriptionEn = poi.TtsScriptEn;
+                dirty = true;
+            }
+            if (string.IsNullOrWhiteSpace(poi.DescriptionZh) && !string.IsNullOrWhiteSpace(poi.TtsScriptZh))
+            {
+                poi.DescriptionZh = poi.TtsScriptZh;
+                dirty = true;
+            }
+            if (string.IsNullOrWhiteSpace(poi.DescriptionKo) && !string.IsNullOrWhiteSpace(poi.TtsScriptKo))
+            {
+                poi.DescriptionKo = poi.TtsScriptKo;
+                dirty = true;
+            }
+            if (string.IsNullOrWhiteSpace(poi.DescriptionJa) && !string.IsNullOrWhiteSpace(poi.TtsScriptJa))
+            {
+                poi.DescriptionJa = poi.TtsScriptJa;
+                dirty = true;
+            }
+            if (string.IsNullOrWhiteSpace(poi.DescriptionFr) && !string.IsNullOrWhiteSpace(poi.TtsScriptFr))
+            {
+                poi.DescriptionFr = poi.TtsScriptFr;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                poi.UpdatedAt = DateTime.UtcNow;
+                await _db.UpdateAsync(poi);
+                updated++;
+            }
+        }
+
+        if (updated > 0)
+        {
+            Console.WriteLine($"[Database] Backfilled multilingual descriptions for {updated} POIs");
+        }
     }
 
     public async Task<List<Poi>> GetPoisAsync()

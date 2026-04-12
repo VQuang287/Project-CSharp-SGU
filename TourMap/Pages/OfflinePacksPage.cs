@@ -21,6 +21,12 @@ public class OfflinePacksPage : ContentPage
     private readonly Label _storageHeader;
     private readonly Switch _autoDownloadSwitch;
     private readonly Label _lastSyncLabel;
+    private readonly Label _autoDownloadLabel;
+    private readonly Label _networkHeader;
+    private readonly Label _q4Title;
+    private readonly Label _q4Desc;
+    private Label? _q1Title;
+    private Label? _q1Desc;
     
     // Trạng thái
     private bool _isDownloaded = false;
@@ -87,7 +93,7 @@ public class OfflinePacksPage : ContentPage
         };
 
         // Auto-download toggle
-        var autoDownloadLabel = new Label
+        _autoDownloadLabel = new Label
         {
             Text = _loc["AutoDownload"] ?? "Tự động tải khi có WiFi",
             FontFamily = "InterMedium", FontSize = 13,
@@ -109,7 +115,7 @@ public class OfflinePacksPage : ContentPage
         var autoDownloadRow = new Grid
         {
             ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-            Children = { autoDownloadLabel, _autoDownloadSwitch.WithColumn(1) }
+            Children = { _autoDownloadLabel, _autoDownloadSwitch.WithColumn(1) }
         };
 
         // Last sync time
@@ -143,7 +149,8 @@ public class OfflinePacksPage : ContentPage
             Content = new VerticalStackLayout { Children = { _syncStatusLabel, autoDownloadRow } }
         };
 
-        var networkSection = new VerticalStackLayout { Children = { CreateSectionHeader(_loc["NetworkSection"] ?? "KẾT NỐI"), networkCard } };
+        _networkHeader = CreateSectionHeader(_loc["NetworkSection"] ?? "KẾT NỐI");
+        var networkSection = new VerticalStackLayout { Children = { _networkHeader, networkCard } };
 
         // ═══════════════════════════════════════════
         // PACKS LIST SECTION
@@ -152,13 +159,13 @@ public class OfflinePacksPage : ContentPage
 
         // Gói Quận 4
         var q4Thumb = new BoxView { WidthRequest = 64, HeightRequest = 64, BackgroundColor = Color.FromArgb("#E0F5F0"), CornerRadius = 12 };
-        var q4Title = new Label { Text = _loc["PackQ4Title"] ?? "Phố Ẩm Thực Vĩnh Khánh", FontFamily = "InterBold", FontSize = 14, TextColor = Color.FromArgb("#18181B") };
-        var q4Desc = new Label { Text = _loc["PackQ4Desc"] ?? "Audio, Hình ảnh & Bản đồ", FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280") };
+        _q4Title = new Label { Text = _loc["PackQ4Title"] ?? "Phố Ẩm Thực Vĩnh Khánh", FontFamily = "InterBold", FontSize = 14, TextColor = Color.FromArgb("#18181B") };
+        _q4Desc = new Label { Text = _loc["PackQ4Desc"] ?? "Audio, Hình ảnh & Bản đồ", FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280") };
         _packSizeLabel = new Label { Text = "45 MB", FontFamily = "InterMedium", FontSize = 11, TextColor = Color.FromArgb("#0D7A5F"), BackgroundColor = Color.FromArgb("#E0F5F0"), Padding = new Thickness(6, 2), Margin = new Thickness(0, 4, 0, 0), HorizontalOptions = LayoutOptions.Start };
 
         _downloadBtn = new Button
         {
-            Text = "Tải xuống",
+            Text = _loc["Download"] ?? "Tải xuống",
             FontFamily = "InterMedium", FontSize = 12,
             BackgroundColor = Color.FromArgb("#0D7A5F"),
             TextColor = Colors.White,
@@ -169,7 +176,7 @@ public class OfflinePacksPage : ContentPage
         };
         _downloadBtn.Clicked += OnDownloadQ4Clicked;
 
-        var q4Info = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Children = { q4Title, q4Desc, _packSizeLabel } };
+        var q4Info = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Children = { _q4Title, _q4Desc, _packSizeLabel } };
 
         var q4Grid = new Grid
         {
@@ -188,7 +195,7 @@ public class OfflinePacksPage : ContentPage
         };
 
         // Thêm một gói coming soon
-        var q1Card = CreateComingSoonCard("Phố Đi Bộ Nguyễn Huệ");
+        var q1Card = CreateComingSoonCard();
 
         var packsSection = new VerticalStackLayout { Spacing = 12, Children = { _packsHeader, q4Card, q1Card } };
 
@@ -206,6 +213,7 @@ public class OfflinePacksPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        OnLanguageChanged();
         RefreshStorageInfo();
         await CheckNetworkStatusAsync();
     }
@@ -293,7 +301,7 @@ public class OfflinePacksPage : ContentPage
                 _downloadBtn.Text = _loc["Delete"] ?? "Xóa";
                 _downloadBtn.BackgroundColor = Color.FromArgb("#FEE2E2");
                 _downloadBtn.TextColor = Color.FromArgb("#EF4444");
-                _packSizeLabel.Text = $"{fileCount} files";
+                _packSizeLabel.Text = $"{fileCount} {_loc["FilesUnit"]}";
             }
             else
             {
@@ -447,8 +455,14 @@ public class OfflinePacksPage : ContentPage
         {
             _headerTitle.Text = _loc["OfflineTitle"] ?? "Tour Offline";
             _storageHeader.Text = (_loc["StorageHeader"] ?? "Dung lượng thiết bị").ToUpper();
+            _networkHeader.Text = (_loc["NetworkSection"] ?? "KẾT NỐI").ToUpper();
+            _autoDownloadLabel.Text = _loc["AutoDownload"] ?? "Tự động tải khi có WiFi";
             _storageDesc.Text = _loc["StorageAvailable"] ?? "Dung lượng trống còn nhiều (khoảng 32 GB)";
             _packsHeader.Text = (_loc["PacksHeader"] ?? "Các gói nội dung").ToUpper();
+            _q4Title.Text = _loc["PackQ4Title"] ?? "Phố Ẩm Thực Vĩnh Khánh";
+            _q4Desc.Text = _loc["PackQ4Desc"] ?? "Audio, Hình ảnh & Bản đồ";
+            if (_q1Title != null) _q1Title.Text = _loc["PackNguyenHueTitle"] ?? "Phố Đi Bộ Nguyễn Huệ";
+            if (_q1Desc != null) _q1Desc.Text = _loc["ComingSoon"] ?? "Sắp ra mắt";
             
             // Update last sync with new language
             _lastSyncLabel.Text = GetLastSyncText();
@@ -468,6 +482,7 @@ public class OfflinePacksPage : ContentPage
             }
             
             RefreshStorageInfo();
+            _ = CheckNetworkStatusAsync();
         });
     }
 
@@ -492,12 +507,12 @@ public class OfflinePacksPage : ContentPage
         };
     }
 
-    private Border CreateComingSoonCard(string title)
+    private Border CreateComingSoonCard()
     {
         var thumb = new BoxView { WidthRequest = 64, HeightRequest = 64, BackgroundColor = Color.FromArgb("#F3F4F6"), CornerRadius = 12 };
-        var name = new Label { Text = title, FontFamily = "InterMedium", FontSize = 14, TextColor = Color.FromArgb("#9CA3AF") };
-        var desc = new Label { Text = _loc["ComingSoon"] ?? "Sắp ra mắt", FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#D1D5DB") };
-        var info = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Children = { name, desc } };
+        _q1Title = new Label { Text = _loc["PackNguyenHueTitle"] ?? "Phố Đi Bộ Nguyễn Huệ", FontFamily = "InterMedium", FontSize = 14, TextColor = Color.FromArgb("#9CA3AF") };
+        _q1Desc = new Label { Text = _loc["ComingSoon"] ?? "Sắp ra mắt", FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#D1D5DB") };
+        var info = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Children = { _q1Title, _q1Desc } };
 
         return new Border
         {

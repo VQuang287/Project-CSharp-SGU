@@ -66,9 +66,6 @@ public partial class MapPage : ContentPage
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
         _loc = LocalizationService.Current;
-        
-        // Subscribe to language changes
-        _loc.LanguageChanged += OnLanguageChanged;
 
         Shell.SetNavBarIsVisible(this, false);
 
@@ -269,6 +266,10 @@ public partial class MapPage : ContentPage
         base.OnAppearing();
         try
         {
+            // Subscribe to language changes
+            _loc.LanguageChanged += OnLanguageChanged;
+            OnLanguageChanged();
+            
             HidePoiPreview();
             _mapControl.MapTapped -= OnMapTapped;
             _mapControl.MapTapped += OnMapTapped;
@@ -352,19 +353,36 @@ public partial class MapPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Update header
-            _headerSubtitle.Text = _loc["MapSubtitle"] ?? "Khánh Hội";
-            
-            // Update audio bar (only when idle)
-            if (_narrationEngine.CurrentState == NarrationState.Idle)
+            try
             {
-                _audioTitle.Text = _loc["Ready"] ?? "Sẵn sàng";
-                _audioSubtitle.Text = _loc["TapPoiHint"] ?? "Chạm điểm tham quan";
+                if (Content == null) return;
+                
+                // Update header
+                _headerSubtitle.Text = _loc["MapSubtitle"] ?? "Khánh Hội";
+                
+                // Update audio bar based on current narration state
+                switch (_narrationEngine.CurrentState)
+                {
+                    case NarrationState.Idle:
+                        _audioTitle.Text = _loc["Ready"] ?? "Sẵn sàng";
+                        _audioSubtitle.Text = _loc["TapPoiHint"] ?? "Chạm điểm tham quan";
+                        break;
+                    case NarrationState.Playing:
+                        _audioSubtitle.Text = _loc["Playing"] ?? "Đang phát...";
+                        break;
+                    case NarrationState.Cooldown:
+                        _audioSubtitle.Text = _loc["Finished"] ?? "Đã phát xong";
+                        break;
+                }
+                
+                // Update GPS badge
+                var isGpsActive = _gpsBadgeLabel.TextColor == Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F");
+                _gpsBadgeLabel.Text = isGpsActive ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
             }
-            
-            // Update GPS badge
-            var isGpsActive = _gpsBadgeLabel.TextColor == Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F");
-            _gpsBadgeLabel.Text = isGpsActive ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MapPage] Error in OnLanguageChanged: {ex.Message}");
+            }
         });
     }
 

@@ -37,6 +37,7 @@ public class PoiDetailPage : ContentPage
     private readonly Label _heroSubtitle;
     private readonly Label _categoryBadge;
     private readonly Label _descriptionLabel;
+    private readonly Label _descHeaderLabel;
     private readonly Label _audioTypeLabel;
     private readonly Label _statusLabel;
     private readonly Label _timeCurrentLabel;
@@ -179,9 +180,10 @@ public class PoiDetailPage : ContentPage
         // ═══════════════════════════════════════════
         // DESCRIPTION
         // ═══════════════════════════════════════════
-        var descHeader = new Label
+        var loc = LocalizationService.Current;
+        _descHeaderLabel = new Label
         {
-            Text = "Giới thiệu",
+            Text = loc["PoiDetailDescription"] ?? "Giới thiệu",
             FontFamily = "InterBold", FontSize = 13,
             TextColor = Color.FromArgb("#18181B"),
             Margin = new Thickness(16, 12, 16, 4),
@@ -198,7 +200,7 @@ public class PoiDetailPage : ContentPage
         var descSection = new VerticalStackLayout
         {
             BackgroundColor = Colors.White,
-            Children = { descHeader, _descriptionLabel }
+            Children = { _descHeaderLabel, _descriptionLabel }
         };
 
         // ═══════════════════════════════════════════
@@ -377,6 +379,7 @@ public class PoiDetailPage : ContentPage
         base.OnAppearing();
         _narrationEngine.StateChanged += OnNarrationStateChanged;
         LocalizationService.Current.LanguageChanged += OnLanguageChanged;
+        OnLanguageChanged();
         
         // Initialize default speed
         _narrationEngine.Speed = 1.0f;
@@ -404,7 +407,7 @@ public class PoiDetailPage : ContentPage
             // Hero
             _heroTitle.Text = _poi.Title;
             _heroSubtitle.Text = _poi.Title; // Could be English name
-            _categoryBadge.Text = $"📍 ĐIỂM THAM QUAN";
+            _categoryBadge.Text = LocalizationService.Current["PoiCategoryDefault"] ?? "📍 ĐIỂM THAM QUAN";
 
             if (!string.IsNullOrEmpty(_poi.ImageUrl))
                 _heroImage.Source = _poi.ImageUrl;
@@ -415,12 +418,16 @@ public class PoiDetailPage : ContentPage
 
             // Audio type
             bool hasAudioFile = lang == "vi" && !string.IsNullOrEmpty(_poi.AudioLocalPath) && File.Exists(_poi.AudioLocalPath);
-            _audioTypeLabel.Text = hasAudioFile ? "🎙️ Audio thu sẵn" : "🤖 Giọng TTS";
+            _audioTypeLabel.Text = hasAudioFile
+                ? (LocalizationService.Current["PoiAudioRecorded"] ?? "🎙️ Audio thu sẵn")
+                : (LocalizationService.Current["PoiAudioTts"] ?? "🤖 Giọng TTS");
             _audioTypeLabel.TextColor = hasAudioFile ? Color.FromArgb("#F5A623") : Color.FromArgb("#0D7A5F");
             _audioTypeLabel.BackgroundColor = hasAudioFile ? Color.FromArgb("#FEF6E4") : Color.FromArgb("#E0F5F0");
 
             // Status
-            _statusLabel.Text = hasAudioFile ? "🎵 MP3 sẵn sàng" : "🗣️ TTS sẵn sàng";
+            _statusLabel.Text = hasAudioFile
+                ? (LocalizationService.Current["PoiStatusAudioReady"] ?? "🎵 MP3 sẵn sàng")
+                : (LocalizationService.Current["PoiStatusTtsReady"] ?? "🗣️ TTS sẵn sàng");
         });
     }
 
@@ -613,6 +620,12 @@ public class PoiDetailPage : ContentPage
             {
                 // Check if page is still valid
                 if (Content == null) return;
+                
+                // Update all UI labels with new language
+                var loc = LocalizationService.Current;
+                _descHeaderLabel.Text = loc["PoiDetailDescription"] ?? "Giới thiệu";
+                _audioTypeLabel.Text = loc["AudioTts"] ?? "🎧 TTS";
+                _playPauseBtn.Text = _isPlaying ? (loc["StopBtn"] ?? "⏹ Dừng phát") : (loc["PlayBtn"] ?? "🔊 Phát Audio");
                 
                 if (_poi != null)
                 {

@@ -175,6 +175,7 @@ public class SettingsPage : ContentPage
 
                 ApplyLocalization();
                 RebuildLanguageGroup();
+                UpdateCacheSize();
             }
             catch (Exception ex)
             {
@@ -201,12 +202,13 @@ public class SettingsPage : ContentPage
 
     private void UpdateCacheSize()
     {
+        var loc = LocalizationService.Current;
         var audioFolder = Path.Combine(FileSystem.AppDataDirectory, "audio");
         if (Directory.Exists(audioFolder))
         {
             var files = Directory.GetFiles(audioFolder);
             long totalBytes = files.Sum(f => new FileInfo(f).Length);
-            _cacheSizeLabel.Text = $"{files.Length} files — {totalBytes / 1024} KB";
+            _cacheSizeLabel.Text = $"{files.Length} {loc["FilesUnit"]} — {totalBytes / 1024} KB";
         }
         else
         {
