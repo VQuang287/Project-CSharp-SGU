@@ -1,0 +1,12 @@
+# Keep GitHub language stats focused on authored source code
+
+# Third-party frontend libraries (vendor code)
+TourMap/TourMap.AdminWeb/wwwroot/lib/** linguist-vendored
+
+# Generated uploads and runtime data
+TourMap/TourMap.AdminWeb/wwwroot/uploads/** linguist-generated
+TourMap/TourMap.AdminWeb/App_Data/** linguist-generated
+
+# Build outputs
+**/bin/** linguist-generated
+**/obj/** linguist-generated
