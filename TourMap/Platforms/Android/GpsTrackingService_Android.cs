@@ -16,6 +16,7 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
     private const double StationaryDistanceMeters = 15.0;
 
     private CancellationTokenSource? _cts;
+    private Task? _trackingTask;
     private bool _isTracking;
     private int _currentIntervalMs = MovingIntervalMs;
     private Location? _previousAcceptedLocation;
@@ -74,38 +75,33 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
 
         // Cancel existing tracking if any
         _cts?.Cancel();
-        _cts = new CancellationTokenSource();
+        _cts?.Dispose();
 
-        // Chạy vòng lặp tracking trên background thread
-        try
+        var cts = new CancellationTokenSource();
+        _cts = cts;
+
+        // Chạy vòng lặp tracking trên background thread (không block caller)
+        _trackingTask = Task.Run(async () =>
         {
-            await Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await PollLocationAsync();
+                await PollLocationAsync();
 
-                    while (_cts?.Token.IsCancellationRequested == false)
-                    {
-                        await Task.Delay(_currentIntervalMs, _cts.Token);
-                        await PollLocationAsync();
-                    }
-                }
-                catch (OperationCanceledException)
+                while (!cts.Token.IsCancellationRequested)
                 {
-                    // Bình thường khi dừng tracking
+                    await Task.Delay(_currentIntervalMs, cts.Token);
+                    await PollLocationAsync();
                 }
-                finally
-                {
-                    _cts?.Dispose();
-                    _cts = null;
-                }
-            }, _cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[GpsTracking] Error in background tracking task: {ex.Message}");
-        }
+            }
+            catch (OperationCanceledException)
+            {
+                // Bình thường khi dừng tracking
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GpsTracking] Error in background tracking task: {ex.Message}");
+            }
+        }, cts.Token);
     }
 
     private async Task PollLocationAsync()
@@ -176,6 +172,7 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
+        _trackingTask = null;
     }
 
     public void Dispose()
