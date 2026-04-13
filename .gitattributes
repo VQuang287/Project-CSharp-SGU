@@ -1,0 +1,12 @@
+# Force GitHub Linguist to count only C# for language stats
+# Keep frontend/docs files in repo but exclude them from language detection.
+
+# Web static assets
+TourMap.AdminWeb/wwwroot/** linguist-detectable=false
+*.css linguist-detectable=false
+*.js linguist-detectable=false
+
+# UI markup and docs (not core runtime language)
+*.xaml linguist-detectable=false
+*.cshtml linguist-detectable=false
+_docs/** linguist-detectable=false

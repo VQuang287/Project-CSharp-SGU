@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="TourMap.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:TourMap.Pages"
+    xmlns:services="clr-namespace:TourMap.Services"
+    xmlns:local="clr-namespace:TourMap"
+    Shell.TabBarBackgroundColor="#FFFFFF"
+    Shell.TabBarForegroundColor="#0D7A5F"
+    Shell.TabBarTitleColor="#0D7A5F"
+    Shell.TabBarUnselectedColor="#9CA3AF">
+
+    <TabBar>
+        <!-- Tab 1: Map (Bản đồ) -->
+        <ShellContent
+            x:Name="MapTab"
+            Title="{Binding [MapBtn], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:MapPage}"
+            Route="MapPage" />
+
+        <!-- Tab 2: POI List (Địa điểm) -->
+        <ShellContent
+            x:Name="PoiListTab"
+            Title="{Binding [PoiListBtn], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:PoiListPage}"
+            Route="PoiListPage" />
+
+        <!-- Tab 3: QR Scanner -->
+        <ShellContent
+            x:Name="QrTab"
+            Title="{Binding [QrBtn], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:QrScannerPage}"
+            Route="QrScannerPage" />
+
+        <!-- Tab 4: Offline Packs -->
+        <ShellContent
+            x:Name="OfflineTab"
+            Title="{Binding [OfflineBtn], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:OfflinePacksPage}"
+            Route="OfflinePacksPage" />
+
+        <!-- Tab 5: Settings (Cài đặt) -->
+        <ShellContent
+            x:Name="SettingsTab"
+            Title="{Binding [SettingsTitle], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:SettingsPage}"
+            Route="SettingsPage" />
+    </TabBar>
+
+</Shell>
