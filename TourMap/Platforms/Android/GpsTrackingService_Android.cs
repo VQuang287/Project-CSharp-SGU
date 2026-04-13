@@ -28,12 +28,38 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
     {
         if (_isTracking) return;
 
-        // Xin quyền GPS
+        // ═══════════════════════════════════════════════════════════
+        // STEP 1: Xin quyền GPS cơ bản (Foreground)
+        // ═══════════════════════════════════════════════════════════
         var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted)
         {
             status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             if (status != PermissionStatus.Granted) return;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // STEP 2: Xin quyền GPS Background cho Android 12+ (API 31+)
+        // Yêu cầu bắt buộc để tracking khi app ở background
+        // ═══════════════════════════════════════════════════════════
+        if (OperatingSystem.IsAndroidVersionAtLeast(31)) // Android 12+ (API 31)
+        {
+            var bgStatus = await Permissions.CheckStatusAsync<Permissions.LocationAlways>();
+            if (bgStatus != PermissionStatus.Granted)
+            {
+                Console.WriteLine("[GpsTracking] Requesting background location permission (Android 12+)...");
+                bgStatus = await Permissions.RequestAsync<Permissions.LocationAlways>();
+                
+                if (bgStatus != PermissionStatus.Granted)
+                {
+                    Console.WriteLine("[GpsTracking] WARNING: Background location permission denied. Tracking may not work when app is in background.");
+                    // Vẫn tiếp tục vì foreground tracking vẫn hoạt động
+                }
+                else
+                {
+                    Console.WriteLine("[GpsTracking] Background location permission granted.");
+                }
+            }
         }
 
         _isTracking = true;

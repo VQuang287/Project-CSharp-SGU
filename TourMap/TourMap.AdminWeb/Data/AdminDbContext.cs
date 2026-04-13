@@ -14,4 +14,5 @@ public class AdminDbContext : DbContext
     public DbSet<TourPoiMapping> TourPoiMappings { get; set; }
     public DbSet<QrCodeEntry> QrCodeEntries { get; set; }
     public DbSet<AdminUser> AdminUsers { get; set; }
+    public DbSet<UserLocationLog> UserLocationLogs { get; set; }
 }

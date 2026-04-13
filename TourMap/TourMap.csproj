@@ -5,6 +5,10 @@
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
 		<!-- Chỉ build Android — Bỏ iOS/macOS/Windows vì đồ án chỉ nhắm Android -->
 
+		<JavaMaximumHeapSize>1G</JavaMaximumHeapSize>
+		<_AndroidJNIMemoryLimit>512m</_AndroidJNIMemoryLimit>
+		<AndroidEnableProguardInRelease>false</AndroidEnableProguardInRelease>
+
 		<!-- Note for MacCatalyst:
 		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
 		When specifying both architectures, use the plural <RuntimeIdentifiers> instead of the singular <RuntimeIdentifier>.
@@ -69,9 +73,11 @@
 		<PackageReference Include="BarcodeScanning.Native.Maui" Version="3.0.3" />
 		<PackageReference Include="Mapsui.Maui" Version="5.0.2" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.7.0" />
 	</ItemGroup>
 
 	<ItemGroup>

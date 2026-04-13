@@ -5,10 +5,11 @@ namespace TourMap.Services;
 /// <summary>
 /// App-level runtime orchestration:
 /// - load latest POIs from SQLite into geofence
-/// - start GPS tracking once
+/// - OWN GPS tracking lifecycle (SYS-C02 fix — single subscription point)
 /// - route geofence triggers to narration engine
+/// - expose LocationUpdated for UI consumers (MapPage)
 /// </summary>
-public class TourRuntimeService
+public class TourRuntimeService : IDisposable
 {
     private readonly DatabaseService _databaseService;
     private readonly GeofenceEngine _geofenceEngine;
@@ -16,6 +17,10 @@ public class TourRuntimeService
     private readonly NarrationEngine _narrationEngine;
 
     private bool _isInitialized;
+    private bool _disposed;
+
+    /// <summary>Relays GPS updates to UI (MapPage) without double-subscribing GPS.</summary>
+    public event Action<Location>? LocationUpdated;
 
     public TourRuntimeService(
         DatabaseService databaseService,
@@ -40,6 +45,7 @@ public class TourRuntimeService
         var pois = await _databaseService.GetPoisAsync();
         _geofenceEngine.UpdatePois(pois);
 
+        // Single GPS subscription point (SYS-C02 fix)
         _gpsTrackingService.LocationChanged += OnLocationChanged;
         _geofenceEngine.POITriggered += OnPoiTriggered;
         await _gpsTrackingService.StartTrackingAsync();
@@ -58,6 +64,8 @@ public class TourRuntimeService
     private void OnLocationChanged(Location location)
     {
         _geofenceEngine.OnLocationChanged(location);
+        // Relay to UI consumers (MapPage) — SYS-C02 fix
+        LocationUpdated?.Invoke(location);
     }
 
     private async void OnPoiTriggered(Poi poi)
@@ -71,7 +79,7 @@ public class TourRuntimeService
             Console.WriteLine($"[Runtime] Narration trigger failed: {ex.Message}");
             Console.WriteLine($"[Runtime] Stack trace: {ex.StackTrace}");
             Console.WriteLine($"[Runtime] POI ID: {poi.Id}, Title: {poi.Title}");
-            
+
             // Handle specific error types
             if (ex is ArgumentNullException)
             {
@@ -80,7 +88,6 @@ public class TourRuntimeService
             else if (ex is InvalidOperationException invalidEx)
             {
                 Console.WriteLine($"[Runtime] Narration engine in invalid state: {invalidEx.Message}");
-                Console.WriteLine($"[Runtime] Try restarting narration engine or check audio system");
             }
             else if (ex is TaskCanceledException)
             {
@@ -89,8 +96,17 @@ public class TourRuntimeService
             else if (ex is System.IO.IOException ioEx)
             {
                 Console.WriteLine($"[Runtime] Audio IO error: {ioEx.Message}");
-                Console.WriteLine($"[Runtime] Check audio file availability and storage");
             }
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _gpsTrackingService.LocationChanged -= OnLocationChanged;
+        _geofenceEngine.POITriggered -= OnPoiTriggered;
+        _gpsTrackingService.StopTracking();
+        _disposed = true;
     }
 }

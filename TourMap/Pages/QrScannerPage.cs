@@ -12,6 +12,7 @@ public class QrScannerPage : ContentPage
 {
     private readonly DatabaseService _dbService;
     private readonly NarrationEngine _narrationEngine;
+    private readonly LocalizationService _loc;
 
     // UI elements
     private readonly CameraView _cameraView;
@@ -22,6 +23,11 @@ public class QrScannerPage : ContentPage
     private readonly Border _successCard;
     private readonly Label _successPoiTitle;
     private readonly Label _successPoiDesc;
+    private readonly Label _qrHeaderLabel;
+    private readonly Label _qrInstructionsLabel;
+    private readonly Label _successTitleLabel;
+    private readonly Button _qrPlayButton;
+    private readonly Button _qrScanAgainButton;
     
     // State
     private bool _isProcessing;
@@ -39,6 +45,7 @@ public class QrScannerPage : ContentPage
     {
         _dbService = dbService;
         _narrationEngine = narrationEngine;
+        _loc = LocalizationService.Current;
 
         Shell.SetNavBarIsVisible(this, false);
         BackgroundColor = Color.FromArgb("#181818");
@@ -79,15 +86,14 @@ public class QrScannerPage : ContentPage
         };
         backBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => _ = Navigation.PopAsync()) });
 
+        _qrHeaderLabel = new Label { Text = _loc["QrHeader"] ?? "Quét mã QR", FontFamily = "InterBold", FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center };
+        _qrInstructionsLabel = new Label { Text = _loc["QrInstructions"] ?? "Đưa mã vào khung để quét", FontFamily = "InterRegular", FontSize = 11, TextColor = Color.FromRgba(1.0, 1.0, 1.0, 0.6), HorizontalTextAlignment = TextAlignment.Center };
+
         var headerTitle = new VerticalStackLayout
         {
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
-            Children =
-            {
-                new Label { Text = "Quét mã QR", FontFamily = "InterBold", FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center },
-                new Label { Text = "Đưa mã vào khung để quét", FontFamily = "InterRegular", FontSize = 11, TextColor = Color.FromRgba(1.0, 1.0, 1.0, 0.6), HorizontalTextAlignment = TextAlignment.Center }
-            }
+            Children = { _qrHeaderLabel, _qrInstructionsLabel }
         };
 
         _torchIcon = new Label { Text = "⚡", FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
@@ -178,9 +184,9 @@ public class QrScannerPage : ContentPage
             }
         };
 
-        var triggerBtn = new Button
+        var triggerBtn = _qrPlayButton = new Button
         {
-            Text = "Mở và phát thuyết minh",
+            Text = _loc["QrPlayButton"] ?? "Mở và phát thuyết minh",
             FontFamily = "InterMedium", FontSize = 14,
             BackgroundColor = Color.FromArgb("#0D7A5F"),
             TextColor = Colors.White,
@@ -189,9 +195,9 @@ public class QrScannerPage : ContentPage
         };
         triggerBtn.Clicked += OnPlaySuccessPoi;
 
-        var scanAgainBtn = new Button
+        var scanAgainBtn = _qrScanAgainButton = new Button
         {
-            Text = "Quét mã khác",
+            Text = _loc["QrScanAgain"] ?? "Quét mã khác",
             FontFamily = "InterRegular", FontSize = 13,
             BackgroundColor = Colors.Transparent,
             TextColor = Color.FromArgb("#9CA3AF"),
@@ -215,7 +221,7 @@ public class QrScannerPage : ContentPage
                 Children =
                 {
                     checkIcon,
-                    new Label { Text = "Mã QR đã nhận diện!", FontFamily = "InterBold", FontSize = 16, TextColor = Color.FromArgb("#18181B"), HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(0, 12, 0, 4) },
+                    (_successTitleLabel = new Label { Text = _loc["QrSuccessTitle"] ?? "Mã QR đã nhận diện!", FontFamily = "InterBold", FontSize = 16, TextColor = Color.FromArgb("#18181B"), HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(0, 12, 0, 4) }),
                     poiInfoBox,
                     triggerBtn,
                     scanAgainBtn
@@ -247,6 +253,10 @@ public class QrScannerPage : ContentPage
     {
         Console.WriteLine("[QR] OnAppearing START");
         base.OnAppearing();
+        // Subscribe to language changes
+        _loc.LanguageChanged += OnLanguageChanged;
+        OnLanguageChanged();
+        
         
         try
         {
@@ -270,7 +280,7 @@ public class QrScannerPage : ContentPage
             
             Console.WriteLine($"[QR] CameraView state - IsVisible: {_cameraView?.IsVisible}, CameraEnabled: {_cameraView?.CameraEnabled}");
             
-            _statusLabel.Text = "Đang kiểm tra quyền camera...";
+            _statusLabel.Text = _loc["CameraCheckingPermission"] ?? "Đang kiểm tra quyền camera...";
             
             // Check permissions with detailed logging
             var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
@@ -278,15 +288,15 @@ public class QrScannerPage : ContentPage
             
             if (status != PermissionStatus.Granted)
             {
-                _statusLabel.Text = "Đang yêu cầu quyền camera...";
+                _statusLabel.Text = _loc["CameraRequesting"] ?? "Đang yêu cầu quyền camera...";
                 status = await Permissions.RequestAsync<Permissions.Camera>();
                 Console.WriteLine($"[QR] Camera permission after request: {status}");
             }
 
             if (status != PermissionStatus.Granted)
             {
-                _statusLabel.Text = "Cần quyền camera để tiếp tục. Vui lòng cấp quyền trong Settings.";
-                ShowCameraError("Quyền camera bị từ chối");
+                _statusLabel.Text = _loc["CameraPermissionDenied"] ?? "Cần quyền camera để tiếp tục. Vui lòng cấp quyền trong Settings.";
+                ShowCameraError(_loc["CameraPermissionDeniedShort"] ?? "Quyền camera bị từ chối");
                 return;
             }
 
@@ -302,7 +312,7 @@ public class QrScannerPage : ContentPage
             catch (Exception ex)
             {
                 Console.WriteLine($"[QR] Camera start failed: {ex.Message}");
-                _statusLabel.Text = "Lỗi khởi động camera. Vui lòng thử lại.";
+                _statusLabel.Text = _loc["CameraStartError"] ?? "Lỗi khởi động camera. Vui lòng thử lại.";
                 ShowCameraError($"Lỗi: {ex.Message}");
             }
         }
@@ -310,7 +320,7 @@ public class QrScannerPage : ContentPage
         {
             Console.WriteLine($"[QR] OnAppearing ERROR: {ex.GetType().Name} - {ex.Message}");
             Console.WriteLine($"[QR] Stack trace: {ex.StackTrace}");
-            _statusLabel.Text = "Lỗi khởi động camera";
+            _statusLabel.Text = _loc["CameraStartFailed"] ?? "Lỗi khởi động camera";
             ShowCameraError("Lỗi không xác định");
         }
         
@@ -328,7 +338,7 @@ public class QrScannerPage : ContentPage
                 ct.ThrowIfCancellationRequested();
                 
                 Console.WriteLine($"[QR] Camera start attempt {attempt}/{maxAttempts}");
-                _statusLabel.Text = $"Đang khởi động camera... ({attempt}/{maxAttempts})";
+                _statusLabel.Text = string.Format(_loc["CameraStartingFormat"] ?? "Đang khởi động camera... ({0}/{1})", attempt, maxAttempts);
                 
                 // Progressive delay - camera needs more time on cold start
                 var delayMs = 500 * attempt;
@@ -361,7 +371,7 @@ public class QrScannerPage : ContentPage
                 if (_cameraView.CameraEnabled)
                 {
                     Console.WriteLine("[QR] Camera started successfully");
-                    _statusLabel.Text = "Tự động nhận diện mã QR";
+                    _statusLabel.Text = _loc["QrScanHint"] ?? "Tự động nhận diện mã QR";
                     _statusLabel.TextColor = Colors.White;
                     return;
                 }
@@ -380,9 +390,9 @@ public class QrScannerPage : ContentPage
                 if (attempt == maxAttempts)
                 {
                     Console.WriteLine("[QR] All camera start attempts failed");
-                    _statusLabel.Text = "Không thể khởi động camera";
+                    _statusLabel.Text = _loc["CameraStartFailed"] ?? "Không thể khởi động camera";
                     _statusLabel.TextColor = Color.FromArgb("#FF6B6B");
-                    ShowCameraError($"Lỗi sau {maxAttempts} lần thử: {ex.Message}");
+                    ShowCameraError(string.Format(_loc["CameraErrorAfterRetry"] ?? "Lỗi sau {0} lần thử: {1}", maxAttempts, ex.Message));
                     return;
                 }
             }
@@ -396,7 +406,7 @@ public class QrScannerPage : ContentPage
             // Add retry button to status area
             var retryBtn = new Button
             {
-                Text = "Thử lại",
+                Text = _loc["CameraRetry"] ?? "Thử lại",
                 BackgroundColor = Color.FromArgb("#0D7A5F"),
                 TextColor = Colors.White,
                 CornerRadius = 8,
@@ -406,7 +416,7 @@ public class QrScannerPage : ContentPage
             retryBtn.Clicked += async (s, e) =>
             {
                 retryBtn.IsEnabled = false;
-                retryBtn.Text = "Đang thử...";
+                retryBtn.Text = _loc["CameraRetrying"] ?? "Đang thử...";
                 await RetryCameraAsync();
             };
             
@@ -414,7 +424,8 @@ public class QrScannerPage : ContentPage
             if (_statusLabel.Parent is VerticalStackLayout vsl)
             {
                 // Remove existing retry button if any
-                var existingBtn = vsl.Children.FirstOrDefault(c => c is Button b && b.Text?.Contains("Thử lại") == true);
+                var retryText = _loc["CameraRetry"] ?? "Thử lại";
+                var existingBtn = vsl.Children.FirstOrDefault(c => c is Button b && b.Text?.Contains(retryText) == true);
                 if (existingBtn != null)
                     vsl.Children.Remove(existingBtn);
                 
@@ -449,6 +460,9 @@ public class QrScannerPage : ContentPage
         Console.WriteLine("[QR] OnDisappearing - cleaning up camera resources");
         base.OnDisappearing();
         
+        // Unsubscribe from language changes
+        _loc.LanguageChanged -= OnLanguageChanged;
+        
         // Cancel any pending camera start operations
         _cameraStartCts?.Cancel();
         _cameraStartCts?.Dispose();
@@ -475,12 +489,47 @@ public class QrScannerPage : ContentPage
         Console.WriteLine("[QR] OnDisappearing complete");
     }
 
+    private void OnLanguageChanged()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                if (Content == null) return;
+                
+                _qrHeaderLabel.Text = _loc["QrHeader"] ?? "Quét mã QR";
+                _qrInstructionsLabel.Text = _loc["QrInstructions"] ?? "Đưa mã vào khung để quét";
+                
+                // Update success overlay labels
+                if (_successTitleLabel != null)
+                    _successTitleLabel.Text = _loc["QrSuccessTitle"] ?? "Mã QR đã nhận diện!";
+                
+                if (_qrPlayButton != null)
+                    _qrPlayButton.Text = _loc["QrPlayButton"] ?? "Mở và phát thuyết minh";
+                
+                if (_qrScanAgainButton != null)
+                    _qrScanAgainButton.Text = _loc["QrScanAgain"] ?? "Quét mã khác";
+                
+                // Update status label only if not currently processing
+                if (!_isProcessing && _statusLabel != null)
+                {
+                    _statusLabel.Text = _loc["QrScanHint"] ?? "Tự động nhận diện mã QR";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[QrScannerPage] Error in OnLanguageChanged: {ex.Message}");
+            }
+        });
+    }
+
     private void ResetScanner()
     {
         _isProcessing = false;
         _successCard.IsVisible = false;
         _cameraView.PauseScanning = false;
-        _statusLabel.Text = "Tự động nhận diện mã QR";
+        _statusLabel.Text = _loc["QrScanHint"] ?? "Tự động nhận diện mã QR";
+        _statusLabel.TextColor = Colors.White;
     }
 
     private async void OnQrDetected(object? sender, OnDetectionFinishedEventArg e)
@@ -501,6 +550,16 @@ public class QrScannerPage : ContentPage
             }
 
             var poiId = ParsePoiId(rawValue);
+            if (string.IsNullOrEmpty(poiId))
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    _statusLabel.Text = _loc["CameraInvalidQr"] ?? "Mã QR không hợp lệ. Đang quét lại...";
+                    await Task.Delay(2000);
+                    ResetScanner();
+                });
+                return;
+            }
             var poi = await _dbService.GetPoiByIdAsync(poiId);
 
             await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -509,16 +568,16 @@ public class QrScannerPage : ContentPage
                 {
                     // Show success card
                     _scannedPoi = poi;
-                _successPoiTitle.Text = poi.Title;
-                _successPoiDesc.Text = poi.Description;
-                _successCard.IsVisible = true;
-            }
-            else
-            {
-                _statusLabel.Text = "Mã QR không hợp lệ. Đang quét lại...";
-                await Task.Delay(2000);
-                ResetScanner();
-            }
+                    _successPoiTitle.Text = poi.Title;
+                    _successPoiDesc.Text = poi.Description;
+                    _successCard.IsVisible = true;
+                }
+                else
+                {
+                    _statusLabel.Text = _loc["CameraInvalidQr"] ?? "Mã QR không hợp lệ. Đang quét lại...";
+                    await Task.Delay(2000);
+                    ResetScanner();
+                }
             });
         }
         catch (Exception ex)
@@ -543,15 +602,31 @@ public class QrScannerPage : ContentPage
         }
     }
 
-    private static string ParsePoiId(string rawValue)
+    // SUG-06: Validate POI ID format (must be valid GUID or safe alphanumeric)
+    private static string? ParsePoiId(string rawValue)
     {
+        string poiId;
+        
         if (rawValue.StartsWith("audiotour://poi/", StringComparison.OrdinalIgnoreCase))
-            return rawValue.Substring("audiotour://poi/".Length).Trim();
-        if (rawValue.Contains("/poi/", StringComparison.OrdinalIgnoreCase))
+            poiId = rawValue.Substring("audiotour://poi/".Length).Trim();
+        else if (rawValue.Contains("/poi/", StringComparison.OrdinalIgnoreCase))
         {
             var idx = rawValue.IndexOf("/poi/", StringComparison.OrdinalIgnoreCase);
-            return rawValue.Substring(idx + 5).Trim().TrimEnd('/');
+            poiId = rawValue.Substring(idx + 5).Trim().TrimEnd('/');
         }
-        return rawValue.Trim();
+        else
+            poiId = rawValue.Trim();
+
+        // Validate POI ID format
+        if (Guid.TryParse(poiId, out _))
+            return poiId;
+
+        // Also accept short alphanumeric IDs (max 64 chars, no special chars)
+        if (poiId.Length > 0 && poiId.Length <= 64 && 
+            poiId.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
+            return poiId;
+
+        Console.WriteLine($"[QR] ⚠️ Invalid POI ID format rejected: {poiId}");
+        return null;
     }
 }

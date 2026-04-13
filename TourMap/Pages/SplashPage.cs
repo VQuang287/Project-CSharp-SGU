@@ -4,7 +4,22 @@ namespace TourMap.Pages;
 
 public class SplashPage : ContentPage
 {
+    private readonly AuthService? _authService;
+
     public SplashPage()
+    {
+        // AuthService will be injected if available via DI
+        _authService = null;
+        InitializeUI();
+    }
+
+    public SplashPage(AuthService authService)
+    {
+        _authService = authService;
+        InitializeUI();
+    }
+
+    private void InitializeUI()
     {
         BackgroundColor = Color.FromArgb("#1A237E");
 
@@ -89,20 +104,39 @@ public class SplashPage : ContentPage
         base.OnAppearing();
         try
         {
-            // Nếu đã chọn ngôn ngữ rồi → tự chuyển sang AppShell
+            // Nếu đã chọn ngôn ngữ rồi → kiểm tra auth state
             var savedLang = Preferences.Default.Get("selected_language", string.Empty);
             if (!string.IsNullOrEmpty(savedLang))
             {
                 LocalizationService.Current.CurrentLanguage = savedLang;
                 await Task.Delay(600);
-                Application.Current!.MainPage = new AppShell();
+
+                // === AUTH CHECK ===
+                if (_authService != null)
+                {
+                    await _authService.InitializeAsync();
+                    if (_authService.IsAuthenticated)
+                    {
+                        // Đã login → vào app chính
+                        NavigateToShell();
+                        return;
+                    }
+                    else
+                    {
+                        // Chưa login → về LoginPage
+                        NavigateToLogin();
+                        return;
+                    }
+                }
+
+                // Fallback: no auth service → go to shell directly
+                NavigateToShell();
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex.Message}");
-            // Fallback: proceed to main app
-            Application.Current!.MainPage = new AppShell();
+            NavigateToLogin();
         }
     }
 
@@ -111,6 +145,23 @@ public class SplashPage : ContentPage
         Preferences.Default.Set("selected_language", lang);
         LocalizationService.Current.CurrentLanguage = lang;
         await Task.Delay(200);
-        Application.Current!.MainPage = new AppShell();
+        NavigateToLogin();
+    }
+
+    private void NavigateToShell()
+    {
+        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+            window.Page = ServiceHelper.GetService<AppShell>();
+    }
+
+    private void NavigateToLogin()
+    {
+        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+        {
+            if (_authService != null)
+                window.Page = new LoginPage(_authService);
+            else
+                window.Page = ServiceHelper.GetService<AppShell>();
+        }
     }
 }

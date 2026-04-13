@@ -14,30 +14,35 @@
     <TabBar>
         <!-- Tab 1: Map (Bản đồ) -->
         <ShellContent
+            x:Name="MapTab"
             Title="{Binding [MapBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:MapPage}"
             Route="MapPage" />
 
         <!-- Tab 2: POI List (Địa điểm) -->
         <ShellContent
-            Title="Địa điểm"
+            x:Name="PoiListTab"
+            Title="{Binding [PoiListBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:PoiListPage}"
             Route="PoiListPage" />
 
         <!-- Tab 3: QR Scanner -->
         <ShellContent
+            x:Name="QrTab"
             Title="{Binding [QrBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:QrScannerPage}"
             Route="QrScannerPage" />
 
         <!-- Tab 4: Offline Packs -->
         <ShellContent
-            Title="Offline"
+            x:Name="OfflineTab"
+            Title="{Binding [OfflineBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:OfflinePacksPage}"
             Route="OfflinePacksPage" />
 
         <!-- Tab 5: Settings (Cài đặt) -->
         <ShellContent
+            x:Name="SettingsTab"
             Title="{Binding [SettingsTitle], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:SettingsPage}"
             Route="SettingsPage" />

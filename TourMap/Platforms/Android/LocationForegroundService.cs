@@ -44,13 +44,19 @@ public class LocationForegroundService : Service
                 new Intent(this, typeof(MainActivity)), 
                 pendingFlags);
 
+            if (pendingIntent == null)
+            {
+                Console.WriteLine("[LocationService] Failed to create PendingIntent");
+                return StartCommandResult.NotSticky;
+            }
+
             var notification = new NotificationCompat.Builder(this, ChannelId)
-                .SetContentTitle("TourMap đang hoạt động")
-                .SetContentText("Đang dò tìm tọa độ GPS để phát Audio Guide...")
-                .SetSmallIcon(Resource.Mipmap.appicon) // Icon mặc định của MAUI app
-                .SetContentIntent(pendingIntent)
-                .SetOngoing(true)
-                .Build();
+                ?.SetContentTitle("TourMap đang hoạt động")
+                ?.SetContentText("Đang dò tìm tọa độ GPS để phát Audio Guide...")
+                ?.SetSmallIcon(Resource.Mipmap.appicon) // Icon mặc định của MAUI app
+                ?.SetContentIntent(pendingIntent)
+                ?.SetOngoing(true)
+                ?.Build();
 
             if (notification != null)
             {
@@ -62,13 +68,21 @@ public class LocationForegroundService : Service
             Console.WriteLine($"[LocationService] Java exception creating notification: {jex.Message}");
             Console.WriteLine($"[LocationService] Java exception type: {jex.GetType().Name}");
             // Still try to start service with minimal notification
-            var notification = new NotificationCompat.Builder(this, ChannelId)
-                .SetContentTitle("TourMap")
-                .SetContentText("GPS Tracking Active")
-                .SetSmallIcon(Resource.Mipmap.appicon)
-                .SetOngoing(true)
-                .Build();
-            StartForeground(NotificationId, notification);
+            var fallbackNotification = new NotificationCompat.Builder(this, ChannelId)
+                ?.SetContentTitle("TourMap")
+                ?.SetContentText("GPS Tracking Active")
+                ?.SetSmallIcon(Resource.Mipmap.appicon)
+                ?.SetOngoing(true)
+                ?.Build();
+            
+            if (fallbackNotification != null)
+            {
+                StartForeground(NotificationId, fallbackNotification);
+            }
+            else
+            {
+                Console.WriteLine("[LocationService] Failed to create fallback notification");
+            }
         }
         catch (Exception ex)
         {

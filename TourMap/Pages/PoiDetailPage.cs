@@ -21,12 +21,14 @@ public class PoiDetailPage : ContentPage
         set
         {
             _poiId = value;
-            _ = LoadPoiAsync();
+            // SYS-H03 fix: Use SafeLoadPoiAsync to prevent unobserved exceptions
+            _ = SafeLoadPoiAsync();
         }
     }
 
     private Poi? _poi;
-    private string _selectedLang = "vi";
+    // REMOVED: Local language selection - now always uses system language
+    // private string _selectedLang = "vi";
     private string _selectedSpeed = "1x";
     private bool _isPlaying = false;
 
@@ -36,19 +38,25 @@ public class PoiDetailPage : ContentPage
     private readonly Label _heroSubtitle;
     private readonly Label _categoryBadge;
     private readonly Label _descriptionLabel;
+    private readonly Label _descHeaderLabel;
+    private readonly Label _audioHeaderLabel;
     private readonly Label _audioTypeLabel;
     private readonly Label _statusLabel;
     private readonly Label _timeCurrentLabel;
     private readonly Label _timeRemainingLabel;
+    private readonly Label _statAudioLabel;
+    private readonly Label _statWalkLabel;
+    private readonly Label _gpsLabel;
     private readonly ProgressBar _progressBar;
     private readonly Button _playPauseBtn;
-    private readonly HorizontalStackLayout _langRow;
+    // REMOVED: Language selector - now uses system language
+    // private readonly HorizontalStackLayout _langRow;
     private readonly HorizontalStackLayout _speedRow;
     private readonly BoxView _waveformPlaceholder;
 
-    // Constants
-    private static readonly string[] LangCodes = { "vi", "en", "ko", "zh" };
-    private static readonly string[] LangLabels = { "VI", "EN", "KO", "ZH" };
+    // REMOVED: Per-POI language selection - now always uses system language from LocalizationService
+    // private static readonly string[] LangCodes = { "vi", "en", "ko", "zh" };
+    // private static readonly string[] LangLabels = { "VI", "EN", "KO", "ZH" };
     private static readonly string[] SpeedOptions = { "0.75x", "1x", "1.25x", "1.5x" };
 
     public PoiDetailPage() : this(
@@ -64,10 +72,9 @@ public class PoiDetailPage : ContentPage
         Shell.SetNavBarIsVisible(this, false);
         BackgroundColor = Color.FromArgb("#F6F5F1");
 
-        // Use system language instead of hardcoded Vietnamese
-        var loc = LocalizationService.Current;
-        _selectedLang = loc.CurrentLanguage;
-        loc.LanguageChanged += OnLanguageChanged;
+        // REMOVED: Local language state - now always uses system language
+        // _selectedLang = loc.CurrentLanguage;
+        // Event subscription moved to OnAppearing to prevent memory leaks
 
         // ═══════════════════════════════════════════
         // HERO IMAGE SECTION
@@ -164,23 +171,30 @@ public class PoiDetailPage : ContentPage
         // ═══════════════════════════════════════════
         // QUICK STATS ROW
         // ═══════════════════════════════════════════
+        _statAudioLabel = new Label { Text = "— " + (LocalizationService.Current["AudioStat"] ?? "thuyết minh"), FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center };
+        _statWalkLabel = new Label { Text = "— " + (LocalizationService.Current["WalkStat"] ?? "phút đi bộ"), FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center };
+        
+        var audioStatRow = new HorizontalStackLayout { Spacing = 4, Children = { new Label { Text = "🕐", FontSize = 13 }, _statAudioLabel } };
+        var walkStatRow = new HorizontalStackLayout { Spacing = 4, Children = { new Label { Text = "🚶", FontSize = 13 }, _statWalkLabel } };
+
         var statsRow = new HorizontalStackLayout
         {
             Spacing = 16, Padding = new Thickness(16, 12, 16, 8),
             Children =
             {
                 CreateStatItem("📍", "—"),
-                CreateStatItem("🕐", "— thuyết minh"),
-                CreateStatItem("🚶", "— phút đi bộ"),
+                audioStatRow,
+                walkStatRow,
             }
         };
 
         // ═══════════════════════════════════════════
         // DESCRIPTION
         // ═══════════════════════════════════════════
-        var descHeader = new Label
+        var loc = LocalizationService.Current;
+        _descHeaderLabel = new Label
         {
-            Text = "Giới thiệu",
+            Text = loc["PoiDetailDescription"] ?? "Giới thiệu",
             FontFamily = "InterBold", FontSize = 13,
             TextColor = Color.FromArgb("#18181B"),
             Margin = new Thickness(16, 12, 16, 4),
@@ -197,28 +211,29 @@ public class PoiDetailPage : ContentPage
         var descSection = new VerticalStackLayout
         {
             BackgroundColor = Colors.White,
-            Children = { descHeader, _descriptionLabel }
+            Children = { _descHeaderLabel, _descriptionLabel }
         };
 
         // ═══════════════════════════════════════════
         // AUDIO PLAYER
         // ═══════════════════════════════════════════
-        var audioHeader = new Label
+        _audioHeaderLabel = new Label
         {
-            Text = "Thuyết minh audio",
+            Text = loc["PoiDetailAudio"] ?? "Thuyết minh audio",
             FontFamily = "InterBold", FontSize = 13,
             TextColor = Color.FromArgb("#18181B"),
         };
 
-        // Language selector
-        _langRow = new HorizontalStackLayout { Spacing = 4 };
-        for (int i = 0; i < LangCodes.Length; i++)
+        // Language indicator (shows current system language - auto, not selectable)
+        var langIndicator = new Label
         {
-            var langCode = LangCodes[i];
-            var langLabel = LangLabels[i];
-            var langBtn = CreateLangChip(langCode, langLabel);
-            _langRow.Children.Add(langBtn);
-        }
+            Text = GetCurrentLanguageDisplay(),
+            FontFamily = "InterBold", FontSize = 10,
+            TextColor = Colors.White,
+            BackgroundColor = Color.FromArgb("#0D7A5F"),
+            Padding = new Thickness(8, 4),
+            VerticalOptions = LayoutOptions.Center,
+        };
 
         var audioHeaderRow = new Grid
         {
@@ -228,8 +243,8 @@ public class PoiDetailPage : ContentPage
                 new ColumnDefinition(GridLength.Auto),
             },
         };
-        audioHeaderRow.Add(audioHeader, 0, 0);
-        audioHeaderRow.Add(_langRow, 1, 0);
+        audioHeaderRow.Add(_audioHeaderLabel, 0, 0);
+        audioHeaderRow.Add(langIndicator, 1, 0);
 
         // Audio type badge
         _audioTypeLabel = new Label
@@ -332,6 +347,7 @@ public class PoiDetailPage : ContentPage
             Content = new Label { Text = "📍", FontSize = 15, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center },
         };
 
+        _gpsLabel = new Label { Text = loc["GpsCoordinates"] ?? "Tọa độ GPS", FontFamily = "InterMedium", FontSize = 13, TextColor = Color.FromArgb("#18181B"), VerticalOptions = LayoutOptions.Center };
         var mapInfo = new HorizontalStackLayout
         {
             Spacing = 8,
@@ -340,7 +356,7 @@ public class PoiDetailPage : ContentPage
             Children =
             {
                 mapIcon,
-                new Label { Text = "Tọa độ GPS", FontFamily = "InterMedium", FontSize = 13, TextColor = Color.FromArgb("#18181B"), VerticalOptions = LayoutOptions.Center },
+                _gpsLabel,
             }
         };
         mapInfo.Margin = new Thickness(0, 8, 0, 0);
@@ -374,17 +390,37 @@ public class PoiDetailPage : ContentPage
     {
         base.OnAppearing();
         _narrationEngine.StateChanged += OnNarrationStateChanged;
+        LocalizationService.Current.LanguageChanged += OnLanguageChanged;
+        OnLanguageChanged();
+        
+        // Initialize default speed
+        _narrationEngine.Speed = 1.0f;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         _narrationEngine.StateChanged -= OnNarrationStateChanged;
+        LocalizationService.Current.LanguageChanged -= OnLanguageChanged;
     }
 
     // ═══════════════════════════════════════════════════════════
     // Data Loading
     // ═══════════════════════════════════════════════════════════
+
+    // SYS-H03 fix: Safe wrapper for fire-and-forget async call from PoiId setter
+    private async Task SafeLoadPoiAsync()
+    {
+        try
+        {
+            await LoadPoiAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PoiDetailPage] ❌ Error loading POI: {ex.Message}");
+            Console.WriteLine($"[PoiDetailPage] Stack trace: {ex.StackTrace}");
+        }
+    }
 
     private async Task LoadPoiAsync()
     {
@@ -397,23 +433,27 @@ public class PoiDetailPage : ContentPage
             // Hero
             _heroTitle.Text = _poi.Title;
             _heroSubtitle.Text = _poi.Title; // Could be English name
-            _categoryBadge.Text = $"📍 ĐIỂM THAM QUAN";
+            _categoryBadge.Text = LocalizationService.Current["PoiCategoryDefault"] ?? "📍 ĐIỂM THAM QUAN";
 
             if (!string.IsNullOrEmpty(_poi.ImageUrl))
                 _heroImage.Source = _poi.ImageUrl;
 
-            // Description (localized)
-            var lang = _selectedLang;
+            // Description (localized) - ALWAYS use system language
+            var lang = LocalizationService.Current.CurrentLanguage;
             _descriptionLabel.Text = GetLocalizedDescription(lang);
 
             // Audio type
             bool hasAudioFile = lang == "vi" && !string.IsNullOrEmpty(_poi.AudioLocalPath) && File.Exists(_poi.AudioLocalPath);
-            _audioTypeLabel.Text = hasAudioFile ? "🎙️ Audio thu sẵn" : "🤖 Giọng TTS";
+            _audioTypeLabel.Text = hasAudioFile
+                ? (LocalizationService.Current["PoiAudioRecorded"] ?? "🎙️ Audio thu sẵn")
+                : (LocalizationService.Current["PoiAudioTts"] ?? "🤖 Giọng TTS");
             _audioTypeLabel.TextColor = hasAudioFile ? Color.FromArgb("#F5A623") : Color.FromArgb("#0D7A5F");
             _audioTypeLabel.BackgroundColor = hasAudioFile ? Color.FromArgb("#FEF6E4") : Color.FromArgb("#E0F5F0");
 
             // Status
-            _statusLabel.Text = hasAudioFile ? "🎵 MP3 sẵn sàng" : "🗣️ TTS sẵn sàng";
+            _statusLabel.Text = hasAudioFile
+                ? (LocalizationService.Current["PoiStatusAudioReady"] ?? "🎵 MP3 sẵn sàng")
+                : (LocalizationService.Current["PoiStatusTtsReady"] ?? "🗣️ TTS sẵn sàng");
         });
     }
 
@@ -490,20 +530,32 @@ public class PoiDetailPage : ContentPage
     // Language & Speed Selection
     // ═══════════════════════════════════════════════════════════
 
-    private void OnLangSelected(string langCode)
+    private string GetCurrentLanguageDisplay()
     {
-        _selectedLang = langCode;
-        UpdateLangChipStyles();
-        if (_poi != null)
+        var langCode = LocalizationService.Current.CurrentLanguage;
+        return langCode.ToUpper() switch
         {
-            _descriptionLabel.Text = GetLocalizedDescription(langCode);
-        }
+            "VI" => "VI",
+            "EN" => "EN",
+            "ZH" => "ZH",
+            "KO" => "KO",
+            "JA" => "JA",
+            "FR" => "FR",
+            _ => "VI"
+        };
     }
 
     private void OnSpeedSelected(string speed)
     {
         _selectedSpeed = speed;
         UpdateSpeedChipStyles();
+        
+        // Parse speed value and apply to narration engine
+        if (float.TryParse(speed.Replace("x", ""), out float speedValue))
+        {
+            _narrationEngine.Speed = speedValue;
+            Console.WriteLine($"[PoiDetailPage] ⚡ Speed changed to {speedValue}x");
+        }
     }
 
     private async void OnShowCoordinates()
@@ -541,48 +593,6 @@ public class PoiDetailPage : ContentPage
                 new Label { Text = text, FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center },
             }
         };
-    }
-
-    private Border CreateLangChip(string code, string label)
-    {
-        var isActive = code == _selectedLang;
-        var chipLabel = new Label
-        {
-            Text = label,
-            FontFamily = "InterBold", FontSize = 10,
-            TextColor = isActive ? Colors.White : Color.FromArgb("#9CA3AF"),
-            HorizontalTextAlignment = TextAlignment.Center,
-            VerticalTextAlignment = TextAlignment.Center,
-        };
-
-        var chip = new Border
-        {
-            Padding = new Thickness(8, 4),
-            BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1"),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
-            Stroke = Colors.Transparent,
-            Content = chipLabel,
-        };
-
-        chip.GestureRecognizers.Add(new TapGestureRecognizer
-        {
-            Command = new Command(() => OnLangSelected(code))
-        });
-
-        return chip;
-    }
-
-    private void UpdateLangChipStyles()
-    {
-        for (int i = 0; i < _langRow.Children.Count; i++)
-        {
-            if (_langRow.Children[i] is Border chip && chip.Content is Label label)
-            {
-                var isActive = LangCodes[i] == _selectedLang;
-                chip.BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1");
-                label.TextColor = isActive ? Colors.White : Color.FromArgb("#9CA3AF");
-            }
-        }
     }
 
     private Border CreateSpeedChip(string speed)
@@ -629,34 +639,42 @@ public class PoiDetailPage : ContentPage
     
     private void OnLanguageChanged()
     {
-        // Update audio narration language when system language changes
+        // Reload POI data with new system language
         MainThread.BeginInvokeOnMainThread(async () =>
         {
-            _selectedLang = LocalizationService.Current.CurrentLanguage;
-            
-            // Update language selection UI
-            UpdateLanguageChipStyles();
-            
-            // If currently playing, restart with new language
-            if (_isPlaying && _poi != null)
+            try
             {
-                _narrationEngine.Stop();
-                await Task.Delay(100); // Small delay
-                await _narrationEngine.PlayPoiAsync(_poi, _selectedLang);
+                // Check if page is still valid
+                if (Content == null) return;
+                
+                // Update all UI labels with new language
+                var loc = LocalizationService.Current;
+                _descHeaderLabel.Text = loc["PoiDetailDescription"] ?? "Chi tiết";
+                _audioHeaderLabel.Text = loc["PoiDetailAudio"] ?? "Thuyết minh audio";
+                _audioTypeLabel.Text = loc["AudioTts"] ?? "🎧 TTS";
+                _gpsLabel.Text = loc["GpsCoordinates"] ?? "Tọa độ GPS";
+                _statAudioLabel.Text = "— " + (loc["AudioStat"] ?? "thuyết minh");
+                _statWalkLabel.Text = "— " + (loc["WalkStat"] ?? "phút đi bộ");
+                _playPauseBtn.Text = _isPlaying ? (loc["StopBtn"] ?? "⏹ Dừng phát") : (loc["PlayBtn"] ?? "🔊 Phát Audio");
+                
+                if (_poi != null)
+                {
+                    // Reload POI to update description in new language
+                    await LoadPoiAsync();
+                }
+                
+                // If currently playing, restart with new language
+                if (_isPlaying && _poi != null)
+                {
+                    _narrationEngine.Stop();
+                    await Task.Delay(100); // Small delay
+                    await _narrationEngine.PlayPoiAsync(_poi, LocalizationService.Current.CurrentLanguage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PoiDetailPage] ❌ Error handling language change: {ex.Message}");
             }
         });
-    }
-    
-    private void UpdateLanguageChipStyles()
-    {
-        for (int i = 0; i < _langRow.Children.Count; i++)
-        {
-            if (_langRow.Children[i] is Border chip && chip.Content is Label label)
-            {
-                var isActive = LangCodes[i] == _selectedLang;
-                chip.BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1");
-                label.TextColor = isActive ? Colors.White : Color.FromArgb("#9CA3AF");
-            }
-        }
     }
 }

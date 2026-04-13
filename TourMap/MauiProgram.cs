@@ -34,9 +34,13 @@ namespace TourMap
             builder.Services.AddTransient<Pages.QrScannerPage>();
             builder.Services.AddTransient<Pages.SettingsPage>();
             builder.Services.AddTransient<Pages.OfflinePacksPage>();
-            builder.Services.AddTransient<Pages.SplashPage>(); // BUG-05 fix
-            builder.Services.AddTransient<AppShell>(); // BUG-05 fix
-            builder.Services.AddSingleton<MainPage>();
+            builder.Services.AddTransient<Pages.SplashPage>();
+            builder.Services.AddTransient<Pages.LoginPage>();
+            builder.Services.AddTransient<Pages.RegisterPage>();
+            builder.Services.AddTransient<Pages.ProfilePage>();
+            builder.Services.AddTransient<AppShell>();
+            // SYS-H02 fix: MainPage is not used in current auth flow; registered Transient in case of future use
+            builder.Services.AddTransient<MainPage>();
 
             // === Phase 1: Core Engines ===
             builder.Services.AddSingleton<Services.GeofenceEngine>();
@@ -45,6 +49,10 @@ namespace TourMap
 
             // === Phase 2 & 3: Audio Player, Sync & Auth ===
             builder.Services.AddSingleton<Services.IAudioPlayerService, Services.AudioPlayerService>();
+            
+            // BUG-W01 fix: Use HttpClient from DI instead of manual new HttpClient()
+            // Register as Singleton to match MainPage's Singleton lifetime
+            builder.Services.AddHttpClient();
             builder.Services.AddSingleton<Services.AuthService>();
             builder.Services.AddSingleton<Services.SyncService>();
             

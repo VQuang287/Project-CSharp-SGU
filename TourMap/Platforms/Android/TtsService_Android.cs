@@ -1,3 +1,5 @@
+#pragma warning disable CA1422 // 'Locale' is obsolete on Android 36.0+ - Project targets API 31
+
 using Android.Speech.Tts;
 using TourMap.Services;
 using JavaLocale = Java.Util.Locale;
@@ -170,7 +172,6 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             "fr" => JavaLocale.France,
             _ => new JavaLocale("vi", "VN")
         };
-        _tts.SetLanguage(locale);
 
         // Dừng phát cũ nếu đang nói
         Stop();
@@ -180,7 +181,22 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
 
         var utteranceId = Guid.NewGuid().ToString();
         var param = new Android.OS.Bundle();
-        _tts.Speak(text, QueueMode.Flush, param, utteranceId);
+
+        // Android TTS (JNI Binder calls) often fail silently under VS Debugger 
+        // if called from background thread pool. Dispatch to MainThread to ensure execution.
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                _tts.SetLanguage(locale);
+                _tts.Speak(text, QueueMode.Flush, param, utteranceId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TTS] Error speaking on MainThread: {ex.Message}");
+                _speakTcs?.TrySetResult(false);
+            }
+        });
 
         // Đợi TTS đọc xong
         await _speakTcs.Task;
@@ -194,6 +210,23 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         }
         IsSpeaking = false;
         _speakTcs?.TrySetResult(false);
+    }
+
+    /// <summary>Set TTS speech rate (speed). 0.75 = 75%, 1.0 = 100%, 1.5 = 150%</summary>
+    public void SetSpeed(float speed)
+    {
+        if (_tts == null) return;
+        
+        try
+        {
+            // Android SetSpeechRate: 1.0 = normal, 0.5 = half speed, 2.0 = double speed
+            _tts.SetSpeechRate(speed);
+            Console.WriteLine($"[TTS] ⚡ Speech rate set to {speed}x");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TTS] Failed to set speech rate: {ex.Message}");
+        }
     }
 
     internal void OnUtteranceDone()

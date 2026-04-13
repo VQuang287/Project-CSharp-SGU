@@ -40,11 +40,13 @@ public partial class MapPage : ContentPage
     private readonly Label _previewTitle;
     private readonly Label _previewDesc;
     private readonly Label _previewCategory;
+    private readonly Button _openBtn;
     private Poi? _selectedPreviewPoi;
 
     // Map Layers
     private MemoryLayer? _poiLayer;
     private string? _highlightedPoiId;
+    private bool _isInitialLocationFixed = false;
 
     public MapPage() : this(
         ServiceHelper.GetService<MainViewModel>(),
@@ -66,9 +68,6 @@ public partial class MapPage : ContentPage
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
         _loc = LocalizationService.Current;
-        
-        // Subscribe to language changes
-        _loc.LanguageChanged += OnLanguageChanged;
 
         Shell.SetNavBarIsVisible(this, false);
 
@@ -91,6 +90,12 @@ public partial class MapPage : ContentPage
             Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
             Content = new Label { Text = "👤", FontSize = 20, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center }
         };
+        var avatarTap = new TapGestureRecognizer();
+        avatarTap.Tapped += async (s, e) =>
+        {
+            try { await Shell.Current.GoToAsync(nameof(ProfilePage)); } catch { }
+        };
+        avatar.GestureRecognizers.Add(avatarTap);
 
         _headerSubtitle = new Label { 
             Text = _loc["MapSubtitle"] ?? "Khánh Hội", 
@@ -127,7 +132,12 @@ public partial class MapPage : ContentPage
                 }
             }
         };
-        // Fake search bar routes to POI List via manual coding or logic (skipped for demo, acts as visual)
+        var searchTap = new TapGestureRecognizer();
+        searchTap.Tapped += async (s, e) =>
+        {
+            try { await Shell.Current.GoToAsync("///PoiListPage"); } catch { }
+        };
+        searchBox.GestureRecognizers.Add(searchTap);
 
         var headerGrid = new Grid
         {
@@ -167,7 +177,7 @@ public partial class MapPage : ContentPage
             }
         };
 
-        var topOverlay = new VerticalStackLayout { Children = { headerCard, _gpsBadge }, InputTransparent = true };
+        var topOverlay = new VerticalStackLayout { Children = { headerCard, _gpsBadge }, InputTransparent = true, CascadeInputTransparent = false };
 
         // ═══════════════════════════════════════════
         // POI PREVIEW CARD
@@ -177,9 +187,9 @@ public partial class MapPage : ContentPage
         _previewTitle = new Label { FontFamily = "InterBold", FontSize = 14, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#18181B"), MaxLines = 1, LineBreakMode = LineBreakMode.TailTruncation };
         _previewDesc = new Label { FontFamily = "InterRegular", FontSize = 11, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"), MaxLines = 2, LineBreakMode = LineBreakMode.TailTruncation };
 
-        var openBtn = new Button
+        _openBtn = new Button
         {
-            Text = "Xem chi tiết",
+            Text = _loc["SeeDetails"] ?? "Xem chi tiết",
             FontFamily = "InterMedium", FontSize = 12,
             BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"),
             TextColor = Microsoft.Maui.Graphics.Colors.White,
@@ -187,7 +197,7 @@ public partial class MapPage : ContentPage
             CornerRadius = 12,
             Padding = 0,
         };
-        openBtn.Clicked += OnOpenPreviewPoiClicked;
+        _openBtn.Clicked += OnOpenPreviewPoiClicked;
 
         var previewInfo = new VerticalStackLayout { Spacing = 2, Children = { _previewCategory, _previewTitle, _previewDesc } };
         
@@ -207,7 +217,7 @@ public partial class MapPage : ContentPage
             Shadow = new Shadow { Brush = Microsoft.Maui.Graphics.Colors.Black, Opacity = 0.15f, Radius = 8, Offset = new Point(0, -2) },
             Padding = new Thickness(16),
             Margin = new Thickness(16, 0, 16, 16),
-            Content = new VerticalStackLayout { Spacing = 12, Children = { previewGrid, openBtn } }
+            Content = new VerticalStackLayout { Spacing = 12, Children = { previewGrid, _openBtn } }
         };
 
         // ═══════════════════════════════════════════
@@ -269,6 +279,10 @@ public partial class MapPage : ContentPage
         base.OnAppearing();
         try
         {
+            // Subscribe to language changes
+            _loc.LanguageChanged += OnLanguageChanged;
+            OnLanguageChanged();
+            
             HidePoiPreview();
             _mapControl.MapTapped -= OnMapTapped;
             _mapControl.MapTapped += OnMapTapped;
@@ -352,19 +366,43 @@ public partial class MapPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Update header
-            _headerSubtitle.Text = _loc["MapSubtitle"] ?? "Khánh Hội";
-            
-            // Update audio bar (only when idle)
-            if (_narrationEngine.CurrentState == NarrationState.Idle)
+            try
             {
-                _audioTitle.Text = _loc["Ready"] ?? "Sẵn sàng";
-                _audioSubtitle.Text = _loc["TapPoiHint"] ?? "Chạm điểm tham quan";
+                if (Content == null) return;
+                
+                // Update header
+                _headerSubtitle.Text = _loc["MapSubtitle"] ?? "Khánh Hội";
+
+                // Update POI Card Labels
+                _previewCategory.Text = _loc["PoiCategoryDefault"] ?? "📍 ĐIỂM THAM QUAN";
+                if (_openBtn != null)
+                {
+                    _openBtn.Text = _loc["SeeDetails"] ?? "Xem chi tiết";
+                }
+                
+                // Update audio bar based on current narration state
+                switch (_narrationEngine.CurrentState)
+                {
+                    case NarrationState.Idle:
+                        _audioTitle.Text = _loc["Ready"] ?? "Sẵn sàng";
+                        _audioSubtitle.Text = _loc["TapPoiHint"] ?? "Chạm điểm tham quan";
+                        break;
+                    case NarrationState.Playing:
+                        _audioSubtitle.Text = _loc["Playing"] ?? "Đang phát...";
+                        break;
+                    case NarrationState.Cooldown:
+                        _audioSubtitle.Text = _loc["Finished"] ?? "Đã phát xong";
+                        break;
+                }
+                
+                // Update GPS badge
+                var isGpsActive = _gpsBadgeLabel.TextColor?.ToArgbHex() == Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F")?.ToArgbHex();
+                _gpsBadgeLabel.Text = isGpsActive ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
             }
-            
-            // Update GPS badge
-            var isGpsActive = _gpsBadgeLabel.TextColor == Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F");
-            _gpsBadgeLabel.Text = isGpsActive ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MapPage] Error in OnLanguageChanged: {ex.Message}");
+            }
         });
     }
 

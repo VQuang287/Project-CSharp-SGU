@@ -14,6 +14,9 @@ public interface IAudioPlayerService
     /// <summary>Đang phát hay không.</summary>
     bool IsPlaying { get; }
 
+    /// <summary>Tốc độ phát (0.75 = 75%, 1.0 = 100%, 1.5 = 150%).</summary>
+    float Speed { get; set; }
+
     /// <summary>Sự kiện khi phát xong.</summary>
     event Action? AudioCompleted;
 }

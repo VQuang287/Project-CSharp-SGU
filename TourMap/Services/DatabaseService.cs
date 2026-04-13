@@ -3,9 +3,12 @@ using TourMap.Models;
 
 namespace TourMap.Services;
 
-public class DatabaseService
+public class DatabaseService : IDisposable
 {
     private SQLiteAsyncConnection? _db;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private bool _disposed;
 
     public DatabaseService()
     {
@@ -15,6 +18,12 @@ public class DatabaseService
     {
         if (_db is not null)
             return;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_db is not null) // Double-check after acquiring lock
+                return;
 
         var databasePath = Path.Combine(FileSystem.AppDataDirectory, "TourMap_v6.db3");
         _db = new SQLiteAsyncConnection(databasePath);
@@ -78,6 +87,11 @@ public class DatabaseService
             await _db.InsertAllAsync(seedData);
             Console.WriteLine("[Database] Seeded 4 POIs with multilingual TTS scripts");
         }
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     public async Task<List<Poi>> GetPoisAsync()
@@ -93,25 +107,28 @@ public class DatabaseService
         return await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == id);
     }
 
-    /// <summary>Upsert: cập nhật nếu đã có, thêm mới nếu chưa có.</summary>
+    /// <summary>Upsert: cập nhật nếu đã có, thêm mới nếu chưa có. Thread-safe write.</summary>
     public async Task UpsertPoiAsync(Poi poi)
     {
         await InitAsync();
-        var existing = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poi.Id);
-        if (existing != null)
+        await _writeLock.WaitAsync();
+        try
         {
-            await _db.UpdateAsync(poi);
+            var existing = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poi.Id);
+            if (existing != null)
+                await _db.UpdateAsync(poi);
+            else
+                await _db.InsertAsync(poi);
         }
-        else
-        {
-            await _db.InsertAsync(poi);
-        }
+        finally { _writeLock.Release(); }
     }
 
     public async Task AddPlaybackHistoryAsync(PlaybackHistoryEntry history)
     {
         await InitAsync();
-        await _db!.InsertAsync(history);
+        await _writeLock.WaitAsync();
+        try { await _db!.InsertAsync(history); }
+        finally { _writeLock.Release(); }
     }
 
     public async Task<List<PlaybackHistoryEntry>> GetPlaybackHistoryAsync()
@@ -122,25 +139,30 @@ public class DatabaseService
             .ToListAsync();
     }
     
-    /// <summary>Cập nhật TTS script cho POI theo ngôn ngữ</summary>
+    /// <summary>Cập nhật TTS script cho POI theo ngôn ngữ. Thread-safe write.</summary>
     public async Task UpdatePoiTtsScriptAsync(string poiId, string languageCode, string ttsScript)
     {
         await InitAsync();
-        var poi = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
-        if (poi == null) return;
-        
-        switch (languageCode.ToLower())
+        await _writeLock.WaitAsync();
+        try
         {
-            case "vi": poi.TtsScriptVi = ttsScript; break;
-            case "en": poi.TtsScriptEn = ttsScript; break;
-            case "zh": poi.TtsScriptZh = ttsScript; break;
-            case "ko": poi.TtsScriptKo = ttsScript; break;
-            case "ja": poi.TtsScriptJa = ttsScript; break;
-            case "fr": poi.TtsScriptFr = ttsScript; break;
+            var poi = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
+            if (poi == null) return;
+            
+            switch (languageCode.ToLower())
+            {
+                case "vi": poi.TtsScriptVi = ttsScript; break;
+                case "en": poi.TtsScriptEn = ttsScript; break;
+                case "zh": poi.TtsScriptZh = ttsScript; break;
+                case "ko": poi.TtsScriptKo = ttsScript; break;
+                case "ja": poi.TtsScriptJa = ttsScript; break;
+                case "fr": poi.TtsScriptFr = ttsScript; break;
+            }
+            
+            poi.UpdatedAt = DateTime.UtcNow;
+            await _db.UpdateAsync(poi);
         }
-        
-        poi.UpdatedAt = DateTime.UtcNow;
-        await _db.UpdateAsync(poi);
+        finally { _writeLock.Release(); }
     }
     
     /// <summary>Lấy TTS script cho POI theo ngôn ngữ</summary>
@@ -162,28 +184,43 @@ public class DatabaseService
         };
     }
     
-    /// <summary>Cập nhật toàn bộ TTS scripts cho POI</summary>
+    /// <summary>Cập nhật toàn bộ TTS scripts cho POI. Thread-safe write.</summary>
     public async Task UpdatePoiTtsScriptsAsync(string poiId, Dictionary<string, string> ttsScripts)
     {
         await InitAsync();
-        var poi = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
-        if (poi == null) return;
-        
-        foreach (var (lang, script) in ttsScripts)
+        await _writeLock.WaitAsync();
+        try
         {
-            switch (lang.ToLower())
+            var poi = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
+            if (poi == null) return;
+            
+            foreach (var (lang, script) in ttsScripts)
             {
-                case "vi": poi.TtsScriptVi = script; break;
-                case "en": poi.TtsScriptEn = script; break;
-                case "zh": poi.TtsScriptZh = script; break;
-                case "ko": poi.TtsScriptKo = script; break;
-                case "ja": poi.TtsScriptJa = script; break;
-                case "fr": poi.TtsScriptFr = script; break;
+                switch (lang.ToLower())
+                {
+                    case "vi": poi.TtsScriptVi = script; break;
+                    case "en": poi.TtsScriptEn = script; break;
+                    case "zh": poi.TtsScriptZh = script; break;
+                    case "ko": poi.TtsScriptKo = script; break;
+                    case "ja": poi.TtsScriptJa = script; break;
+                    case "fr": poi.TtsScriptFr = script; break;
+                }
             }
+            
+            poi.UpdatedAt = DateTime.UtcNow;
+            await _db.UpdateAsync(poi);
+            Console.WriteLine($"[Database] Updated TTS scripts for POI {poiId}");
         }
-        
-        poi.UpdatedAt = DateTime.UtcNow;
-        await _db.UpdateAsync(poi);
-        Console.WriteLine($"[Database] Updated TTS scripts for POI {poiId}");
+        finally { _writeLock.Release(); }
+    }
+
+    // SYS-W02 fix: Deterministic cleanup
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _db?.CloseAsync().GetAwaiter().GetResult();
+        _initLock.Dispose();
+        _writeLock.Dispose();
+        _disposed = true;
     }
 }

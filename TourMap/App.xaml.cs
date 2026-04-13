@@ -9,9 +9,12 @@ namespace TourMap
             InitializeComponent();
         }
 
+        // BUG-W02 fix: Resolve SplashPage from DI container
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new Pages.SplashPage());
+            var page = Handler?.MauiContext?.Services.GetService<Pages.SplashPage>()
+                       ?? new Pages.SplashPage();
+            return new Window(page);
         }
     }
 }

@@ -1,0 +1,104 @@
+@model TourMap.AdminWeb.Models.MobileUser
+@{
+    ViewData["Title"] = $"Chi tiết: {Model.DisplayName}";
+    var playbackCount = ViewData["PlaybackCount"];
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Quay lại</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header"><strong>Thông tin người dùng</strong></div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr><th style="width:140px">ID</th><td><code>@Model.Id</code></td></tr>
+                    <tr><th>Tên hiển thị</th><td>@Model.DisplayName</td></tr>
+                    <tr><th>Email</th><td>@(Model.Email ?? "<em class='text-muted'>Chưa đăng ký</em>")</td></tr>
+                    <tr><th>Device ID</th><td><code style="font-size:12px">@Model.DeviceId</code></td></tr>
+                    <tr>
+                        <th>Role</th>
+                        <td>
+                            @{
+                                var roleBadge = Model.Role switch
+                                {
+                                    "Guest" => "bg-secondary",
+                                    "User" => "bg-primary",
+                                    "Premium" => "bg-warning text-dark",
+                                    "Banned" => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @roleBadge">@Model.Role</span>
+                        </td>
+                    </tr>
+                    <tr><th>Auth Provider</th><td>@Model.AuthProvider</td></tr>
+                    <tr><th>Email verified</th><td>@(Model.IsEmailVerified ? "✅ Đã xác minh" : "❌ Chưa")</td></tr>
+                    <tr><th>Ngày tạo</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td></tr>
+                    <tr><th>Đăng nhập cuối</th><td>@Model.LastLoginAt.ToString("dd/MM/yyyy HH:mm")</td></tr>
+                    <tr><th>Lượt phát audio</th><td><strong>@playbackCount</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <!-- Change Role -->
+        <div class="card mb-4">
+            <div class="card-header"><strong>Đổi Role</strong></div>
+            <div class="card-body">
+                <form asp-action="ChangeRole" method="post">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="mb-3">
+                        <select name="newRole" class="form-select">
+                            <option value="Guest" selected="@(Model.Role == "Guest")">Guest</option>
+                            <option value="User" selected="@(Model.Role == "User")">User</option>
+                            <option value="Premium" selected="@(Model.Role == "Premium")">Premium</option>
+                            <option value="Banned" selected="@(Model.Role == "Banned")">Banned</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">Đổi Role</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reset Password -->
+        @if (Model.Email != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><strong>Reset Mật Khẩu</strong></div>
+                <div class="card-body">
+                    <form asp-action="ResetPassword" method="post">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="mb-3">
+                            <input type="password" name="newPassword" class="form-control" placeholder="Mật khẩu mới (≥ 6 ký tự)" required minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-warning w-100">Reset Password</button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Delete -->
+        <div class="card border-danger">
+            <div class="card-header text-danger"><strong>Vùng nguy hiểm</strong></div>
+            <div class="card-body">
+                <form asp-action="Delete" method="post" onsubmit="return confirm('Bạn chắc chắn muốn xóa tài khoản này?')">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-danger w-100">🗑️ Xóa tài khoản</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

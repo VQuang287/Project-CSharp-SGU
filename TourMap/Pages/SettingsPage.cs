@@ -10,15 +10,26 @@ public class SettingsPage : ContentPage
 {
     private readonly Label _cacheSizeLabel;
     private readonly VerticalStackLayout _langGroup;
+    private readonly Label _headerTitle;
+    private readonly Label _langHeader;
+    private readonly Label _prefHeader;
+    private readonly Label _autoPlayTitle;
+    private readonly Label _bgPlayTitle;
+    private readonly Label _dataHeader;
+    private readonly Label _cacheDataTitle;
+    private readonly Label _cleanupDownloadsTitle;
+    private readonly Label _clearCacheActionLabel;
+    private readonly Label _infoHeader;
+    private readonly Label _versionTitle;
 
     public SettingsPage()
     {
-        var loc = LocalizationService.Current;
-        loc.LanguageChanged += OnLanguageChanged;
         Shell.SetNavBarIsVisible(this, false);
         BackgroundColor = Color.FromArgb("#F6F5F1"); // Figma background color
 
-        var headerTitle = new Label
+        var loc = LocalizationService.Current;
+
+        _headerTitle = new Label
         {
             Text = loc["SettingsTitle"] ?? "Cài đặt",
             FontFamily = "InterBold", FontSize = 17,
@@ -30,50 +41,50 @@ public class SettingsPage : ContentPage
         // ═══════════════════════════════════════════
         // SECTION: LANGUAGE
         // ═══════════════════════════════════════════
-        var langHeader = CreateSectionHeader(loc["LangSection"] ?? "Ngôn ngữ / Language");
+        _langHeader = CreateSectionHeader(loc["LangSection"] ?? "Ngôn ngữ / Language");
         _langGroup = new VerticalStackLayout { Spacing = 0 };
         RebuildLanguageGroup();
 
-        var langSection = new VerticalStackLayout { Children = { langHeader, CreateGroupCard(_langGroup) } };
+        var langSection = new VerticalStackLayout { Children = { _langHeader, CreateGroupCard(_langGroup) } };
 
         // ═══════════════════════════════════════════
         // SECTION: PREFERENCES (MOCK FOR FIGMA)
         // ═══════════════════════════════════════════
-        var prefHeader = CreateSectionHeader("Tuỳ chỉnh âm thanh");
+        _prefHeader = CreateSectionHeader(loc["AudioPrefsSection"] ?? "Tùy chỉnh âm thanh");
         var autoPlaySwitch = new Switch { IsToggled = true, OnColor = Color.FromArgb("#0D7A5F") };
-        var autoPlayRow = CreateSettingRow("🔊", "Tự động phát khi đến gần", autoPlaySwitch, false);
+        var autoPlayRow = CreateSettingRow("🔊", loc["AutoPlayNear"] ?? "Tự động phát khi đến gần", autoPlaySwitch, false, out _autoPlayTitle);
         
         var bgPlaySwitch = new Switch { IsToggled = true, OnColor = Color.FromArgb("#0D7A5F") };
-        var bgPlayRow = CreateSettingRow("📱", "Phát khi khóa màn hình", bgPlaySwitch, true);
+        var bgPlayRow = CreateSettingRow("📱", loc["BackgroundPlay"] ?? "Phát khi khóa màn hình", bgPlaySwitch, true, out _bgPlayTitle);
 
-        var prefSection = new VerticalStackLayout { Children = { prefHeader, CreateGroupCard(new VerticalStackLayout { Children = { autoPlayRow, CreateDivider(), bgPlayRow } }) } };
+        var prefSection = new VerticalStackLayout { Children = { _prefHeader, CreateGroupCard(new VerticalStackLayout { Children = { autoPlayRow, CreateDivider(), bgPlayRow } }) } };
 
         // ═══════════════════════════════════════════
         // SECTION: DATA & CACHE
         // ═══════════════════════════════════════════
-        var dataHeader = CreateSectionHeader(loc["CacheSection"] ?? "Quản lý dữ liệu");
+        _dataHeader = CreateSectionHeader(loc["DataSection"] ?? "Quản lý dữ liệu");
         
         _cacheSizeLabel = new Label { FontFamily = "InterMedium", FontSize = 13, TextColor = Color.FromArgb("#9CA3AF"), VerticalOptions = LayoutOptions.Center };
-        var cacheRow = CreateSettingRow("💾", "Dữ liệu đệm (Cache)", _cacheSizeLabel, false);
+        var cacheRow = CreateSettingRow("💾", loc["CacheDataLabel"] ?? "Dữ liệu đệm (Cache)", _cacheSizeLabel, false, out _cacheDataTitle);
         
-        var clearCacheBtn = new Label { Text = loc["ClearCache"] ?? "Xóa dữ liệu bộ đệm", FontFamily = "InterMedium", FontSize = 15, TextColor = Color.FromArgb("#EF4444"), VerticalOptions = LayoutOptions.Center };
-        var clearCacheRow = CreateSettingRow("🗑️", "Dọn dẹp tải xuống", clearCacheBtn, true);
+        _clearCacheActionLabel = new Label { Text = loc["ClearCache"] ?? "Xóa dữ liệu bộ đệm", FontFamily = "InterMedium", FontSize = 15, TextColor = Color.FromArgb("#EF4444"), VerticalOptions = LayoutOptions.Center };
+        var clearCacheRow = CreateSettingRow("🗑️", loc["CleanupDownloads"] ?? "Dọn dẹp tải xuống", _clearCacheActionLabel, true, out _cleanupDownloadsTitle);
         
         // Wrap clearCacheRow in gesturerecognizer
         var clearCacheTap = new TapGestureRecognizer();
         clearCacheTap.Command = new Command(async () => await OnClearCacheClicked(loc));
         clearCacheRow.GestureRecognizers.Add(clearCacheTap);
 
-        var dataSection = new VerticalStackLayout { Children = { dataHeader, CreateGroupCard(new VerticalStackLayout { Children = { cacheRow, CreateDivider(), clearCacheRow } }) } };
+        var dataSection = new VerticalStackLayout { Children = { _dataHeader, CreateGroupCard(new VerticalStackLayout { Children = { cacheRow, CreateDivider(), clearCacheRow } }) } };
 
         // ═══════════════════════════════════════════
         // SECTION: APP INFO
         // ═══════════════════════════════════════════
-        var infoHeader = CreateSectionHeader(loc["InfoSection"] ?? "Thông tin");
+        _infoHeader = CreateSectionHeader(loc["InfoSection"] ?? "Thông tin");
         var versionText = new Label { Text = AppInfo.Current.VersionString, FontFamily = "InterRegular", FontSize = 14, TextColor = Color.FromArgb("#9CA3AF"), VerticalOptions = LayoutOptions.Center };
-        var versionRow = CreateSettingRow("ℹ️", "Phiên bản", versionText, true);
+        var versionRow = CreateSettingRow("ℹ️", loc["VersionLabel"] ?? "Phiên bản", versionText, true, out _versionTitle);
 
-        var infoSection = new VerticalStackLayout { Children = { infoHeader, CreateGroupCard(new VerticalStackLayout { Children = { versionRow } }) } };
+        var infoSection = new VerticalStackLayout { Children = { _infoHeader, CreateGroupCard(new VerticalStackLayout { Children = { versionRow } }) } };
         
         var bottomPadding = new BoxView { HeightRequest = 40, Color = Colors.Transparent };
 
@@ -83,16 +94,33 @@ public class SettingsPage : ContentPage
             {
                 Spacing = 24,
                 Padding = new Thickness(16, 0, 16, 16),
-                Children = { headerTitle, langSection, prefSection, dataSection, infoSection, bottomPadding }
+                Children = { _headerTitle, langSection, prefSection, dataSection, infoSection, bottomPadding }
             }
         };
+
+        ApplyLocalization();
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        
+        // Subscribe to events when page appears
+        var loc = LocalizationService.Current;
+        loc.LanguageChanged += OnLanguageChanged;
+        
         UpdateCacheSize();
         RebuildLanguageGroup();
+        ApplyLocalization();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        
+        // Unsubscribe from events to prevent memory leaks and crashes
+        var loc = LocalizationService.Current;
+        loc.LanguageChanged -= OnLanguageChanged;
     }
 
     private void RebuildLanguageGroup()
@@ -107,7 +135,7 @@ public class SettingsPage : ContentPage
             var isSelected = loc.CurrentLanguage == lang.Code;
             
             var checkMark = new Label { Text = isSelected ? "✓" : "", FontFamily = "InterBold", FontSize = 16, TextColor = Color.FromArgb("#0D7A5F"), VerticalOptions = LayoutOptions.Center };
-            var row = CreateSettingRow(lang.Flag, lang.DisplayName, checkMark, i == langs.Count - 1);
+            var row = CreateSettingRow(lang.Flag, lang.DisplayName, checkMark, i == langs.Count - 1, out _);
             
             var tap = new TapGestureRecognizer();
             tap.Command = new Command(() => 
@@ -133,39 +161,54 @@ public class SettingsPage : ContentPage
             var audioFolder = Path.Combine(FileSystem.AppDataDirectory, "audio");
             if (Directory.Exists(audioFolder)) Directory.Delete(audioFolder, true);
             _cacheSizeLabel.Text = "0 KB";
-            await DisplayAlertAsync("?", loc["ClearCacheSuccess"], "OK");
+            await DisplayAlertAsync(loc["InfoSection"], loc["ClearCacheSuccess"], loc["OK"]);
         }
     }
 
     private void OnLanguageChanged()
     {
-        // Refresh UI elements when language changes
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            var loc = LocalizationService.Current;
-            
-            // Update header title
-            if (Content is VerticalStackLayout mainLayout && mainLayout.Children.Count > 0)
+            try
             {
-                if (mainLayout.Children[0] is Label headerTitle)
-                {
-                    headerTitle.Text = loc["SettingsTitle"] ?? "Cài";
-                }
+                if (Content == null) return;
+
+                ApplyLocalization();
+                RebuildLanguageGroup();
+                UpdateCacheSize();
             }
-            
-            // Rebuild language section
-            RebuildLanguageGroup();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SettingsPage] ❌ Error updating UI: {ex.Message}");
+            }
         });
+    }
+
+    private void ApplyLocalization()
+    {
+        var loc = LocalizationService.Current;
+        _headerTitle.Text = loc["SettingsTitle"] ?? "Cài đặt";
+        _langHeader.Text = (loc["LangSection"] ?? "Ngôn ngữ / Language").ToUpper();
+        _prefHeader.Text = (loc["AudioPrefsSection"] ?? "Tùy chỉnh âm thanh").ToUpper();
+        _autoPlayTitle.Text = loc["AutoPlayNear"] ?? "Tự động phát khi đến gần";
+        _bgPlayTitle.Text = loc["BackgroundPlay"] ?? "Phát khi khóa màn hình";
+        _dataHeader.Text = (loc["DataSection"] ?? "Quản lý dữ liệu").ToUpper();
+        _cacheDataTitle.Text = loc["CacheDataLabel"] ?? "Dữ liệu đệm (Cache)";
+        _cleanupDownloadsTitle.Text = loc["CleanupDownloads"] ?? "Dọn dẹp tải xuống";
+        _clearCacheActionLabel.Text = loc["ClearCache"] ?? "Xóa dữ liệu bộ đệm";
+        _infoHeader.Text = (loc["InfoSection"] ?? "Thông tin").ToUpper();
+        _versionTitle.Text = loc["VersionLabel"] ?? "Phiên bản";
     }
 
     private void UpdateCacheSize()
     {
+        var loc = LocalizationService.Current;
         var audioFolder = Path.Combine(FileSystem.AppDataDirectory, "audio");
         if (Directory.Exists(audioFolder))
         {
             var files = Directory.GetFiles(audioFolder);
             long totalBytes = files.Sum(f => new FileInfo(f).Length);
-            _cacheSizeLabel.Text = $"{files.Length} files — {totalBytes / 1024} KB";
+            _cacheSizeLabel.Text = $"{files.Length} {loc["FilesUnit"]} — {totalBytes / 1024} KB";
         }
         else
         {
@@ -199,7 +242,7 @@ public class SettingsPage : ContentPage
         };
     }
 
-    private Grid CreateSettingRow(string icon, string title, View trailingView, bool isLast)
+    private Grid CreateSettingRow(string icon, string title, View trailingView, bool isLast, out Label titleLabel)
     {
         var iconBg = new Border
         {
@@ -210,7 +253,7 @@ public class SettingsPage : ContentPage
             Content = new Label { Text = icon, FontSize = 16, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center }
         };
 
-        var titleLabel = new Label
+        titleLabel = new Label
         {
             Text = title,
             FontFamily = "InterMedium", FontSize = 14,

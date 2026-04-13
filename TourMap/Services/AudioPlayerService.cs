@@ -8,8 +8,27 @@ namespace TourMap.Services;
 public class AudioPlayerService : IAudioPlayerService, IDisposable
 {
     private IAudioPlayer? _player;
+    private FileStream? _audioStream;
     private bool _disposed = false;
+    private float _speed = 1.0f;
+    
     public bool IsPlaying => _player?.IsPlaying ?? false;
+    
+    /// <summary>Tốc độ phát: 0.75x, 1.0x, 1.25x, 1.5x</summary>
+    public float Speed 
+    { 
+        get => (float)(_player?.Speed ?? _speed);
+        set
+        {
+            _speed = value;
+            if (_player != null)
+            {
+                _player.Speed = value;
+                Console.WriteLine($"[AudioPlayer] ⚡ Speed set to {value}x");
+            }
+        }
+    }
+    
     public event Action? AudioCompleted;
 
     public async Task PlayAsync(string filePath)
@@ -24,18 +43,30 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
                 return;
             }
 
-            var stream = File.OpenRead(filePath);
-            _player = Plugin.Maui.Audio.AudioManager.Current.CreatePlayer(stream);
-            _player.PlaybackEnded += OnPlaybackEnded;
+            _audioStream = File.OpenRead(filePath);
+            _player = Plugin.Maui.Audio.AudioManager.Current.CreatePlayer(_audioStream);
+            
+            // Apply current speed setting
+            _player.Speed = _speed;
+
+            // Use TaskCompletionSource instead of busy-wait polling
+            var tcs = new TaskCompletionSource<bool>();
+
+            void OnEnded(object? s, EventArgs e)
+            {
+                if (_player != null)
+                    _player.PlaybackEnded -= OnEnded;
+                tcs.TrySetResult(true);
+                MainThread.BeginInvokeOnMainThread(() => AudioCompleted?.Invoke());
+            }
+
+            _player.PlaybackEnded += OnEnded;
             _player.Play();
 
             Console.WriteLine($"[AudioPlayer] 🔊 Đang phát: {Path.GetFileName(filePath)}");
 
-            // Đợi cho đến khi phát xong
-            while (_player?.IsPlaying == true)
-            {
-                await Task.Delay(250);
-            }
+            // Đợi non-blocking cho đến khi phát xong
+            await tcs.Task;
         }
         catch (Exception ex)
         {
@@ -46,12 +77,10 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
             if (ex is FileNotFoundException fileEx)
             {
                 Console.WriteLine($"[AudioPlayer] Audio file not found: {fileEx.FileName}");
-                Console.WriteLine($"[AudioPlayer] Check if audio file was downloaded successfully");
             }
             else if (ex is UnauthorizedAccessException)
             {
                 Console.WriteLine($"[AudioPlayer] Permission denied accessing audio file");
-                Console.WriteLine($"[AudioPlayer] Check app storage permissions");
             }
             else if (ex is System.PlatformNotSupportedException)
             {
@@ -60,7 +89,6 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
             else if (ex is InvalidOperationException invalidEx)
             {
                 Console.WriteLine($"[AudioPlayer] Invalid audio operation: {invalidEx.Message}");
-                Console.WriteLine($"[AudioPlayer] Audio player may be in invalid state");
             }
             
             // Notify completion even on error to prevent UI hanging
@@ -77,19 +105,17 @@ public class AudioPlayerService : IAudioPlayerService, IDisposable
         DisposePlayer();
     }
 
-    private void OnPlaybackEnded(object? sender, EventArgs e)
-    {
-        Console.WriteLine("[AudioPlayer] ✅ Phát xong.");
-        MainThread.BeginInvokeOnMainThread(() => AudioCompleted?.Invoke());
-    }
-
     private void DisposePlayer()
     {
         if (_player != null)
         {
-            _player.PlaybackEnded -= OnPlaybackEnded;
             _player.Dispose();
             _player = null;
+        }
+        if (_audioStream != null)
+        {
+            _audioStream.Dispose();
+            _audioStream = null;
         }
     }
 

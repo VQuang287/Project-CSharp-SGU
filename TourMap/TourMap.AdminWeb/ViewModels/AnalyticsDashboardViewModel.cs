@@ -9,6 +9,14 @@ public class AnalyticsDashboardViewModel
     public List<TopPoiItem> TopPois7Days { get; set; } = new();
     public List<TriggerTypeItem> TriggerTypeBreakdown7Days { get; set; } = new();
     public List<DailyPlayItem> DailyPlays7Days { get; set; } = new();
+    public List<HeatmapPoint> HeatmapPoints { get; set; } = new();
+}
+
+public class HeatmapPoint
+{
+    public double Lat { get; set; }
+    public double Lng { get; set; }
+    public double Intensity { get; set; }
 }
 
 public class TopPoiItem

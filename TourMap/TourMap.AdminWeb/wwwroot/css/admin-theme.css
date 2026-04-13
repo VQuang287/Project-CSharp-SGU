@@ -44,6 +44,12 @@ body.admin-body {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    transition: width 0.25s ease;
+    overflow: hidden;
+}
+
+.admin-sidebar.is-collapsed {
+    width: 68px;
 }
 
 .admin-brand {
@@ -52,18 +58,38 @@ body.admin-body {
     gap: var(--space-3);
     padding: var(--space-5);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    position: relative;
 }
 
 .admin-brand-icon {
     width: 36px;
     height: 36px;
+    min-width: 36px;
     border-radius: var(--radius);
     background: var(--primary);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.admin-brand-text {
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity 0.2s ease;
+}
+
+.admin-sidebar.is-collapsed .admin-brand-text {
+    opacity: 0;
+    width: 0;
+}
+
+.admin-sidebar.is-collapsed .admin-brand-icon {
+    opacity: 0;
+    width: 0;
+    min-width: 0;
+    margin: 0;
 }
 
 .admin-brand-title {
@@ -79,6 +105,34 @@ body.admin-body {
     font-size: 0.75rem;
 }
 
+.sidebar-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #93c5fd;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-sidebar.is-collapsed .sidebar-toggle-btn {
+    right: 50%;
+    transform: translate(50%, -50%);
+}
+
 .admin-nav {
     padding: var(--space-4) var(--space-3);
 }
@@ -89,16 +143,45 @@ body.admin-body {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #60a5fa;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+}
+
+.admin-sidebar.is-collapsed .admin-nav-label {
+    opacity: 0;
+    height: 0;
+    margin: 0;
 }
 
 .admin-nav-link {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: var(--sidebar-fg);
     text-decoration: none;
     padding: 10px 12px;
     border-radius: 8px;
     margin-bottom: var(--space-1);
     font-size: 0.9rem;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.nav-icon {
+    font-size: 1.1rem;
+    min-width: 22px;
+    text-align: center;
+}
+
+.nav-text {
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+}
+
+.admin-sidebar.is-collapsed .nav-text {
+    opacity: 0;
+    width: 0;
 }
 
 .admin-nav-link:hover {

@@ -8,6 +8,7 @@ namespace TourMap
         private readonly SyncService _syncService;
         private readonly AuthService _authService;
         private readonly TourRuntimeService _tourRuntimeService;
+        private readonly LocalizationService _loc;
         private readonly Label _syncStatusLabel;
         private readonly Button _langSwitchBtn;
         private readonly Label _titleLabel;
@@ -15,18 +16,19 @@ namespace TourMap
         private readonly Button _openMapBtn;
         private readonly Button _openPoiListBtn;
         private readonly Button _openQrBtn;
+        private readonly Button _settingsBtn;
 
         public MainPage(SyncService syncService, AuthService authService, TourRuntimeService tourRuntimeService)
         {
             _syncService = syncService;
             _authService = authService;
             _tourRuntimeService = tourRuntimeService;
-            var loc = LocalizationService.Current;
+            _loc = LocalizationService.Current;
 
             // Nút chuyển ngôn ngữ ở góc trên
             _langSwitchBtn = new Button
             {
-                Text = loc["LangSwitchBtn"],
+                Text = _loc["LangSwitchBtn"],
                 HorizontalOptions = LayoutOptions.End,
                 Margin = new Thickness(0, 10, 10, 0),
                 BackgroundColor = Colors.Transparent,
@@ -35,7 +37,7 @@ namespace TourMap
 
             _titleLabel = new Label
             {
-                Text = loc["AppTitle"],
+                Text = _loc["AppTitle"],
                 FontSize = 26,
                 FontAttributes = FontAttributes.Bold,
                 HorizontalOptions = LayoutOptions.Center,
@@ -44,7 +46,7 @@ namespace TourMap
 
             _subtitleLabel = new Label
             {
-                Text = loc["AppSubtitle"],
+                Text = _loc["AppSubtitle"],
                 FontSize = 14,
                 TextColor = Colors.Gray,
                 HorizontalOptions = LayoutOptions.Center,
@@ -62,7 +64,7 @@ namespace TourMap
 
             _openMapBtn = new Button
             {
-                Text = loc["MapBtn"],
+                Text = _loc["MapBtn"],
                 HorizontalOptions = LayoutOptions.Center,
                 WidthRequest = 250,
                 Margin = new Thickness(0, 8),
@@ -74,7 +76,7 @@ namespace TourMap
 
             _openPoiListBtn = new Button
             {
-                Text = loc["PoiListBtn"],
+                Text = _loc["PoiListBtn"],
                 HorizontalOptions = LayoutOptions.Center,
                 WidthRequest = 250,
                 Margin = new Thickness(0, 8),
@@ -86,7 +88,7 @@ namespace TourMap
 
             _openQrBtn = new Button
             {
-                Text = loc["QrBtn"],
+                Text = _loc["QrBtn"],
                 HorizontalOptions = LayoutOptions.Center,
                 WidthRequest = 250,
                 Margin = new Thickness(0, 8),
@@ -96,9 +98,9 @@ namespace TourMap
             };
             _openQrBtn.Clicked += OpenQrScanner_Clicked;
 
-            var settingsBtn = new Button
+            _settingsBtn = new Button
             {
-                Text = "⚙️ Settings",
+                Text = _loc["SettingsTitle"] ?? "⚙️ Cài đặt",
                 HorizontalOptions = LayoutOptions.Center,
                 WidthRequest = 250,
                 Margin = new Thickness(0, 8),
@@ -106,12 +108,12 @@ namespace TourMap
                 TextColor = Colors.White,
                 CornerRadius = 10
             };
-            settingsBtn.Clicked += async (s, e) => await Shell.Current.GoToAsync(nameof(Pages.SettingsPage));
+            _settingsBtn.Clicked += async (s, e) => await Shell.Current.GoToAsync(nameof(Pages.SettingsPage));
 
             // Xử lý đổi ngôn ngữ
             _langSwitchBtn.Clicked += (s, e) =>
             {
-                loc.CurrentLanguage = loc.CurrentLanguage == "vi" ? "en" : "vi";
+                _loc.CurrentLanguage = _loc.CurrentLanguage == "vi" ? "en" : "vi";
                 RefreshLocalizedText();
             };
 
@@ -119,7 +121,7 @@ namespace TourMap
             {
                 Spacing = 5,
                 Padding = new Thickness(20),
-                Children = { _langSwitchBtn, _titleLabel, _subtitleLabel, _syncStatusLabel, _openMapBtn, _openPoiListBtn, _openQrBtn, settingsBtn }
+                Children = { _langSwitchBtn, _titleLabel, _subtitleLabel, _syncStatusLabel, _openMapBtn, _openPoiListBtn, _openQrBtn, _settingsBtn }
             };
         }
 
@@ -128,6 +130,10 @@ namespace TourMap
             base.OnAppearing();
             try
             {
+                // Subscribe to language changes
+                _loc.LanguageChanged += OnLanguageChanged;
+                RefreshLocalizedText();
+                
                 await RunFirstLaunchFlowAsync();
                 await RequestLocationPermissionAsync();
                 await TrySyncAsync();
@@ -139,6 +145,13 @@ namespace TourMap
             }
         }
 
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            // Unsubscribe from language changes to prevent memory leaks
+            _loc.LanguageChanged -= OnLanguageChanged;
+        }
+
         private async Task RunFirstLaunchFlowAsync()
         {
             if (Preferences.Default.Get<bool>(OnboardingCompletedKey, false))
@@ -146,12 +159,12 @@ namespace TourMap
 
             var loc = LocalizationService.Current;
 
-            await DisplayAlert(
+            await DisplayAlertAsync(
                 "TourMap",
                 "Audio Tour Guide sẽ tự động phát thuyết minh khi bạn đi vào khu vực POI. Bạn có thể xem bản đồ, danh sách POI và quét QR để mở nhanh nội dung.",
                 "Tiếp tục");
 
-            var languageChoice = await DisplayActionSheet(
+            var languageChoice = await DisplayActionSheetAsync(
                 "Chọn ngôn ngữ giao diện lần đầu",
                 null,
                 null,
@@ -161,7 +174,7 @@ namespace TourMap
             loc.CurrentLanguage = languageChoice == "English" ? "en" : "vi";
             RefreshLocalizedText();
 
-            await DisplayAlert(
+            await DisplayAlertAsync(
                 "OK",
                 loc.CurrentLanguage == "vi"
                     ? "Đã lưu ngôn ngữ. App sẽ tiếp tục xin quyền vị trí và đồng bộ dữ liệu demo."
@@ -171,15 +184,31 @@ namespace TourMap
             Preferences.Default.Set(OnboardingCompletedKey, true);
         }
 
+        private void OnLanguageChanged()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try
+                {
+                    RefreshLocalizedText();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MainPage] Error in OnLanguageChanged: {ex.Message}");
+                }
+            });
+        }
+
         private void RefreshLocalizedText()
         {
             var loc = LocalizationService.Current;
-            _langSwitchBtn.Text = loc["LangSwitchBtn"];
-            _titleLabel.Text = loc["AppTitle"];
-            _subtitleLabel.Text = loc["AppSubtitle"];
-            _openMapBtn.Text = loc["MapBtn"];
-            _openPoiListBtn.Text = loc["PoiListBtn"];
-            _openQrBtn.Text = loc["QrBtn"];
+            _langSwitchBtn.Text = loc["LangSwitchBtn"] ?? "🌐 Ngôn ngữ";
+            _titleLabel.Text = loc["AppTitle"] ?? "🎧 Audio Guide Tour";
+            _subtitleLabel.Text = loc["AppSubtitle"] ?? "Chi tiết ứng dụng";
+            _openMapBtn.Text = loc["MapBtn"] ?? "🗺️ Mở Bản Đồ";
+            _openPoiListBtn.Text = loc["PoiListBtn"] ?? "📍 Địa điểm";
+            _openQrBtn.Text = loc["QrBtn"] ?? "📷 Quét QR Code";
+            _settingsBtn.Text = loc["SettingsTitle"] ?? "⚙️ Cài đặt";
         }
 
         private async Task RequestLocationPermissionAsync()
@@ -227,12 +256,12 @@ namespace TourMap
 
         private static IReadOnlyList<string> GetSyncBaseUrls()
         {
-            // Ưu tiên emulator loopback, sau đó fallback localhost
-            // để hỗ trợ nhiều cách chạy backend trong môi trường dev.
+            // Port must match AdminWeb launchSettings.json (5042)
+            // 10.0.2.2 = host machine IP from Android emulator
             return new[]
             {
-                "http://10.0.2.2:5000",
-                "http://localhost:5000"
+                "http://10.0.2.2:5042",
+                "http://localhost:5042"
             };
         }
 
