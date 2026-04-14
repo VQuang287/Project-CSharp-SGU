@@ -16,17 +16,19 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
     private const double StationaryDistanceMeters = 15.0;
 
     private CancellationTokenSource? _cts;
-    private bool _isTracking;
+    private int _isTrackingFlag = 0; // 0 = false, 1 = true
     private int _currentIntervalMs = MovingIntervalMs;
     private Location? _previousAcceptedLocation;
 
     public event Action<Location>? LocationChanged;
-    public bool IsTracking => _isTracking;
+    public bool IsTracking => _isTrackingFlag == 1;
     public Location? LastKnownLocation { get; private set; }
 
     public async Task StartTrackingAsync()
     {
-        if (_isTracking) return;
+        // Thread-safe check to prevent multiple concurrent tracking tasks
+        if (Interlocked.CompareExchange(ref _isTrackingFlag, 1, 0) == 1)
+            return;
 
         // ═══════════════════════════════════════════════════════════
         // STEP 1: Xin quyền GPS cơ bản (Foreground)
@@ -62,7 +64,6 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
             }
         }
 
-        _isTracking = true;
         _currentIntervalMs = MovingIntervalMs;
 
         // Start Foreground Service để giữ app sống
@@ -166,7 +167,7 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
 
     public void StopTracking()
     {
-        _isTracking = false;
+        Interlocked.Exchange(ref _isTrackingFlag, 0);
 
         // Tắt Foreground Service
         var intent = new Intent(Platform.AppContext, typeof(Platforms.Android.LocationForegroundService));

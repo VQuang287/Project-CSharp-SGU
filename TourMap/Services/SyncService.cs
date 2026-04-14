@@ -83,7 +83,13 @@ public class SyncService
                     DescriptionJa = dto.DescriptionJa,
                     AudioUrlJa = dto.AudioUrlJa,
                     DescriptionFr = dto.DescriptionFr,
-                    AudioUrlFr = dto.AudioUrlFr
+                    AudioUrlFr = dto.AudioUrlFr,
+                    TtsScriptVi = dto.TtsScriptVi,
+                    TtsScriptEn = dto.TtsScriptEn,
+                    TtsScriptZh = dto.TtsScriptZh,
+                    TtsScriptKo = dto.TtsScriptKo,
+                    TtsScriptJa = dto.TtsScriptJa,
+                    TtsScriptFr = dto.TtsScriptFr
                 };
 
                 // Tải audio file về local nếu có URL
@@ -232,6 +238,12 @@ public class SyncPoiDto
     public string? AudioUrlJa { get; set; }
     public string? DescriptionFr { get; set; }
     public string? AudioUrlFr { get; set; }
+    public string? TtsScriptVi { get; set; }
+    public string? TtsScriptEn { get; set; }
+    public string? TtsScriptZh { get; set; }
+    public string? TtsScriptKo { get; set; }
+    public string? TtsScriptJa { get; set; }
+    public string? TtsScriptFr { get; set; }
 }
 
 public class SyncPoisResponse

@@ -6,14 +6,11 @@ public class SplashPage : ContentPage
 {
     private readonly AuthService? _authService;
 
-    public SplashPage()
+    public SplashPage() : this(TryResolveAuthService())
     {
-        // AuthService will be injected if available via DI
-        _authService = null;
-        InitializeUI();
     }
 
-    public SplashPage(AuthService authService)
+    public SplashPage(AuthService? authService)
     {
         _authService = authService;
         InitializeUI();
@@ -158,10 +155,26 @@ public class SplashPage : ContentPage
     {
         if (Application.Current?.Windows.FirstOrDefault() is Window window)
         {
-            if (_authService != null)
-                window.Page = new LoginPage(_authService);
-            else
-                window.Page = ServiceHelper.GetService<AppShell>();
+            var authService = _authService ?? TryResolveAuthService();
+            if (authService != null)
+            {
+                window.Page = new LoginPage(authService);
+                return;
+            }
+
+            window.Page = ServiceHelper.GetService<AppShell>();
+        }
+    }
+
+    private static AuthService? TryResolveAuthService()
+    {
+        try
+        {
+            return ServiceHelper.GetService<AuthService>();
+        }
+        catch
+        {
+            return null;
         }
     }
 }

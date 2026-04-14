@@ -44,7 +44,6 @@
                         </td>
                     </tr>
                     <tr><th>Auth Provider</th><td>@Model.AuthProvider</td></tr>
-                    <tr><th>Email verified</th><td>@(Model.IsEmailVerified ? "✅ Đã xác minh" : "❌ Chưa")</td></tr>
                     <tr><th>Ngày tạo</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td></tr>
                     <tr><th>Đăng nhập cuối</th><td>@Model.LastLoginAt.ToString("dd/MM/yyyy HH:mm")</td></tr>
                     <tr><th>Lượt phát audio</th><td><strong>@playbackCount</strong></td></tr>

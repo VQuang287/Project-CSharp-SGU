@@ -140,7 +140,9 @@ public class AnalyticsController : Controller
     private static string Escape(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return "";
-        var normalized = value.Replace("\"", "\"\"");
+        var normalized = value.Replace("\"", "\"\"")
+                              .Replace("\r", " ")
+                              .Replace("\n", " ");
         return $"\"{normalized}\"";
     }
 }

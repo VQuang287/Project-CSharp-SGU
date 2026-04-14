@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Maui.Devices;
@@ -250,6 +251,73 @@ public class AuthService
         CurrentToken = null;
         CurrentUser = null;
         _logger.LogInformation("User logged out");
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Password Management
+    // ═══════════════════════════════════════════════════════════
+    public async Task<AuthResult> ChangePasswordAsync(string oldPassword, string newPassword)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(CurrentToken)) return new AuthResult(false, "Không có quyền truy cập.");
+            var request = new { CurrentPassword = oldPassword, NewPassword = newPassword };
+
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    using var message = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/change-password")
+                    {
+                        Content = JsonContent.Create(request)
+                    };
+                    message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CurrentToken);
+
+                    var response = await _httpClient.SendAsync(message);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return new AuthResult(true);
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Change password error: {ex.Message}");
+        }
+        return new AuthResult(false, "Đổi mật khẩu thất bại. Vui lòng thử lại.");
+    }
+
+    public async Task<AuthResult> ForgotPasswordAsync(string email)
+    {
+        try
+        {
+            var request = new { Email = email };
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/forgot-password", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return new AuthResult(true);
+                    }
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+                        response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed)
+                    {
+                        return new AuthResult(false, "TÃ­nh nÄƒng khÃ´i phá»¥c máº­t kháº©u chÆ°a Ä‘Æ°á»£c há»— trá»£ trÃªn server nÃ y.");
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Forgot password error: {ex.Message}");
+        }
+        return new AuthResult(false, "Yêu cầu khôi phục mật khẩu thất bại.");
     }
 
     // ═══════════════════════════════════════════════════════════

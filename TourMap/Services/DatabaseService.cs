@@ -26,7 +26,13 @@ public class DatabaseService : IDisposable
                 return;
 
         var databasePath = Path.Combine(FileSystem.AppDataDirectory, "TourMap_v6.db3");
+        var options = new SQLiteConnectionString(databasePath, true,
+            key: "TourMapSqliteSecretKey_2026"); // For SQLCipher if applicable, otherwise ignored
+        
         _db = new SQLiteAsyncConnection(databasePath);
+        
+        // Enable Write-Ahead Logging (WAL) to prevent SQLITE_BUSY during concurrent read/writes
+        await _db.ExecuteAsync("PRAGMA journal_mode=WAL;");
 
         // Tạo bảng nếu chưa có
         await _db.CreateTableAsync<Poi>();
@@ -97,14 +103,31 @@ public class DatabaseService : IDisposable
     public async Task<List<Poi>> GetPoisAsync()
     {
         await InitAsync();
-        return await _db!.Table<Poi>().ToListAsync();
+        try
+        {
+            return await _db!.Table<Poi>().ToListAsync();
+        }
+        catch (SQLiteException ex) when (ex.Result == SQLite3.Result.Busy)
+        {
+            // Backoff-retry for SQLITE_BUSY
+            await Task.Delay(100);
+            return await _db!.Table<Poi>().ToListAsync();
+        }
     }
 
     /// <summary>Lấy 1 POI theo ID.</summary>
     public async Task<Poi?> GetPoiByIdAsync(string id)
     {
         await InitAsync();
-        return await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == id);
+        try
+        {
+            return await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == id);
+        }
+        catch (SQLiteException ex) when (ex.Result == SQLite3.Result.Busy)
+        {
+            await Task.Delay(100);
+            return await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == id);
+        }
     }
 
     /// <summary>Upsert: cập nhật nếu đã có, thêm mới nếu chưa có. Thread-safe write.</summary>

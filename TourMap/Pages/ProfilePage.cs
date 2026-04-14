@@ -46,6 +46,7 @@ public class ProfilePage : ContentPage
     private readonly Label _favoritesTitle;
 
     // Global Interactive
+    private readonly Button _changePasswordBtn;
     private readonly Button _logoutBtn;
     private readonly Label _versionLabel;
 
@@ -215,12 +216,19 @@ public class ProfilePage : ContentPage
         _favoritesSection = new VerticalStackLayout { Children = { _favoritesTitle, scroller } };
 
         // ═══════════════════════════════════════════
-        // LOGOUT & FOOTER
+        // ACTIONS & FOOTER
         // ═══════════════════════════════════════════
+        _changePasswordBtn = new Button
+        {
+            FontFamily = "InterSemiBold", FontSize = 15, BackgroundColor = Color.FromArgb("#F3F4F6"), TextColor = Color.FromArgb("#1F2937"),
+            CornerRadius = 12, HeightRequest = 48, Margin = new Thickness(20, 24, 20, 0)
+        };
+        _changePasswordBtn.Clicked += OnChangePasswordClicked;
+
         _logoutBtn = new Button
         {
             FontFamily = "InterSemiBold", FontSize = 15, BackgroundColor = Color.FromArgb("#FEE2E2"), TextColor = Color.FromArgb("#DC2626"),
-            CornerRadius = 12, HeightRequest = 48, Margin = new Thickness(20, 24, 20, 0)
+            CornerRadius = 12, HeightRequest = 48, Margin = new Thickness(20, 12, 20, 0)
         };
         _logoutBtn.Clicked += async (s, e) => await LogoutAsync();
 
@@ -231,7 +239,7 @@ public class ProfilePage : ContentPage
             Content = new VerticalStackLayout
             {
                 Spacing = 0,
-                Children = { topHeaderGrid, _nameLabel, _emailLabel, _roleLabel, _memberSinceLabel, statsCard, _guestInfoCard, _userDetailsCard, _favoritesSection, _logoutBtn, _versionLabel }
+                Children = { topHeaderGrid, _nameLabel, _emailLabel, _roleLabel, _memberSinceLabel, statsCard, _guestInfoCard, _userDetailsCard, _favoritesSection, _changePasswordBtn, _logoutBtn, _versionLabel }
             }
         };
     }
@@ -239,6 +247,19 @@ public class ProfilePage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+
+        // Redirect Guests
+        if (_authService.IsGuest)
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await Shell.Current.GoToAsync("..");
+                if (Application.Current?.Windows.FirstOrDefault() is Window window)
+                    window.Page = new LoginPage(_authService);
+            });
+            return;
+        }
+
         _loc.LanguageChanged += OnLanguageChanged;
         RefreshProfile();
         OnLanguageChanged(); // Apply Initial Translation
@@ -280,6 +301,7 @@ public class ProfilePage : ContentPage
             _authMethodLabel.Text = _loc["AuthMethodLabel"] ?? "🔐 Xác thực";
 
             // Global
+            _changePasswordBtn.Text = _loc["ChangePasswordBtn"] ?? "🔐 Đổi mật khẩu";
             _logoutBtn.Text = _loc["LogoutBtn"] ?? "🚪 Đăng xuất";
             _versionLabel.Text = string.Format(_loc["AppVersionFormat"] ?? "TourMap {0} • Audio Tour Guide", "1.0");
 
@@ -345,15 +367,51 @@ public class ProfilePage : ContentPage
             _authRoleValue.Text = user?.Role ?? "-";
             _authMethodValue.Text = user?.AuthProvider ?? "local";
             
+            _changePasswordBtn.IsVisible = user?.AuthProvider == "local"; // Only local auth can change password
+            
             // Mock Playback history logic (In a real app, query UserSettings)
             var prefsPlaces = Preferences.Default.Get("UserPlacesVisited", 0);
             _statPlacesValue.Text = prefsPlaces.ToString();
         }
         else
         {
+            _changePasswordBtn.IsVisible = false;
             _statAudioValue.Text = "0h";
             _statPlacesValue.Text = "0";
             _statBadgesValue.Text = "-";
+        }
+    }
+
+    private async void OnChangePasswordClicked(object? sender, EventArgs e)
+    {
+        string? oldPassword = await DisplayPromptAsync(
+            _loc["ChangePasswordTitle"] ?? "Đổi mật khẩu",
+            _loc["EnterOldPassword"] ?? "Nhập mật khẩu hiện tại:",
+            _loc["ConfirmBtn"] ?? "Xác nhận",
+            _loc["CancelBtn"] ?? "Hủy");
+            
+        if (string.IsNullOrEmpty(oldPassword)) return;
+
+        string? newPassword = await DisplayPromptAsync(
+            _loc["ChangePasswordTitle"] ?? "Đổi mật khẩu",
+            _loc["EnterNewPassword"] ?? "Nhập mật khẩu mới (Tối thiểu 6 ký tự):",
+            _loc["ConfirmBtn"] ?? "Xác nhận",
+            _loc["CancelBtn"] ?? "Hủy");
+
+        if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 6)
+        {
+            await DisplayAlertAsync("Lỗi", _loc["PasswordTooShort"] ?? "Mật khẩu phải có ít nhất 6 ký tự.", "OK");
+            return;
+        }
+
+        var result = await _authService.ChangePasswordAsync(oldPassword, newPassword);
+        if (result.Success)
+        {
+            await DisplayAlertAsync("Thành công", _loc["ChangePasswordSuccess"] ?? "Đã đổi mật khẩu thành công.", "OK");
+        }
+        else
+        {
+            await DisplayAlertAsync("Thất bại", result.ErrorMessage ?? "Không thể đổi mật khẩu.", "OK");
         }
     }
 

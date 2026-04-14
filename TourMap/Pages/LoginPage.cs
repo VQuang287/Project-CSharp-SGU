@@ -102,6 +102,19 @@ public class LoginPage : ContentPage
         };
         _loginBtn.Clicked += async (s, e) => await LoginAsync();
 
+        var forgotPasswordLink = new Label
+        {
+            Text = "Quên mật khẩu?",
+            TextColor = Color.FromArgb("#1565C0"),
+            FontSize = 13,
+            FontFamily = "InterSemiBold",
+            HorizontalOptions = LayoutOptions.End,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        var forgotTap = new TapGestureRecognizer();
+        forgotTap.Tapped += async (s, e) => await ForgotPasswordAsync();
+        forgotPasswordLink.GestureRecognizers.Add(forgotTap);
+
         var registerLink = new Label
         {
             FormattedText = new FormattedString
@@ -173,7 +186,7 @@ public class LoginPage : ContentPage
                 Padding = new Thickness(30),
                 VerticalOptions = LayoutOptions.Center,
                 Spacing = 0,
-                Children = { logo, title, subtitle, _emailEntry, _passwordEntry, _errorLabel, _spinner, _loginBtn, registerLink, dividerStack, guestBtn }
+                Children = { logo, title, subtitle, _emailEntry, _passwordEntry, forgotPasswordLink, _errorLabel, _spinner, _loginBtn, registerLink, dividerStack, guestBtn }
             }
         };
     }
@@ -236,5 +249,36 @@ public class LoginPage : ContentPage
         _spinner.IsVisible = loading;
         _loginBtn.IsEnabled = !loading;
         _loginBtn.Text = loading ? "Đang đăng nhập..." : "Đăng nhập";
+    }
+
+    private async Task ForgotPasswordAsync()
+    {
+        string? email = await DisplayPromptAsync(
+            "Khôi phục mật khẩu",
+            "Vui lòng nhập Email của bạn:",
+            "Gửi",
+            "Hủy",
+            null,
+            -1,
+            Keyboard.Email,
+            _emailEntry.Text?.Trim() ?? "");
+
+        if (string.IsNullOrWhiteSpace(email)) return;
+
+        SetLoading(true);
+        ShowError(null);
+
+        var result = await _authService.ForgotPasswordAsync(email);
+
+        SetLoading(false);
+
+        if (result.Success)
+        {
+            await DisplayAlertAsync("Thành công", "Đã gửi Email khôi phục mật khẩu, vui lòng kiểm tra hộp thư.", "OK");
+        }
+        else
+        {
+            await DisplayAlertAsync("Thất bại", result.ErrorMessage ?? "Yêu cầu khôi phục mật khẩu thất bại.", "OK");
+        }
     }
 }

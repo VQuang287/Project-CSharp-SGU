@@ -177,7 +177,9 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         Stop();
 
         IsSpeaking = true;
-        _speakTcs = new TaskCompletionSource<bool>();
+        var newTcs = new TaskCompletionSource<bool>();
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, newTcs);
+        oldTcs?.TrySetCanceled();
 
         var utteranceId = Guid.NewGuid().ToString();
         var param = new Android.OS.Bundle();
@@ -209,7 +211,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             _tts.Stop();
         }
         IsSpeaking = false;
-        _speakTcs?.TrySetResult(false);
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, null);
+        oldTcs?.TrySetResult(false);
     }
 
     /// <summary>Set TTS speech rate (speed). 0.75 = 75%, 1.0 = 100%, 1.5 = 150%</summary>
@@ -232,7 +235,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
     internal void OnUtteranceDone()
     {
         IsSpeaking = false;
-        _speakTcs?.TrySetResult(true);
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, null);
+        oldTcs?.TrySetResult(true);
         MainThread.BeginInvokeOnMainThread(() => SpeechCompleted?.Invoke());
     }
 

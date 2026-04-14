@@ -18,9 +18,11 @@ namespace TourMap.Pages;
 public partial class MapPage : ContentPage
 {
     private readonly MainViewModel _vm;
-    private readonly IGpsTrackingService _gpsService;
+    private readonly TourRuntimeService _tourRuntimeService;
     private readonly GeofenceEngine _geofenceEngine;
     private readonly NarrationEngine _narrationEngine;
+    private readonly SyncService _syncService;
+    private readonly AuthService _authService;
     private readonly MapControl _mapControl;
     private readonly LocalizationService _loc;
 
@@ -46,27 +48,33 @@ public partial class MapPage : ContentPage
     // Map Layers
     private MemoryLayer? _poiLayer;
     private string? _highlightedPoiId;
-    private bool _isInitialLocationFixed = false;
+    private bool _runtimeInitialized;
 
     public MapPage() : this(
         ServiceHelper.GetService<MainViewModel>(),
-        ServiceHelper.GetService<IGpsTrackingService>(),
+        ServiceHelper.GetService<TourRuntimeService>(),
         ServiceHelper.GetService<GeofenceEngine>(),
-        ServiceHelper.GetService<NarrationEngine>())
+        ServiceHelper.GetService<NarrationEngine>(),
+        ServiceHelper.GetService<SyncService>(),
+        ServiceHelper.GetService<AuthService>())
     {
     }
 
     public MapPage(
         MainViewModel vm,
-        IGpsTrackingService gpsService,
+        TourRuntimeService tourRuntimeService,
         GeofenceEngine geofenceEngine,
-        NarrationEngine narrationEngine)
+        NarrationEngine narrationEngine,
+        SyncService syncService,
+        AuthService authService)
     {
         InitializeComponent();
         _vm = vm;
-        _gpsService = gpsService;
+        _tourRuntimeService = tourRuntimeService;
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
+        _syncService = syncService;
+        _authService = authService;
         _loc = LocalizationService.Current;
 
         Shell.SetNavBarIsVisible(this, false);
@@ -113,32 +121,6 @@ public partial class MapPage : ContentPage
             }
         };
 
-        var searchBox = new Border
-        {
-            BackgroundColor = Microsoft.Maui.Graphics.Colors.White,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
-            Shadow = new Shadow { Brush = Microsoft.Maui.Graphics.Colors.Black, Opacity = 0.1f, Radius = 4, Offset = new Point(0, 2) },
-            Padding = new Thickness(12, 0),
-            HeightRequest = 44,
-            Margin = new Thickness(0, 12, 0, 0),
-            Content = new Grid
-            {
-                ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
-                Children =
-                {
-                    new Label { Text = "🔍", VerticalOptions = LayoutOptions.Center, Margin = new Thickness(0,0,8,0) },
-                    new Label { Text = _loc["SearchPlaceholder"] ?? "Tìm điểm tham quan...", FontFamily = "InterRegular", FontSize = 13, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF"), VerticalOptions = LayoutOptions.Center }.WithColumn(1) // Fake entry
-                }
-            }
-        };
-        var searchTap = new TapGestureRecognizer();
-        searchTap.Tapped += async (s, e) =>
-        {
-            try { await Shell.Current.GoToAsync("///PoiListPage"); } catch { }
-        };
-        searchBox.GestureRecognizers.Add(searchTap);
-
         var headerGrid = new Grid
         {
             ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
@@ -154,7 +136,7 @@ public partial class MapPage : ContentPage
             Padding = new Thickness(16),
             Margin = new Thickness(16, 44, 16, 0),
             VerticalOptions = LayoutOptions.Start,
-            Content = new VerticalStackLayout { Children = { headerGrid, searchBox } }
+            Content = new VerticalStackLayout { Children = { headerGrid } }
         };
 
         // ═══════════════════════════════════════════
@@ -287,15 +269,13 @@ public partial class MapPage : ContentPage
             _mapControl.MapTapped -= OnMapTapped;
             _mapControl.MapTapped += OnMapTapped;
 
+            await EnsureRuntimeInitializedAsync();
             await _vm.LoadAsync();
-            _geofenceEngine.UpdatePois(_vm.Pois.ToList());
-
             ShowPoisOnMap();
 
-            _gpsService.LocationChanged += OnGpsLocationChanged;
+            _tourRuntimeService.LocationUpdated -= OnGpsLocationChanged;
+            _tourRuntimeService.LocationUpdated += OnGpsLocationChanged;
             _narrationEngine.StateChanged += OnNarrationStateChanged;
-            
-            await _gpsService.StartTrackingAsync();
             UpdateGpsBadge(true);
         }
         catch (Exception ex)
@@ -309,15 +289,42 @@ public partial class MapPage : ContentPage
         base.OnDisappearing();
         HidePoiPreview();
 
-        _gpsService.LocationChanged -= OnGpsLocationChanged;
+        _tourRuntimeService.LocationUpdated -= OnGpsLocationChanged;
         _narrationEngine.StateChanged -= OnNarrationStateChanged;
         _mapControl.MapTapped -= OnMapTapped;
-        _gpsService.StopTracking();
         
         // Unsubscribe from language changes
         _loc.LanguageChanged -= OnLanguageChanged;
         
         UpdateGpsBadge(false);
+    }
+
+    private async Task EnsureRuntimeInitializedAsync()
+    {
+        if (!_runtimeInitialized)
+        {
+            await _authService.InitializeAsync();
+
+            foreach (var serverUrl in GetSyncBaseUrls())
+            {
+                if (await _syncService.SyncPoisFromServerAsync(serverUrl))
+                    break;
+            }
+
+            await _tourRuntimeService.InitializeAsync();
+            _runtimeInitialized = true;
+        }
+
+        await _tourRuntimeService.RefreshPoisAsync();
+    }
+
+    private static IReadOnlyList<string> GetSyncBaseUrls()
+    {
+        return new[]
+        {
+            "http://10.0.2.2:5042",
+            "http://localhost:5042"
+        };
     }
 
     private void UpdateGpsBadge(bool active)

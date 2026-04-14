@@ -180,4 +180,20 @@ public class PoisController : Controller
         await _context.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleVisibility(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return NotFound();
+        var poi = await _context.Pois.FindAsync(id);
+        if (poi == null) return NotFound();
+
+        poi.IsActive = !poi.IsActive;
+        poi.UpdatedAt = DateTime.UtcNow;
+        _context.Update(poi);
+        await _context.SaveChangesAsync();
+        
+        return RedirectToAction(nameof(Index));
+    }
 }

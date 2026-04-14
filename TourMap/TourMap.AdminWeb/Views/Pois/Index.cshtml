@@ -34,7 +34,9 @@
                             <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 60px; height: 60px; font-size: 10px;">No IMG</div>
                         }
                         <div>
-                            <strong class="text-primary fs-5">@item.Title</strong><br/>
+                            <strong class="text-primary fs-5">@item.Title</strong>
+                            @if (!item.IsActive) { <span class="badge bg-danger ms-2">Đã ẩn</span> }
+                            <br/>
                             <small class="text-muted d-inline-block text-truncate" style="max-width: 250px;">Bán kính: @item.RadiusMeters m | Ưu tiên: Level @item.Priority</small>
                         </div>
                     </td>
@@ -54,6 +56,12 @@
                     </td>
                     <td class="align-middle text-center">
                         <div class="d-flex flex-column gap-2">
+                           <form asp-action="ToggleVisibility" method="post" style="margin: 0;">
+                               <input type="hidden" name="id" value="@item.Id" />
+                               <button type="submit" class="btn btn-sm @(item.IsActive ? "btn-outline-secondary" : "btn-success") w-100">
+                                   @(item.IsActive ? "👁️ Ẩn POI" : "Khôi phục")
+                               </button>
+                           </form>
                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">Sửa Data</a>
                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Xóa Vĩnh Viễn</a>
                         </div>

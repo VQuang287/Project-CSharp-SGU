@@ -1,20 +1,18 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace TourMap
 {
     public partial class App : Application
     {
-        public App()
+        private readonly Pages.SplashPage _splashPage;
+
+        public App(Pages.SplashPage splashPage)
         {
+            _splashPage = splashPage;
             InitializeComponent();
         }
 
-        // BUG-W02 fix: Resolve SplashPage from DI container
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            var page = Handler?.MauiContext?.Services.GetService<Pages.SplashPage>()
-                       ?? new Pages.SplashPage();
-            return new Window(page);
+            return new Window(_splashPage);
         }
     }
 }

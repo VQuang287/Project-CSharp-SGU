@@ -12,6 +12,15 @@ using TourMap.AdminWeb.Models;
 using TourMap.AdminWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var projectRoot = ResolveConfiguredPath(
+    builder.Environment.ContentRootPath,
+    builder.Configuration["TourMapPaths:ProjectRoot"]);
+var adminDatabasePath = ResolveConfiguredPath(
+    projectRoot,
+    builder.Configuration["TourMapPaths:AdminDatabase"] ?? "AdminTourMap.db");
+var keyDir = ResolveConfiguredPath(
+    projectRoot,
+    builder.Configuration["TourMapPaths:DataProtectionKeys"] ?? Path.Combine("App_Data", "keys"));
 
 builder.Services.AddControllersWithViews();
 
@@ -86,7 +95,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-var keyDir = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
 Directory.CreateDirectory(keyDir);
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDir))
@@ -95,9 +103,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddHttpClient<IAITranslationService, AITranslationService>();
 
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseSqlite("Data Source=AdminTourMap.db"));
+    options.UseSqlite($"Data Source={adminDatabasePath}"));
 
 var app = builder.Build();
+app.Logger.LogInformation("AdminWeb content root: {ContentRoot}", builder.Environment.ContentRootPath);
+app.Logger.LogInformation("AdminWeb project root: {ProjectRoot}", projectRoot);
+app.Logger.LogInformation("AdminWeb database path: {DatabasePath}", adminDatabasePath);
+app.Logger.LogInformation("AdminWeb key ring path: {KeyRingPath}", keyDir);
 
 using (var scope = app.Services.CreateScope())
 {
@@ -319,6 +331,14 @@ static void EnsureCompatibilityColumns(AdminDbContext db)
     EnsureColumn(db, "Pois", "DescriptionFr", "TEXT NULL");
     EnsureColumn(db, "Pois", "AudioUrlFr", "TEXT NULL");
 
+    // TTS Scripts
+    EnsureColumn(db, "Pois", "TtsScriptVi", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptEn", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptZh", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptKo", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptJa", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptFr", "TEXT NULL");
+
     // Auth & Identity fields for MobileUser
     EnsureColumn(db, "MobileUsers", "Email", "TEXT NULL");
     EnsureColumn(db, "MobileUsers", "PasswordHash", "TEXT NULL");
@@ -364,4 +384,19 @@ static bool HasColumn(DbConnection connection, string tableName, string columnNa
     }
 
     return false;
+}
+
+static string ResolveConfiguredPath(string basePath, string? configuredPath)
+{
+    if (string.IsNullOrWhiteSpace(configuredPath))
+    {
+        return Path.GetFullPath(basePath);
+    }
+
+    if (Path.IsPathRooted(configuredPath))
+    {
+        return Path.GetFullPath(configuredPath);
+    }
+
+    return Path.GetFullPath(Path.Combine(basePath, configuredPath));
 }
