@@ -606,7 +606,7 @@ public class PriorityToTextConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
+        => null;
 }
 
 public class LocalizedPoiTitleConverter : IValueConverter
@@ -618,7 +618,7 @@ public class LocalizedPoiTitleConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
+        => null;
 }
 
 public class LocalizedPoiDescriptionConverter : IValueConverter
@@ -640,5 +640,5 @@ public class LocalizedPoiDescriptionConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
+        => null;
 }

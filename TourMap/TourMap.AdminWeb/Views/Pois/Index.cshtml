@@ -9,9 +9,13 @@
     <a asp-action="Create" class="btn btn-primary fw-bold">+ Thêm mới POI</a>
 </div>
 
+<div class="d-flex gap-2 mb-3">
+    <input type="text" id="searchPoi" class="form-control" placeholder="🔍 Tìm theo tên, mô tả POI..." />
+</div>
+
 <div class="card shadow rounded border-0">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 poi-table">
             <thead class="table-dark">
                 <tr>
                     <th style="width: 35%;">Ảnh & Tên Địa Điểm</th>
@@ -23,15 +27,19 @@
             <tbody>
         @foreach (var item in Model) {
                 <tr>
-                    <td class="d-flex align-items-center gap-3">
-                        @if(!string.IsNullOrEmpty(item.ImageUrl)){
-                            <img src="@item.ImageUrl" alt="Hình ảnh" class="rounded object-fit-cover shadow-sm" style="width: 60px; height: 60px;" />
-                        } else {
-                            <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 60px; height: 60px; font-size: 10px;">No IMG</div>
-                        }
-                        <div>
-                            <strong class="text-primary fs-5">@item.Title</strong><br/>
-                            <small class="text-muted d-inline-block text-truncate" style="max-width: 250px;">Bán kính: @item.RadiusMeters m | Ưu tiên: Level @item.Priority</small>
+                    <td class="align-middle poi-main-cell">
+                        <div class="d-flex align-items-center gap-3">
+                            @if(!string.IsNullOrEmpty(item.ImageUrl)){
+                                <img src="@item.ImageUrl" alt="Hình ảnh" class="rounded object-fit-cover shadow-sm" style="width: 60px; height: 60px;" />
+                            } else {
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 60px; height: 60px; font-size: 10px;">No IMG</div>
+                            }
+                            <div>
+                                <strong class="text-primary fs-5">@item.Title</strong>
+                                @if (!item.IsActive) { <span class="badge bg-danger ms-2">Đã ẩn</span> }
+                                <br/>
+                                <small class="text-muted d-inline-block text-truncate" style="max-width: 250px;">Bán kính: @item.RadiusMeters m | Ưu tiên: Level @item.Priority</small>
+                            </div>
                         </div>
                     </td>
                     <td class="align-middle">
@@ -50,6 +58,12 @@
                     </td>
                     <td class="align-middle text-center">
                         <div class="d-flex flex-column gap-2">
+                           <form asp-action="ToggleVisibility" method="post" style="margin: 0;">
+                               <input type="hidden" name="id" value="@item.Id" />
+                               <button type="submit" class="btn btn-sm @(item.IsActive ? "btn-outline-secondary" : "btn-success") w-100">
+                                   @(item.IsActive ? "👁️ Ẩn POI" : "Khôi phục")
+                               </button>
+                           </form>
                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">Sửa Data</a>
                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Xóa Vĩnh Viễn</a>
                         </div>
@@ -60,3 +74,14 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+<script>
+document.getElementById('searchPoi').addEventListener('input', function () {
+    var q = this.value.toLowerCase();
+    document.querySelectorAll('table tbody tr').forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+</script>
+}

@@ -4,7 +4,19 @@ namespace TourMap.Pages;
 
 public class SplashPage : ContentPage
 {
-    public SplashPage()
+    private readonly AuthService? _authService;
+
+    public SplashPage() : this(TryResolveAuthService())
+    {
+    }
+
+    public SplashPage(AuthService? authService)
+    {
+        _authService = authService;
+        InitializeUI();
+    }
+
+    private void InitializeUI()
     {
         BackgroundColor = Color.FromArgb("#1A237E");
 
@@ -89,24 +101,32 @@ public class SplashPage : ContentPage
         base.OnAppearing();
         try
         {
-            // Nếu đã chọn ngôn ngữ rồi → tự chuyển sang AppShell
             var savedLang = Preferences.Default.Get("selected_language", string.Empty);
             if (!string.IsNullOrEmpty(savedLang))
             {
                 LocalizationService.Current.CurrentLanguage = savedLang;
                 await Task.Delay(600);
-                #pragma warning disable CS0618 // Application.MainPage is deprecated but still functional
-                Application.Current!.MainPage = new AppShell();
-                #pragma warning restore CS0618
+
+                if (_authService != null)
+                {
+                    await _authService.InitializeAsync();
+                    if (_authService.IsAuthenticated)
+                    {
+                        NavigateToShell();
+                        return;
+                    }
+
+                    NavigateToLogin();
+                    return;
+                }
+
+                NavigateToShell();
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex.Message}");
-            // Fallback: proceed to main app
-            #pragma warning disable CS0618
-            Application.Current!.MainPage = new AppShell();
-            #pragma warning restore CS0618
+            NavigateToLogin();
         }
     }
 
@@ -115,8 +135,39 @@ public class SplashPage : ContentPage
         Preferences.Default.Set("selected_language", lang);
         LocalizationService.Current.CurrentLanguage = lang;
         await Task.Delay(200);
-        #pragma warning disable CS0618
-        Application.Current!.MainPage = new AppShell();
-        #pragma warning restore CS0618
+        NavigateToLogin();
+    }
+
+    private void NavigateToShell()
+    {
+        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+            window.Page = ServiceHelper.GetService<AppShell>();
+    }
+
+    private void NavigateToLogin()
+    {
+        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+        {
+            var authService = _authService ?? TryResolveAuthService();
+            if (authService != null)
+            {
+                window.Page = new LoginPage(authService);
+                return;
+            }
+
+            window.Page = ServiceHelper.GetService<AppShell>();
+        }
+    }
+
+    private static AuthService? TryResolveAuthService()
+    {
+        try
+        {
+            return ServiceHelper.GetService<AuthService>();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

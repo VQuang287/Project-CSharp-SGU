@@ -4,31 +4,63 @@
     bool IsActive(string c, string a = "index") => controller == c && action == a;
 }
 
-<aside class="admin-sidebar">
+<aside class="admin-sidebar" id="adminSidebar">
     <div class="admin-brand">
-        <div class="admin-brand-icon">AT</div>
-        <div>
-            <p class="admin-brand-title">Audio Tour CMS</p>
-            <p class="admin-brand-subtitle">ASP.NET Core MVC</p>
+        <div class="admin-brand-icon">🎧</div>
+        <div class="admin-brand-text">
+            <p class="admin-brand-title">Audio Tour</p>
+            <p class="admin-brand-subtitle">Hệ thống quản trị</p>
         </div>
+        <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Thu gọn menu">
+            ◀
+        </button>
     </div>
 
     <nav class="admin-nav">
         <p class="admin-nav-label">Menu Chính</p>
         <a asp-controller="Home" asp-action="Index" class="admin-nav-link @(IsActive("home") ? "is-active" : null)">
-            <span>Bảng điều khiển</span>
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Bảng điều khiển</span>
         </a>
         <a asp-controller="Pois" asp-action="Index" class="admin-nav-link @(IsActive("pois") ? "is-active" : null)">
-            <span>Quản lý POI</span>
+            <span class="nav-icon">📍</span>
+            <span class="nav-text">Quản lý POI</span>
         </a>
         <a asp-controller="Tours" asp-action="Index" class="admin-nav-link @(IsActive("tours") ? "is-active" : null)">
-            <span>Quản lý Tour</span>
+            <span class="nav-icon">🗺️</span>
+            <span class="nav-text">Quản lý Tour</span>
         </a>
         <a asp-controller="Qr" asp-action="Index" class="admin-nav-link @(IsActive("qr") ? "is-active" : null)">
-            <span>Mã QR</span>
+            <span class="nav-icon">📱</span>
+            <span class="nav-text">Mã QR</span>
         </a>
         <a asp-controller="Analytics" asp-action="Index" class="admin-nav-link @(IsActive("analytics") ? "is-active" : null)">
-            <span>Thống kê</span>
+            <span class="nav-icon">📈</span>
+            <span class="nav-text">Thống kê</span>
+        </a>
+        <a asp-controller="Users" asp-action="Index" class="admin-nav-link @(IsActive("users") ? "is-active" : null)">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Người dùng</span>
         </a>
     </nav>
 </aside>
+
+<script>
+    (function() {
+        var btn = document.getElementById('sidebarToggleBtn');
+        var sidebar = document.getElementById('adminSidebar');
+        var isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+        
+        if (isCollapsed) {
+            sidebar.classList.add('is-collapsed');
+            btn.textContent = '▶';
+        }
+
+        btn.addEventListener('click', function() {
+            sidebar.classList.toggle('is-collapsed');
+            var collapsed = sidebar.classList.contains('is-collapsed');
+            btn.textContent = collapsed ? '▶' : '◀';
+            localStorage.setItem('sidebar-collapsed', collapsed);
+        });
+    })();
+</script>

@@ -12,6 +12,15 @@ using TourMap.AdminWeb.Models;
 using TourMap.AdminWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var projectRoot = ResolveConfiguredPath(
+    builder.Environment.ContentRootPath,
+    builder.Configuration["TourMapPaths:ProjectRoot"]);
+var adminDatabasePath = ResolveConfiguredPath(
+    projectRoot,
+    builder.Configuration["TourMapPaths:AdminDatabase"] ?? "AdminTourMap.db");
+var keyDir = ResolveConfiguredPath(
+    projectRoot,
+    builder.Configuration["TourMapPaths:DataProtectionKeys"] ?? Path.Combine("App_Data", "keys"));
 
 builder.Services.AddControllersWithViews();
 
@@ -53,6 +62,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         };
     });
 
+// === RBAC Authorization Policies ===
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Administrator"));
+    options.AddPolicy("AuthenticatedUser", policy => policy.RequireRole("User", "Premium", "Administrator"));
+    options.AddPolicy("PremiumContent", policy => policy.RequireRole("Premium", "Administrator"));
+    options.AddPolicy("MobileAccess", policy => policy.RequireRole("Guest", "User", "Premium", "MobileUser"));
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -77,7 +95,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-var keyDir = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
 Directory.CreateDirectory(keyDir);
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDir))
@@ -86,9 +103,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddHttpClient<IAITranslationService, AITranslationService>();
 
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseSqlite("Data Source=AdminTourMap.db"));
+    options.UseSqlite($"Data Source={adminDatabasePath}"));
 
 var app = builder.Build();
+app.Logger.LogInformation("AdminWeb content root: {ContentRoot}", builder.Environment.ContentRootPath);
+app.Logger.LogInformation("AdminWeb project root: {ProjectRoot}", projectRoot);
+app.Logger.LogInformation("AdminWeb database path: {DatabasePath}", adminDatabasePath);
+app.Logger.LogInformation("AdminWeb key ring path: {KeyRingPath}", keyDir);
 
 using (var scope = app.Services.CreateScope())
 {
@@ -110,21 +131,44 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
-    if (!db.AdminUsers.Any())
+    // === BOOTSTRAP ADMIN USER ===
+    // Ensures a properly-hashed admin account always exists.
+    // Runs on every startup to self-heal invalid/legacy hashes.
     {
         var username = app.Configuration["AdminBootstrap:Username"] ?? "admin";
-        var password = app.Configuration["AdminBootstrap:Password"] ?? "ChangeMe-Now-123!";
+        var password = app.Configuration["AdminBootstrap:Password"] ?? "admin@2026";
         var hasher = new PasswordHasher<AdminUser>();
-        var adminUser = new AdminUser
+
+        var existingAdmin = db.AdminUsers.FirstOrDefault(u => u.Username == username);
+        if (existingAdmin == null)
         {
-            Username = username,
-            Role = "Administrator",
-            IsActive = true
-        };
-        adminUser.PasswordHash = hasher.HashPassword(adminUser, password);
-        db.AdminUsers.Add(adminUser);
-        db.SaveChanges();
-        logger.LogWarning("Bootstrap admin user created. Please change AdminBootstrap credentials after first login.");
+            // First run — create admin from scratch
+            var newAdmin = new AdminUser
+            {
+                Username = username,
+                Role = "Administrator",
+                IsActive = true
+            };
+            newAdmin.PasswordHash = hasher.HashPassword(newAdmin, password);
+            db.AdminUsers.Add(newAdmin);
+            db.SaveChanges();
+            logger.LogWarning($"[Bootstrap] Admin user '{username}' created. Change password after first login.");
+        }
+        else
+        {
+            // Validate existing hash — if invalid/legacy format, rehash
+            var verifyResult = hasher.VerifyHashedPassword(existingAdmin, existingAdmin.PasswordHash ?? "", password);
+            if (verifyResult == PasswordVerificationResult.Failed && 
+                (string.IsNullOrEmpty(existingAdmin.PasswordHash) || !existingAdmin.PasswordHash.StartsWith("AQ")))
+            {
+                // Legacy plain-text or invalid hash — rehash with ASP.NET Identity format
+                existingAdmin.PasswordHash = hasher.HashPassword(existingAdmin, password);
+                existingAdmin.FailedLoginCount = 0;
+                existingAdmin.LockedUntilUtc = null;
+                db.SaveChanges();
+                logger.LogWarning($"[Bootstrap] Admin '{username}' password rehashed. Use password: {password}");
+            }
+        }
     }
 
     // MOCK DATA for analytics
@@ -286,6 +330,25 @@ static void EnsureCompatibilityColumns(AdminDbContext db)
     EnsureColumn(db, "Pois", "AudioUrlJa", "TEXT NULL");
     EnsureColumn(db, "Pois", "DescriptionFr", "TEXT NULL");
     EnsureColumn(db, "Pois", "AudioUrlFr", "TEXT NULL");
+
+    // TTS Scripts
+    EnsureColumn(db, "Pois", "TtsScriptVi", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptEn", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptZh", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptKo", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptJa", "TEXT NULL");
+    EnsureColumn(db, "Pois", "TtsScriptFr", "TEXT NULL");
+
+    // Auth & Identity fields for MobileUser
+    EnsureColumn(db, "MobileUsers", "Email", "TEXT NULL");
+    EnsureColumn(db, "MobileUsers", "PasswordHash", "TEXT NULL");
+    EnsureColumn(db, "MobileUsers", "DisplayName", "TEXT NOT NULL DEFAULT 'Khách'");
+    EnsureColumn(db, "MobileUsers", "AvatarUrl", "TEXT NULL");
+    EnsureColumn(db, "MobileUsers", "Role", "TEXT NOT NULL DEFAULT 'Guest'");
+    EnsureColumn(db, "MobileUsers", "AuthProvider", "TEXT NOT NULL DEFAULT 'local'");
+    EnsureColumn(db, "MobileUsers", "IsEmailVerified", "INTEGER NOT NULL DEFAULT 0");
+    EnsureColumn(db, "MobileUsers", "RefreshToken", "TEXT NULL");
+    EnsureColumn(db, "MobileUsers", "RefreshTokenExpiresAt", "TEXT NULL");
 }
 
 static void EnsureColumn(AdminDbContext db, string tableName, string columnName, string columnSqlDefinition)
@@ -321,4 +384,19 @@ static bool HasColumn(DbConnection connection, string tableName, string columnNa
     }
 
     return false;
+}
+
+static string ResolveConfiguredPath(string basePath, string? configuredPath)
+{
+    if (string.IsNullOrWhiteSpace(configuredPath))
+    {
+        return Path.GetFullPath(basePath);
+    }
+
+    if (Path.IsPathRooted(configuredPath))
+    {
+        return Path.GetFullPath(configuredPath);
+    }
+
+    return Path.GetFullPath(Path.Combine(basePath, configuredPath));
 }

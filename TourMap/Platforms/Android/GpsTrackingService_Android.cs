@@ -16,18 +16,19 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
     private const double StationaryDistanceMeters = 15.0;
 
     private CancellationTokenSource? _cts;
-    private Task? _trackingTask;
-    private bool _isTracking;
+    private int _isTrackingFlag = 0; // 0 = false, 1 = true
     private int _currentIntervalMs = MovingIntervalMs;
     private Location? _previousAcceptedLocation;
 
     public event Action<Location>? LocationChanged;
-    public bool IsTracking => _isTracking;
+    public bool IsTracking => _isTrackingFlag == 1;
     public Location? LastKnownLocation { get; private set; }
 
     public async Task StartTrackingAsync()
     {
-        if (_isTracking) return;
+        // Thread-safe check to prevent multiple concurrent tracking tasks
+        if (Interlocked.CompareExchange(ref _isTrackingFlag, 1, 0) == 1)
+            return;
 
         // ═══════════════════════════════════════════════════════════
         // STEP 1: Xin quyền GPS cơ bản (Foreground)
@@ -36,7 +37,11 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
         if (status != PermissionStatus.Granted)
         {
             status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-            if (status != PermissionStatus.Granted) return;
+            if (status != PermissionStatus.Granted)
+            {
+                Interlocked.Exchange(ref _isTrackingFlag, 0);
+                return;
+            }
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -63,7 +68,6 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
             }
         }
 
-        _isTracking = true;
         _currentIntervalMs = MovingIntervalMs;
 
         // Start Foreground Service để giữ app sống
@@ -77,19 +81,19 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
         _cts?.Cancel();
         _cts?.Dispose();
 
-        var cts = new CancellationTokenSource();
-        _cts = cts;
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
 
-        // Chạy vòng lặp tracking trên background thread (không block caller)
-        _trackingTask = Task.Run(async () =>
+        // Chạy vòng lặp tracking trên background thread, không block caller
+        _ = Task.Run(async () =>
         {
             try
             {
                 await PollLocationAsync();
 
-                while (!cts.Token.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
-                    await Task.Delay(_currentIntervalMs, cts.Token);
+                    await Task.Delay(_currentIntervalMs, token);
                     await PollLocationAsync();
                 }
             }
@@ -100,8 +104,9 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
             catch (Exception ex)
             {
                 Console.WriteLine($"[GpsTracking] Error in background tracking task: {ex.Message}");
+                Interlocked.Exchange(ref _isTrackingFlag, 0);
             }
-        }, cts.Token);
+        }, token);
     }
 
     private async Task PollLocationAsync()
@@ -126,6 +131,10 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
             {
                 LocationChanged?.Invoke(location);
             });
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore cancellation from stop/dispose flow
         }
         catch (Exception ex)
         {
@@ -162,7 +171,7 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
 
     public void StopTracking()
     {
-        _isTracking = false;
+        Interlocked.Exchange(ref _isTrackingFlag, 0);
 
         // Tắt Foreground Service
         var intent = new Intent(Platform.AppContext, typeof(Platforms.Android.LocationForegroundService));
@@ -172,7 +181,6 @@ public class GpsTrackingService_Android : IGpsTrackingService, IDisposable
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
-        _trackingTask = null;
     }
 
     public void Dispose()

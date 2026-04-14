@@ -260,8 +260,8 @@ namespace TourMap
             // để hỗ trợ nhiều cách chạy backend trong môi trường dev.
             return new[]
             {
-                "http://10.0.2.2:5000",
-                "http://localhost:5000"
+                "http://10.0.2.2:5042",
+                "http://localhost:5042"
             };
         }
 

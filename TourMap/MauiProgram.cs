@@ -34,6 +34,9 @@ namespace TourMap
             builder.Services.AddTransient<Pages.QrScannerPage>();
             builder.Services.AddTransient<Pages.SettingsPage>();
             builder.Services.AddTransient<Pages.OfflinePacksPage>();
+            builder.Services.AddTransient<Pages.LoginPage>();
+            builder.Services.AddTransient<Pages.RegisterPage>();
+            builder.Services.AddTransient<Pages.ProfilePage>();
             builder.Services.AddTransient<Pages.SplashPage>(); // BUG-05 fix
             builder.Services.AddTransient<AppShell>(); // BUG-05 fix
             builder.Services.AddSingleton<MainPage>();
@@ -45,6 +48,7 @@ namespace TourMap
 
             // === Phase 2 & 3: Audio Player, Sync & Auth ===
             builder.Services.AddSingleton<Services.IAudioPlayerService, Services.AudioPlayerService>();
+            builder.Services.AddHttpClient();
             builder.Services.AddSingleton<Services.AuthService>();
             builder.Services.AddSingleton<Services.SyncService>();
             

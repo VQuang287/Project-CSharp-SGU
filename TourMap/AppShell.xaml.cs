@@ -11,6 +11,9 @@ namespace TourMap
             // Tab pages (MapPage, QrScannerPage, SettingsPage) are self-registered via TabBar in XAML
             // Only register pages that are navigated to via GoToAsync push-nav
             Routing.RegisterRoute(nameof(Pages.PoiDetailPage), typeof(Pages.PoiDetailPage));
+            Routing.RegisterRoute(nameof(Pages.LoginPage), typeof(Pages.LoginPage));
+            Routing.RegisterRoute(nameof(Pages.RegisterPage), typeof(Pages.RegisterPage));
+            Routing.RegisterRoute(nameof(Pages.ProfilePage), typeof(Pages.ProfilePage));
         }
 
         private void OnLanguageChanged()

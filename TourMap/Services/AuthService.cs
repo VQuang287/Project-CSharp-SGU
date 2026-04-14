@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Maui.Devices;
@@ -12,107 +14,363 @@ public class AuthService
     private string? _deviceId;
 
     public string? CurrentToken { get; private set; }
+    public UserProfile? CurrentUser { get; private set; }
+    public bool IsAuthenticated => !string.IsNullOrEmpty(CurrentToken) && !IsTokenExpired();
+    public bool IsGuest => CurrentUser == null || CurrentUser.Role == "Guest";
 
-    public AuthService(ILoggerService logger)
+    public AuthService(IHttpClientFactory httpClientFactory, ILoggerService logger)
     {
         _logger = logger;
-        _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(15)
-        };
-        
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.Timeout = TimeSpan.FromSeconds(15);
         _logger.LogInformation("AuthService initialized");
     }
 
     public async Task InitializeAsync()
     {
         _logger.LogInformation("AuthService.InitializeAsync called");
-        
-        // Thử lấy token đã lưu từ lần trước
-        CurrentToken = await SecureStorage.Default.GetAsync("auth_token");
-        _logger.LogInformation($"Retrieved existing token: {!string.IsNullOrEmpty(CurrentToken)}");
 
-        // Nếu chưa có, tiến hành đăng nhập ẩn danh để lấy token mới
-        if (string.IsNullOrEmpty(CurrentToken))
+        try
         {
-            _logger.LogInformation("No existing token found, proceeding with device login");
-            // Device ID logic...
+            CurrentToken = await SecureStorage.Default.GetAsync("access_token");
+            var profileJson = await SecureStorage.Default.GetAsync("user_profile");
+
+            if (!string.IsNullOrEmpty(profileJson))
+            {
+                CurrentUser = JsonSerializer.Deserialize<UserProfile>(profileJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            _logger.LogInformation($"Token found: {!string.IsNullOrEmpty(CurrentToken)}, IsExpired: {IsTokenExpired()}");
+
+            if (!string.IsNullOrEmpty(CurrentToken) && IsTokenExpired())
+            {
+                _logger.LogInformation("Token expired, attempting refresh...");
+                var refreshed = await RefreshTokenAsync();
+                if (!refreshed)
+                {
+                    _logger.LogInformation("Refresh failed, clearing tokens");
+                    await ClearTokensAsync();
+                }
+            }
         }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"AuthService init error: {ex.Message}");
+        }
+    }
+
+    public async Task<AuthResult> LoginAsync(string email, string password)
+    {
+        try
+        {
+            _deviceId = GetOrCreateDeviceId();
+            var request = new { Email = email, Password = password, DeviceId = _deviceId };
+
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login-user", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result != null)
+                        {
+                            await SaveTokensAsync(result);
+                            return new AuthResult(true);
+                        }
+                    }
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync();
+                        _logger.LogInformation($"Login failed: {response.StatusCode} - {error}");
+                        return new AuthResult(false, "Email hoặc mật khẩu không đúng.");
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Login error: {ex.Message}");
+        }
+
+        return new AuthResult(false, "Không thể kết nối đến server.");
+    }
+
+    public async Task<AuthResult> RegisterAsync(string email, string password, string displayName)
+    {
+        try
+        {
+            _deviceId = GetOrCreateDeviceId();
+            var request = new { Email = email, Password = password, DisplayName = displayName, DeviceId = _deviceId };
+
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/register", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result != null)
+                        {
+                            await SaveTokensAsync(result);
+                            return new AuthResult(true);
+                        }
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        try
+                        {
+                            var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                            if (errorObj.TryGetProperty("message", out var msg) || errorObj.TryGetProperty("Message", out msg))
+                                return new AuthResult(false, msg.GetString());
+                        }
+                        catch { }
+
+                        return new AuthResult(false, "Đăng ký thất bại. Vui lòng thử lại.");
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Register error: {ex.Message}");
+        }
+
+        return new AuthResult(false, "Không thể kết nối đến server.");
     }
 
     public async Task<bool> LoginAnonymousAsync()
     {
         try
         {
-            _deviceId = Preferences.Default.Get<string>("device_uuid", string.Empty);
-            if (string.IsNullOrEmpty(_deviceId))
-            {
-                _deviceId = Guid.NewGuid().ToString();
-                Preferences.Default.Set("device_uuid", _deviceId);
-            }
-
+            _deviceId = GetOrCreateDeviceId();
             var request = new { DeviceId = _deviceId };
+
             foreach (var baseUrl in GetAuthBaseUrls())
             {
-                var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login", request);
-
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var result = JsonSerializer.Deserialize<LoginResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                    if (result != null && !string.IsNullOrEmpty(result.Token))
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login", request);
+                    if (response.IsSuccessStatusCode)
                     {
-                        CurrentToken = result.Token;
-                        await SecureStorage.Default.SetAsync("auth_token", CurrentToken);
-                        return true;
+                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result != null)
+                        {
+                            await SaveTokensAsync(result);
+                            return true;
+                        }
                     }
                 }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Auth Error: {ex.Message}");
-            Console.WriteLine($"Auth Stack trace: {ex.StackTrace}");
-            
-            // Handle specific error types
-            if (ex is HttpRequestException httpEx)
-            {
-                Console.WriteLine($"Auth Network error: {httpEx.StatusCode}");
-                Console.WriteLine($"Auth - Check if server is running and accessible");
-            }
-            else if (ex is TaskCanceledException)
-            {
-                Console.WriteLine($"Auth Request timeout - server may be slow or unreachable");
-            }
-            else if (ex is JsonException jsonEx)
-            {
-                Console.WriteLine($"Auth JSON parsing error: {jsonEx.Message}");
-                Console.WriteLine($"Auth - Server response format may be invalid");
-            }
-            else if (ex is System.Security.SecurityException secEx)
-            {
-                Console.WriteLine($"Auth Security error: {secEx.Message}");
-                Console.WriteLine($"Auth - Check secure storage permissions");
-            }
         }
 
         return false;
+    }
+
+    public async Task<bool> RefreshTokenAsync()
+    {
+        try
+        {
+            var refreshToken = await SecureStorage.Default.GetAsync("refresh_token");
+            if (string.IsNullOrEmpty(refreshToken)) return false;
+
+            var request = new { RefreshToken = refreshToken };
+
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/refresh", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result != null)
+                        {
+                            await SaveTokensAsync(result);
+                            return true;
+                        }
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Refresh error: {ex.Message}");
+        }
+
+        return false;
+    }
+
+    public async Task LogoutAsync()
+    {
+        await ClearTokensAsync();
+        CurrentToken = null;
+        CurrentUser = null;
+        _logger.LogInformation("User logged out");
+    }
+
+    public async Task<AuthResult> ChangePasswordAsync(string oldPassword, string newPassword)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(CurrentToken)) return new AuthResult(false, "Không có quyền truy cập.");
+            var request = new { CurrentPassword = oldPassword, NewPassword = newPassword };
+
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    using var message = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/change-password")
+                    {
+                        Content = JsonContent.Create(request)
+                    };
+                    message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CurrentToken);
+
+                    var response = await _httpClient.SendAsync(message);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return new AuthResult(true);
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Change password error: {ex.Message}");
+        }
+        return new AuthResult(false, "Đổi mật khẩu thất bại. Vui lòng thử lại.");
+    }
+
+    public async Task<AuthResult> ForgotPasswordAsync(string email)
+    {
+        try
+        {
+            var request = new { Email = email };
+            foreach (var baseUrl in GetAuthBaseUrls())
+            {
+                try
+                {
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/forgot-password", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return new AuthResult(true);
+                    }
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+                        response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed)
+                    {
+                        return new AuthResult(false, "Tính năng khôi phục mật khẩu chưa được hỗ trợ trên server này.");
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Forgot password error: {ex.Message}");
+        }
+        return new AuthResult(false, "Yêu cầu khôi phục mật khẩu thất bại.");
+    }
+
+    private async Task SaveTokensAsync(AuthResponse result)
+    {
+        CurrentToken = result.AccessToken;
+        CurrentUser = result.User;
+
+        await SecureStorage.Default.SetAsync("access_token", result.AccessToken);
+        await SecureStorage.Default.SetAsync("refresh_token", result.RefreshToken);
+        await SecureStorage.Default.SetAsync("user_profile",
+            JsonSerializer.Serialize(result.User));
+
+        _logger.LogInformation($"Tokens saved. Role: {result.User?.Role}");
+    }
+
+    private async Task ClearTokensAsync()
+    {
+        SecureStorage.Default.Remove("access_token");
+        SecureStorage.Default.Remove("refresh_token");
+        SecureStorage.Default.Remove("user_profile");
+        await Task.CompletedTask;
+    }
+
+    private bool IsTokenExpired()
+    {
+        if (string.IsNullOrEmpty(CurrentToken)) return true;
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(CurrentToken);
+            return token.ValidTo <= DateTime.UtcNow;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private string GetOrCreateDeviceId()
+    {
+        var id = Preferences.Default.Get<string>("device_uuid", string.Empty);
+        if (string.IsNullOrEmpty(id))
+        {
+            id = Guid.NewGuid().ToString();
+            Preferences.Default.Set("device_uuid", id);
+        }
+        return id;
     }
 
     private static IReadOnlyList<string> GetAuthBaseUrls()
     {
         return new[]
         {
-            "http://10.0.2.2:5000/api/v1/auth",
-            "http://localhost:5000/api/v1/auth"
+            "http://10.0.2.2:5042/api/v1/auth",
+            "http://localhost:5042/api/v1/auth"
         };
     }
+}
 
-    private class LoginResponse
-    {
-        public string? Token { get; set; }
-        public DateTime ValidTo { get; set; }
-        public string? DeviceId { get; set; }
-    }
+public record AuthResult(bool Success, string? ErrorMessage = null);
+
+public class UserProfile
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string DisplayName { get; set; } = "Khách";
+    public string? AvatarUrl { get; set; }
+    public string Role { get; set; } = "Guest";
+    public string AuthProvider { get; set; } = "local";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class AuthResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public int ExpiresIn { get; set; }
+    public UserProfile User { get; set; } = new();
 }

@@ -1,21 +1,25 @@
 @model IEnumerable<TourMap.AdminWeb.Models.QrCodeEntry>
 
 @{
-    ViewData["Title"] = "QR Management";
+    ViewData["Title"] = "Quản Lý Mã QR";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">QR Management</h2>
-    <a asp-action="Generate" class="btn btn-primary">+ Generate QR</a>
+    <h2 class="mb-0">Quản Lý Mã QR</h2>
+    <a asp-action="Generate" class="btn btn-primary">+ Tạo Mã QR</a>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <input type="text" id="searchQr" class="form-control" placeholder="🔍 Tìm theo ID hoặc Link..." />
 </div>
 
 <table class="table table-striped table-hover">
     <thead>
         <tr>
-            <th>QR</th>
+            <th>Mã QR</th>
             <th>POI</th>
             <th>Deep Link</th>
-            <th>Created</th>
+            <th>Ngày Tạo</th>
         </tr>
     </thead>
     <tbody>
@@ -30,3 +34,14 @@
     }
     </tbody>
 </table>
+
+@section Scripts {
+<script>
+document.getElementById('searchQr').addEventListener('input', function () {
+    var q = this.value.toLowerCase();
+    document.querySelectorAll('table tbody tr').forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+</script>
+}

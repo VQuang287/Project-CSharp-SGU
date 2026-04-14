@@ -57,38 +57,28 @@
                             <div class="mt-2"><strong>🇫🇷 FR:</strong> <span class="text-muted small">@Model.DescriptionFr</span></div>
                             @if(!string.IsNullOrEmpty(Model.AudioUrlFr)) { <audio controls src="@Model.AudioUrlFr" class="w-100 mt-1" style="height:35px;"></audio> }
                         }
+                        @if(!string.IsNullOrEmpty(Model.AudioUrl)) {
+                            <div class="mt-2 text-warning"><strong>🇻🇳 VI (Bản gốc):</strong> <span class="text-muted small">@Model.Description</span></div>
+                            <audio controls src="@Model.AudioUrl" class="w-100 mt-1" style="height:35px;"></audio>
+                        }
                     </div>
                 }
 
-                <div class="row border p-3 rounded bg-light mb-4 mx-0 mt-3">
-                    <h5 class="fw-bold mb-3 text-secondary">Tải lên Đa phương tiện</h5>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Ảnh minh họa (Bỏ trống nếu giữ cũ)</label>
-                        @if(!string.IsNullOrEmpty(Model.ImageUrl)){ <small class="text-success d-block mb-1">✅ Đã có ảnh.</small> }
-                        <input type="file" name="ImageFile" class="form-control" accept="image/*" />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">File Audio Thu sẵn (Bỏ trống nếu giữ cũ)</label>
-                        @if(!string.IsNullOrEmpty(Model.AudioUrl)){ <small class="text-success d-block mb-1">✅ Đã có Audio mp3.</small> }
-                        <input type="file" name="AudioFile" class="form-control" accept="audio/*" />
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col">
-                        <label asp-for="Latitude" class="form-label fw-bold">Vĩ độ</label>
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label asp-for="Latitude" class="form-label fw-bold poi-meta-label">Vĩ độ</label>
                         <input asp-for="Latitude" class="form-control" />
                     </div>
-                    <div class="col">
-                        <label asp-for="Longitude" class="form-label fw-bold">Kinh độ</label>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label asp-for="Longitude" class="form-label fw-bold poi-meta-label">Kinh độ</label>
                         <input asp-for="Longitude" class="form-control" />
                     </div>
-                    <div class="col">
-                        <label asp-for="RadiusMeters" class="form-label fw-bold">Bán kính (m)</label>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label asp-for="RadiusMeters" class="form-label fw-bold poi-meta-label">Bán kính (m)</label>
                         <input asp-for="RadiusMeters" class="form-control" />
                     </div>
-                    <div class="col">
-                        <label asp-for="Priority" class="form-label fw-bold">Ưu tiên</label>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label asp-for="Priority" class="form-label fw-bold poi-meta-label">Ưu tiên</label>
                         <input asp-for="Priority" class="form-control" />
                     </div>
                 </div>

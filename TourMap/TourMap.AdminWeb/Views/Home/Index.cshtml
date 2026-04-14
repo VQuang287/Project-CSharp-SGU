@@ -1,30 +1,30 @@
 @model TourMap.AdminWeb.Models.ViewModels.AdminDashboardViewModel
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "Bảng Điều Khiển";
 }
 
 <section class="dashboard-grid">
     <article class="ui-card">
         <div class="ui-card-body">
-            <p class="metric-title">Tong POI</p>
+            <p class="metric-title">Tổng POI</p>
             <p class="metric-value">@Model.TotalPois</p>
         </div>
     </article>
     <article class="ui-card">
         <div class="ui-card-body">
-            <p class="metric-title">Tour dang hoat dong</p>
+            <p class="metric-title">Tour đang hoạt động</p>
             <p class="metric-value">@Model.ActiveTours</p>
         </div>
     </article>
     <article class="ui-card">
         <div class="ui-card-body">
-            <p class="metric-title">Tong luot phat</p>
+            <p class="metric-title">Tổng lượt phát</p>
             <p class="metric-value">@Model.TotalPlays.ToString("N0")</p>
         </div>
     </article>
     <article class="ui-card">
         <div class="ui-card-body">
-            <p class="metric-title">Mobile users</p>
+            <p class="metric-title">Người dùng Mobile</p>
             <p class="metric-value">@Model.ActiveMobileUsers</p>
         </div>
     </article>
@@ -32,19 +32,19 @@
 
 <section class="dashboard-section ui-card">
     <div class="ui-card-body">
-        <h2 class="h6 mb-3">Top POI theo luot phat</h2>
+        <h2 class="h6 mb-3">Top POI theo lượt phát</h2>
         <table class="dashboard-table">
             <thead>
                 <tr>
                     <th>POI</th>
-                    <th>Luot phat</th>
+                    <th>Lượt phát</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.TopPois.Count == 0)
                 {
                     <tr>
-                        <td colspan="2">Chua co du lieu playback.</td>
+                        <td colspan="2">Chưa có dữ liệu playback.</td>
                     </tr>
                 }
                 else
@@ -64,22 +64,22 @@
 
 <section class="dashboard-section ui-card">
     <div class="ui-card-body">
-        <h2 class="h6 mb-3">Quick Action Form</h2>
+        <h2 class="h6 mb-3">Thao Tác Nhanh</h2>
         <div class="dashboard-form-grid">
             <div>
-                <label class="form-label">Ten POI</label>
-                <input class="form-control" placeholder="Nhap ten POI" />
+                <label class="form-label">Tên POI</label>
+                <input class="form-control" placeholder="Nhập tên POI" />
             </div>
             <div>
-                <label class="form-label">Ban kinh (m)</label>
+                <label class="form-label">Bán kính (m)</label>
                 <input class="form-control" type="number" placeholder="50" />
             </div>
             <div class="full">
-                <label class="form-label">Mo ta ngan</label>
-                <textarea class="form-control" rows="3" placeholder="Mo ta cho POI"></textarea>
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea class="form-control" rows="3" placeholder="Mô tả cho POI"></textarea>
             </div>
             <div class="full">
-                <button class="btn btn-primary">Luu nhap</button>
+                <button class="btn btn-primary">Lưu nháp</button>
             </div>
         </div>
     </div>
