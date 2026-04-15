@@ -27,7 +27,7 @@ public enum NarrationState
 /// Nhận tín hiệu từ Geofence → phát Audio file hoặc TTS → chuyển trạng thái.
 /// Ưu tiên: Audio file MP3 (nếu có) → fallback TTS.
 /// </summary>
-public class NarrationEngine
+public class NarrationEngine : IDisposable
 {
     private readonly ITtsService _ttsService;
     private readonly IAudioPlayerService _audioPlayer;
@@ -37,6 +37,8 @@ public class NarrationEngine
     private string _currentTriggerType = "Unknown";
     private string _currentAudioSource = "TTS";
     private float _speed = 1.0f;
+    private CancellationTokenSource? _cooldownCts;
+    private bool _disposed;
 
     /// <summary>Sự kiện khi trạng thái thay đổi (cho UI cập nhật).</summary>
     public event Action<NarrationState, Poi?>? StateChanged;
@@ -242,34 +244,43 @@ public class NarrationEngine
     /// <summary>Callback khi audio hoặc TTS phát xong.</summary>
     private async void OnPlaybackCompleted()
     {
-        if (_state != NarrationState.Playing) return; // Tránh gọi trùng
+        if (_disposed || _state != NarrationState.Playing) return;
+
+        var completedPoi = _currentPoi;
 
         try
         {
-            var historyTask = SavePlaybackHistoryAsync();
-            await historyTask; // Wait for completion to ensure data is saved
+            await SavePlaybackHistoryAsync();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Narration] Error saving playback history: {ex.Message}");
         }
-        Console.WriteLine($"[Narration] ✅ Phát xong POI \"{_currentPoi?.Title}\" → COOLDOWN");
+        Console.WriteLine($"[Narration] ✅ Phát xong POI \"{completedPoi?.Title}\" → COOLDOWN");
         SetState(NarrationState.Cooldown);
 
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            // SYS-H04 fix: Cancellable cooldown delay
+            _cooldownCts?.Cancel();
+            _cooldownCts = new CancellationTokenSource();
+            await Task.Delay(TimeSpan.FromSeconds(10), _cooldownCts.Token);
             if (_state == NarrationState.Cooldown)
             {
                 SetState(NarrationState.Idle);
+                if (_currentPoi == completedPoi)
+                    _currentPoi = null;
+                Console.WriteLine("[Narration] 🔄 Cooldown xong → IDLE, sẵn sàng nhận trigger mới");
             }
+        }
+        catch (TaskCanceledException)
+        {
+            // Cooldown cancelled (new trigger or dispose) — expected
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Narration] Error in cooldown transition: {ex.Message}");
         }
-        _currentPoi = null;
-        Console.WriteLine("[Narration] 🔄 Cooldown xong → IDLE, sẵn sàng nhận trigger mới");
     }
 
     private void SetState(NarrationState newState)
@@ -376,4 +387,17 @@ public class NarrationEngine
         }
     }
 #endif
+
+    // SYS-H01 + SYS-W02 fix: Deterministic cleanup
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _ttsService.SpeechCompleted -= OnPlaybackCompleted;
+        _audioPlayer.AudioCompleted -= OnPlaybackCompleted;
+        _cooldownCts?.Cancel();
+        _cooldownCts?.Dispose();
+        StopCurrent();
+        _disposed = true;
+    }
 }

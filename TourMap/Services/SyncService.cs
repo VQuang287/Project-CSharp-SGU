@@ -14,14 +14,13 @@ public class SyncService
     private readonly DatabaseService _dbService;
     private readonly AuthService _authService;
 
-    public SyncService(DatabaseService dbService, AuthService authService)
+    // BUG-W01 fix: Accept IHttpClientFactory via DI to prevent socket exhaustion
+    public SyncService(IHttpClientFactory httpClientFactory, DatabaseService dbService, AuthService authService)
     {
         _dbService = dbService;
         _authService = authService;
-        _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(20)
-        };
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.Timeout = TimeSpan.FromSeconds(20);
     }
 
     /// <summary>
@@ -31,12 +30,7 @@ public class SyncService
     {
         try
         {
-            // Kiểm tra token
-            if (!string.IsNullOrEmpty(_authService.CurrentToken))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
-            }
-
+            // Build URL with optional last-sync timestamp
             var lastSync = Preferences.Default.Get<string>("last_sync_time", string.Empty);
             var url = $"{serverBaseUrl.TrimEnd('/')}/api/v1/pois/sync/pois";
             if (!string.IsNullOrEmpty(lastSync))
@@ -44,9 +38,16 @@ public class SyncService
                 url += $"?since={Uri.EscapeDataString(lastSync)}";
             }
 
+            // Use per-request auth header to avoid thread-safety issues (SYS-C03 fix)
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrEmpty(_authService.CurrentToken))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
+            }
+
             Console.WriteLine($"[Sync] 🔄 Đang đồng bộ từ: {url}");
 
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -82,7 +83,13 @@ public class SyncService
                     DescriptionJa = dto.DescriptionJa,
                     AudioUrlJa = dto.AudioUrlJa,
                     DescriptionFr = dto.DescriptionFr,
-                    AudioUrlFr = dto.AudioUrlFr
+                    AudioUrlFr = dto.AudioUrlFr,
+                    TtsScriptVi = dto.TtsScriptVi,
+                    TtsScriptEn = dto.TtsScriptEn,
+                    TtsScriptZh = dto.TtsScriptZh,
+                    TtsScriptKo = dto.TtsScriptKo,
+                    TtsScriptJa = dto.TtsScriptJa,
+                    TtsScriptFr = dto.TtsScriptFr
                 };
 
                 // Tải audio file về local nếu có URL
@@ -231,6 +238,12 @@ public class SyncPoiDto
     public string? AudioUrlJa { get; set; }
     public string? DescriptionFr { get; set; }
     public string? AudioUrlFr { get; set; }
+    public string? TtsScriptVi { get; set; }
+    public string? TtsScriptEn { get; set; }
+    public string? TtsScriptZh { get; set; }
+    public string? TtsScriptKo { get; set; }
+    public string? TtsScriptJa { get; set; }
+    public string? TtsScriptFr { get; set; }
 }
 
 public class SyncPoisResponse

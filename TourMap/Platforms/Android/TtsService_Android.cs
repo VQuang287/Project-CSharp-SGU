@@ -172,17 +172,33 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             "fr" => JavaLocale.France,
             _ => new JavaLocale("vi", "VN")
         };
-        _tts.SetLanguage(locale);
 
         // Dừng phát cũ nếu đang nói
         Stop();
 
         IsSpeaking = true;
-        _speakTcs = new TaskCompletionSource<bool>();
+        var newTcs = new TaskCompletionSource<bool>();
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, newTcs);
+        oldTcs?.TrySetCanceled();
 
         var utteranceId = Guid.NewGuid().ToString();
         var param = new Android.OS.Bundle();
-        _tts.Speak(text, QueueMode.Flush, param, utteranceId);
+
+        // Android TTS (JNI Binder calls) often fail silently under VS Debugger 
+        // if called from background thread pool. Dispatch to MainThread to ensure execution.
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                _tts.SetLanguage(locale);
+                _tts.Speak(text, QueueMode.Flush, param, utteranceId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TTS] Error speaking on MainThread: {ex.Message}");
+                _speakTcs?.TrySetResult(false);
+            }
+        });
 
         // Đợi TTS đọc xong
         await _speakTcs.Task;
@@ -195,7 +211,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             _tts.Stop();
         }
         IsSpeaking = false;
-        _speakTcs?.TrySetResult(false);
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, null);
+        oldTcs?.TrySetResult(false);
     }
 
     /// <summary>Set TTS speech rate (speed). 0.75 = 75%, 1.0 = 100%, 1.5 = 150%</summary>
@@ -218,7 +235,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
     internal void OnUtteranceDone()
     {
         IsSpeaking = false;
-        _speakTcs?.TrySetResult(true);
+        var oldTcs = Interlocked.Exchange(ref _speakTcs, null);
+        oldTcs?.TrySetResult(true);
         MainThread.BeginInvokeOnMainThread(() => SpeechCompleted?.Invoke());
     }
 

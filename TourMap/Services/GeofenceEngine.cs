@@ -15,14 +15,17 @@ public class GeofenceEngine
     private const double MaxScanRadiusMeters = 500;      // Chỉ xét POI trong 500m
     private const int MaxPoisInRange = 3;                // Top 3 POI gần nhất
 
+    // Thread-safety lock for GPS thread + UI thread access
+    private readonly object _lock = new();
+
     // Cooldown per POI: lưu thời điểm trigger gần nhất
     private readonly Dictionary<string, DateTime> _cooldowns = new();
 
     // Debounce: thời điểm trigger gần nhất (bất kỳ POI nào)
     private DateTime _lastTriggerTime = DateTime.MinValue;
 
-    // Danh sách POI để kiểm tra
-    private List<Poi> _pois = new();
+    // Danh sách POI để kiểm tra (immutable snapshot pattern)
+    private IReadOnlyList<Poi> _pois = Array.Empty<Poi>();
 
     /// <summary>Sự kiện phát ra khi user đi vào vùng POI (đã qua debounce + cooldown).</summary>
     public event Action<Poi>? POITriggered;
@@ -30,7 +33,10 @@ public class GeofenceEngine
     /// <summary>Cập nhật danh sách POI từ database.</summary>
     public void UpdatePois(List<Poi> pois)
     {
-        _pois = pois ?? new();
+        lock (_lock)
+        {
+            _pois = (pois ?? new List<Poi>()).AsReadOnly();
+        }
     }
 
     /// <summary>
@@ -38,7 +44,11 @@ public class GeofenceEngine
     /// </summary>
     public void OnLocationChanged(Location userLocation)
     {
-        if (_pois.Count == 0) return;
+        // Take a thread-safe snapshot of POIs and cooldown state
+        IReadOnlyList<Poi> pois;
+        lock (_lock) { pois = _pois; }
+
+        if (pois.Count == 0) return;
 
         var now = DateTime.UtcNow;
 
@@ -47,7 +57,7 @@ public class GeofenceEngine
             return;
 
         // Bước 2: Lọc POI trong vùng R_max = 500m và tính khoảng cách
-        var nearbyPois = _pois
+        var nearbyPois = pois
             .Where(p => p.IsActive && p.RadiusMeters > 0)
             .Select(poi => new
             {
@@ -73,15 +83,18 @@ public class GeofenceEngine
 
         // Bước 4: Cooldown per POI — không phát lại cùng POI trong 10 phút
         var poiId = candidatePoi.Poi.Id;
-        if (_cooldowns.TryGetValue(poiId, out var lastTriggered))
+        lock (_lock)
         {
-            if ((now - lastTriggered).TotalMinutes < CooldownDurationMinutes)
-                return; // Còn trong cooldown
-        }
+            if (_cooldowns.TryGetValue(poiId, out var lastTriggered))
+            {
+                if ((now - lastTriggered).TotalMinutes < CooldownDurationMinutes)
+                    return; // Còn trong cooldown
+            }
 
-        // ✅ Trigger thành công!
-        _lastTriggerTime = now;
-        _cooldowns[poiId] = now;
+            // ✅ Trigger thành công!
+            _lastTriggerTime = now;
+            _cooldowns[poiId] = now;
+        }
 
         Console.WriteLine($"[Geofence] 🎯 Triggered POI: {candidatePoi.Poi.Title} " +
                           $"(distance={candidatePoi.Distance:F0}m, " +
@@ -96,9 +109,12 @@ public class GeofenceEngine
     /// </summary>
     public Poi? GetNearestPoi(double latitude, double longitude)
     {
-        if (_pois.Count == 0) return null;
+        IReadOnlyList<Poi> pois;
+        lock (_lock) { pois = _pois; }
 
-        return _pois
+        if (pois.Count == 0) return null;
+
+        return pois
             .Select(poi => new
             {
                 Poi = poi,

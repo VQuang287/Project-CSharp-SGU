@@ -343,6 +343,35 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "Thử lại" },
         { "CameraRetrying", "Đang thử..." },
         { "CameraInvalidQr", "Mã QR không hợp lệ. Đang quét lại..." },
+        { "SeeDetails", "Xem chi tiết" },
+        { "PoiDetailAudio", "Thuyết minh audio" },
+        { "GpsCoordinates", "Tọa độ GPS" },
+        { "AudioStat", "thuyết minh" },
+        { "WalkStat", "phút đi bộ" },
+        // Profile
+        { "ProfileTitle", "Hồ sơ" },
+        { "EmailUnregistered", "Chưa đăng ký email" },
+        { "GuestRole", "👤 Khách" },
+        { "MemberRole", "✅ Thành viên" },
+        { "PremiumRole", "⭐ Premium" },
+        { "MemberSinceFormat", "Thành viên từ {0}" },
+        { "GuestBenefitsHeader", "💡 Đăng ký tài khoản để:" },
+        { "GuestBenefit1", "• Lưu lịch sử tour cá nhân" },
+        { "GuestBenefit2", "• Đồng bộ dữ liệu đa thiết bị" },
+        { "GuestBenefit3", "• Trải nghiệm đầy đủ nội dung" },
+        { "RegisterNowBtn", "Đăng ký ngay" },
+        { "EmailLabel", "📧 Email" },
+        { "RoleLabel", "🏷️ Vai trò" },
+        { "AuthMethodLabel", "🔐 Xác thực" },
+        { "LogoutConfirmTitle", "Đăng xuất" },
+        { "LogoutConfirmMsg", "Bạn có chắc chắn muốn đăng xuất?" },
+        { "LogoutBtn", "🚪 Đăng xuất" },
+        { "LogoutCancelBtn", "Hủy" },
+        { "AppVersionFormat", "TourMap {0} • Audio Tour Guide" },
+        { "GamificationAudio", "Thời gian nghe" },
+        { "GamificationPlaces", "Địa điểm đã đến" },
+        { "GamificationBadges", "Danh hiệu" },
+        { "MyFavorites", "Yêu thích của tôi" },
     };
 
     private static readonly Dictionary<string, string> English = new()
@@ -473,6 +502,35 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "Retry" },
         { "CameraRetrying", "Retrying..." },
         { "CameraInvalidQr", "Invalid QR code. Rescanning..." },
+        { "SeeDetails", "See details" },
+        { "PoiDetailAudio", "Audio narration" },
+        { "GpsCoordinates", "GPS Coordinates" },
+        { "AudioStat", "audio" },
+        { "WalkStat", "min walk" },
+        // Profile
+        { "ProfileTitle", "Profile" },
+        { "EmailUnregistered", "Email not registered" },
+        { "GuestRole", "👤 Guest" },
+        { "MemberRole", "✅ Member" },
+        { "PremiumRole", "⭐ Premium" },
+        { "MemberSinceFormat", "Member since {0}" },
+        { "GuestBenefitsHeader", "💡 Register an account to:" },
+        { "GuestBenefit1", "• Save personal tour history" },
+        { "GuestBenefit2", "• Sync data across devices" },
+        { "GuestBenefit3", "• Experience full content" },
+        { "RegisterNowBtn", "Register now" },
+        { "EmailLabel", "📧 Email" },
+        { "RoleLabel", "🏷️ Role" },
+        { "AuthMethodLabel", "🔐 Auth" },
+        { "LogoutConfirmTitle", "Logout" },
+        { "LogoutConfirmMsg", "Are you sure you want to log out?" },
+        { "LogoutBtn", "🚪 Logout" },
+        { "LogoutCancelBtn", "Cancel" },
+        { "AppVersionFormat", "TourMap {0} • Audio Tour Guide" },
+        { "GamificationAudio", "Time listened" },
+        { "GamificationPlaces", "Places visited" },
+        { "GamificationBadges", "Badges" },
+        { "MyFavorites", "My Favorites" },
     };
 
     private static readonly Dictionary<string, string> Chinese = new()
@@ -566,6 +624,11 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "重试" },
         { "CameraRetrying", "正在重试..." },
         { "CameraInvalidQr", "无效的二维码。正在重新扫描..." },
+        { "SeeDetails", "查看详情" },
+        { "PoiDetailAudio", "语音讲解" },
+        { "GpsCoordinates", "GPS坐标" },
+        { "AudioStat", "解说" },
+        { "WalkStat", "分钟步行" },
     };
 
     private static readonly Dictionary<string, string> Korean = new()
@@ -659,6 +722,11 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "재시도" },
         { "CameraRetrying", "재시도 중..." },
         { "CameraInvalidQr", "유효하지 않은 QR 코드입니다. 다시 스캔 중..." },
+        { "SeeDetails", "세부 정보 보기" },
+        { "PoiDetailAudio", "오디오 해설" },
+        { "GpsCoordinates", "GPS 좌표" },
+        { "AudioStat", "해설" },
+        { "WalkStat", "분 도보" },
     };
 
     private static readonly Dictionary<string, string> Japanese = new()
@@ -752,6 +820,11 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "再試行" },
         { "CameraRetrying", "再試行中..." },
         { "CameraInvalidQr", "無効なQRコード。再スキャン中..." },
+        { "SeeDetails", "詳細を見る" },
+        { "PoiDetailAudio", "音声解説" },
+        { "GpsCoordinates", "GPS座標" },
+        { "AudioStat", "解説" },
+        { "WalkStat", "分徒歩" },
     };
 
     private static readonly Dictionary<string, string> French = new()
@@ -845,6 +918,11 @@ public class LocalizationService : INotifyPropertyChanged
         { "CameraRetry", "Réessayer" },
         { "CameraRetrying", "Nouvelle tentative..." },
         { "CameraInvalidQr", "QR code invalide. Nouvelle tentative de scan..." },
+        { "SeeDetails", "Voir les détails" },
+        { "PoiDetailAudio", "Narration audio" },
+        { "GpsCoordinates", "Coordonnées GPS" },
+        { "AudioStat", "audio" },
+        { "WalkStat", "min à pied" },
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;
