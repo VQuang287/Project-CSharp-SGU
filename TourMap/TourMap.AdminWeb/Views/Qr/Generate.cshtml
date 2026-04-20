@@ -1,0 +1,20 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Tạo Mã QR";
+    var poiOptions = ViewBag.Pois as List<SelectListItem> ?? new List<SelectListItem>();
+}
+
+<h2>Tạo Mã QR Cho POI</h2>
+<hr />
+
+<form asp-action="Generate" method="post" class="card p-3 shadow-sm">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3">
+        <label class="form-label">Chọn POI</label>
+        <select name="poiId" class="form-select" asp-items="poiOptions"></select>
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+        <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        <button type="submit" class="btn btn-primary">Tạo mã QR</button>
+    </div>
+</form>

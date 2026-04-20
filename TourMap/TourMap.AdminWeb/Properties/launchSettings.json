@@ -1,0 +1,37 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://0.0.0.0:5042",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://0.0.0.0:7177;http://0.0.0.0:5042",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "isolated-http": {
+      "commandName": "Executable",
+      "executablePath": "powershell",
+      "workingDirectory": "..",
+      "commandLineArgs": "-NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\Run-AdminWebIsolated.ps1",
+      "launchBrowser": true,
+      "launchUrl": "http://127.0.0.1:5042",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_CLI_HOME": "..\\.dotnet-cli"
+      }
+    }
+  }
+}

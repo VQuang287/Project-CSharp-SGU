@@ -1,0 +1,93 @@
+@model TourMap.AdminWeb.Models.Poi
+
+@{
+    ViewData["Title"] = "Chỉnh sửa Điểm";
+}
+
+<div class="container mt-4">
+    <h2 class="text-warning fw-bold">✏️ Chỉnh Sửa Địa Điểm</h2>
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="Edit" class="card shadow p-4 border-0" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="Id" />
+                
+                <div class="form-group mb-3">
+                    <label asp-for="Title" class="form-label fw-bold">Tên địa điểm</label>
+                    <input asp-for="Title" class="form-control form-control-lg" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label asp-for="Description" class="form-label fw-bold">Văn bản Thuyết Minh (Scripts TTS)</label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+
+                    <div class="form-check mt-3 border p-2 rounded bg-light">
+                        <input type="checkbox" name="autoAI" value="true" class="form-check-input" id="autoAI_check" checked />
+                        <label class="form-check-label text-success fw-bold" for="autoAI_check">
+                            🤖 Dịch & Tạo lại Audio AI (5 ngôn ngữ)
+                        </label>
+                        <small class="d-block text-muted">Chỉ sinh lại khi nội dung Scripts thực sự thay đổi. AI sẽ dịch sang EN, ZH, KO, JA, FR và tạo sẵn file Audio.</small>
+                    </div>
+                </div>
+
+                @if(Model.AudioUrlEn != null || Model.AudioUrlJa != null || Model.AudioUrlFr != null)
+                {
+                    <div class="alert alert-info mt-3">
+                        <h5 class="fw-bold mb-3">🌐 Dữ liệu Đa ngôn ngữ (AI Generated)</h5>
+                        @if(!string.IsNullOrEmpty(Model.DescriptionEn)) {
+                            <div class="mt-2"><strong>🇬🇧 EN:</strong> <span class="text-muted small">@Model.DescriptionEn</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlEn)) { <audio controls src="@Model.AudioUrlEn" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionZh)) {
+                            <div class="mt-2"><strong>🇨🇳 ZH:</strong> <span class="text-muted small">@Model.DescriptionZh</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlZh)) { <audio controls src="@Model.AudioUrlZh" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionKo)) {
+                            <div class="mt-2"><strong>🇰🇷 KO:</strong> <span class="text-muted small">@Model.DescriptionKo</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlKo)) { <audio controls src="@Model.AudioUrlKo" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionJa)) {
+                            <div class="mt-2"><strong>🇯🇵 JA:</strong> <span class="text-muted small">@Model.DescriptionJa</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlJa)) { <audio controls src="@Model.AudioUrlJa" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.DescriptionFr)) {
+                            <div class="mt-2"><strong>🇫🇷 FR:</strong> <span class="text-muted small">@Model.DescriptionFr</span></div>
+                            @if(!string.IsNullOrEmpty(Model.AudioUrlFr)) { <audio controls src="@Model.AudioUrlFr" class="w-100 mt-1" style="height:35px;"></audio> }
+                        }
+                        @if(!string.IsNullOrEmpty(Model.AudioUrl)) {
+                            <div class="mt-2 text-warning"><strong>🇻🇳 VI (Bản gốc):</strong> <span class="text-muted small">@Model.Description</span></div>
+                            <audio controls src="@Model.AudioUrl" class="w-100 mt-1" style="height:35px;"></audio>
+                        }
+                    </div>
+                }
+
+                <div class="row mb-4">
+                    <div class="col">
+                        <label asp-for="Latitude" class="form-label fw-bold">Vĩ độ</label>
+                        <input asp-for="Latitude" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label asp-for="Longitude" class="form-label fw-bold">Kinh độ</label>
+                        <input asp-for="Longitude" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label asp-for="RadiusMeters" class="form-label fw-bold">Bán kính (m)</label>
+                        <input asp-for="RadiusMeters" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label asp-for="Priority" class="form-label fw-bold">Ưu tiên</label>
+                        <input asp-for="Priority" class="form-control" />
+                    </div>
+                </div>
+                
+                <div class="form-group d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="btn btn-secondary px-4 py-2">Trở về</a>
+                    <input type="submit" value="Lưu Chỉnh Sửa" class="btn btn-success shadow px-4 py-2 fw-bold" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

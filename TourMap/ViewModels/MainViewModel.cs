@@ -1,25 +1,18 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using TourMap.Models;
 using TourMap.Services;
 
 namespace TourMap.ViewModels;
 
-public class MainViewModel : BindableObject
+public partial class MainViewModel : ObservableObject
 {
     private readonly DatabaseService _dataService;
 
     public ObservableCollection<Poi> Pois { get; } = new();
 
+    [ObservableProperty]
     private Poi? _selectedPoi;
-    public Poi? SelectedPoi
-    {
-        get => _selectedPoi;
-        set
-        {
-            _selectedPoi = value;
-            OnPropertyChanged();
-        }
-    }
 
     public MainViewModel(DatabaseService dataService)
     {

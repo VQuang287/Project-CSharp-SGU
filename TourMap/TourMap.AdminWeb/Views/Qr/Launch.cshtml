@@ -1,0 +1,56 @@
+@model dynamic
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mở ứng dụng - @Model.Title</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; text-align:center; }
+        .btn-app { display:inline-block; margin:8px; padding:10px 16px; background:#0d6efd; color:white; border-radius:6px; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <h2>@Model.Title</h2>
+    <p>@Model.Description</p>
+    <p>Đang mở ứng dụng… Nếu không có, bạn sẽ được chuyển tới cửa hàng ứng dụng.</p>
+
+    <script>
+        (function(){
+            var poiId = '@Model.Id';
+            var schemeUrl = '@Model.LaunchScheme';
+            var playStoreUrl = '@Model.PlayStoreUrl';
+            var appStoreUrl = '@Model.AppStoreUrl';
+            var webPoiUrl = '@Model.PoiWebUrl';
+            var androidPackage = '@Model.AndroidPackage';
+
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            var isAndroid = /android/i.test(ua);
+            var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+
+            function openWithFallback(openUrl, fallbackUrl) {
+                window.location = openUrl;
+                setTimeout(function(){ window.location = fallbackUrl; }, 1500);
+            }
+
+            if (isAndroid) {
+                // Use intent:// which opens app if installed, otherwise fallback to Play Store
+                var intentUrl = 'intent://poi/' + encodeURIComponent(poiId) + '#Intent;scheme=audiotour;package=' + encodeURIComponent(androidPackage) + ';end';
+                openWithFallback(intentUrl, playStoreUrl);
+            } else if (isIOS) {
+                // Try custom scheme, then fallback to app store
+                openWithFallback(schemeUrl, appStoreUrl);
+            } else {
+                // Desktop / other: go to web POI details
+                window.location = webPoiUrl;
+            }
+        })();
+    </script>
+
+    <p>
+        Nếu ứng dụng không mở, <a class="btn-app" href="@Model.PlayStoreUrl">Cài trên Play Store</a>
+        <a class="btn-app" href="@Model.AppStoreUrl">Cài trên App Store</a>
+    </p>
+</body>
+</html>

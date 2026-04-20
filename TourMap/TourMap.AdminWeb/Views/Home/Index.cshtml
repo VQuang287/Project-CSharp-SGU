@@ -1,0 +1,262 @@
+@model TourMap.AdminWeb.Models.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Bảng Điều Khiển";
+}
+
+<section class="dashboard-grid">
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tổng POI</p>
+            <p class="metric-value">@Model.TotalPois</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tour đang hoạt động</p>
+            <p class="metric-value">@Model.ActiveTours</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Tổng lượt phát</p>
+            <p class="metric-value">@Model.TotalPlays.ToString("N0")</p>
+        </div>
+    </article>
+    <article class="ui-card">
+        <div class="ui-card-body">
+            <p class="metric-title">Người dùng Mobile</p>
+            <p class="metric-value">@Model.ActiveMobileUsers</p>
+        </div>
+    </article>
+    <article class="ui-card ui-card--highlight">
+        <div class="ui-card-body">
+            <p class="metric-title">🔴 Thiết bị đang online</p>
+            <p class="metric-value" id="online-devices-count">@Model.OnlineDevices</p>
+            <p class="metric-subtitle" id="online-devices-status">Đang cập nhật real-time...</p>
+        </div>
+    </article>
+</section>
+
+<!-- Real-time Device Tracking Panel -->
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <h2 class="h6 mb-3">Thiết Bị Đang Kết Nối <span class="badge bg-success" id="live-badge">LIVE</span></h2>
+        <div id="device-list-container">
+            <table class="dashboard-table" id="connected-devices-table">
+                <thead>
+                    <tr>
+                        <th>Thiết bị</th>
+                        <th>Người dùng</th>
+                        <th>Trạng thái</th>
+                        <th>Vị trí hiện tại</th>
+                        <th>Thời gian kết nối</th>
+                    </tr>
+                </thead>
+                <tbody id="device-list">
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Đang tải danh sách thiết bị...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <h2 class="h6 mb-3">Top POI theo lượt phát</h2>
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>POI</th>
+                    <th>Lượt phát</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TopPois.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2">Chưa có dữ liệu playback.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var poi in Model.TopPois)
+                    {
+                        <tr>
+                            <td>@poi.PoiTitle</td>
+                            <td>@poi.PlayCount.ToString("N0")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <h2 class="h6 mb-3">Thao Tác Nhanh</h2>
+        <div class="dashboard-form-grid">
+            <div>
+                <label class="form-label">Tên POI</label>
+                <input class="form-control" placeholder="Nhập tên POI" />
+            </div>
+            <div>
+                <label class="form-label">Bán kính (m)</label>
+                <input class="form-control" type="number" placeholder="50" />
+            </div>
+            <div class="full">
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea class="form-control" rows="3" placeholder="Mô tả cho POI"></textarea>
+            </div>
+            <div class="full">
+                <button class="btn btn-primary">Lưu nháp</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        // Real-time device tracking
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/devices")
+            .withAutomaticReconnect()
+            .build();
+
+        let deviceList = [];
+
+        // Handle device list from server
+        connection.on("DeviceList", (devices) => {
+            deviceList = devices;
+            updateDeviceList();
+            updateOnlineCount(devices.length);
+        });
+
+        // Handle new device connection
+        connection.on("DeviceConnected", (device) => {
+            console.log("Device connected:", device);
+            // Remove if exists, then add
+            deviceList = deviceList.filter(d => d.deviceId !== device.deviceId);
+            deviceList.push(device);
+            updateDeviceList();
+            updateOnlineCount(deviceList.length);
+        });
+
+        // Handle device updates
+        connection.on("DeviceUpdated", (device) => {
+            const index = deviceList.findIndex(d => d.deviceId === device.deviceId);
+            if (index !== -1) {
+                deviceList[index] = device;
+            } else {
+                deviceList.push(device);
+            }
+            updateDeviceList();
+        });
+
+        // Handle device disconnection
+        connection.on("DeviceDisconnected", (deviceId) => {
+            deviceList = deviceList.filter(d => d.deviceId !== deviceId);
+            updateDeviceList();
+            updateOnlineCount(deviceList.length);
+        });
+
+        function updateOnlineCount(count) {
+            document.getElementById('online-devices-count').textContent = count;
+            const status = document.getElementById('online-devices-status');
+            if (count === 0) {
+                status.textContent = 'Không có thiết bị nào đang kết nối';
+                status.className = 'metric-subtitle text-muted';
+            } else {
+                status.textContent = `Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')}`;
+                status.className = 'metric-subtitle text-success';
+            }
+        }
+
+        function updateDeviceList() {
+            const tbody = document.getElementById('device-list');
+            
+            if (deviceList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Không có thiết bị nào đang kết nối</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = deviceList.map(device => {
+                const stateBadge = getStateBadge(device.state);
+                const location = device.lastLatitude && device.lastLongitude 
+                    ? `${device.lastLatitude.toFixed(4)}, ${device.lastLongitude.toFixed(4)}`
+                    : 'Không xác định';
+                const connectedTime = new Date(device.connectedAt).toLocaleString('vi-VN');
+                
+                return `
+                    <tr data-device-id="${device.deviceId}">
+                        <td>
+                            <strong>${escapeHtml(device.deviceId.substring(0, 8))}...</strong><br>
+                            <small class="text-muted">${escapeHtml(device.deviceType || 'Unknown')}</small>
+                        </td>
+                        <td>${escapeHtml(device.userName || 'Guest')}</td>
+                        <td>${stateBadge}</td>
+                        <td>
+                            ${location}
+                            ${device.currentPoiName ? `<br><small class="text-success">📍 ${escapeHtml(device.currentPoiName)}</small>` : ''}
+                        </td>
+                        <td>${connectedTime}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStateBadge(state) {
+            const badges = {
+                0: '<span class="badge bg-success">Online</span>',
+                1: '<span class="badge bg-secondary">Idle</span>',
+                2: '<span class="badge bg-primary">Playing</span>',
+                3: '<span class="badge bg-danger">Offline</span>'
+            };
+            return badges[state] || `<span class="badge bg-secondary">${state}</span>`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Start connection and join admin group
+        async function start() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+                await connection.invoke("JoinAdminGroup");
+                document.getElementById('live-badge').classList.remove('bg-secondary');
+                document.getElementById('live-badge').classList.add('bg-success');
+            } catch (err) {
+                console.error("SignalR Connection Error:", err);
+                document.getElementById('live-badge').textContent = 'DISCONNECTED';
+                document.getElementById('live-badge').classList.remove('bg-success');
+                document.getElementById('live-badge').classList.add('bg-secondary');
+                setTimeout(start, 5000);
+            }
+        }
+
+        connection.onreconnecting(() => {
+            console.log("SignalR Reconnecting...");
+            document.getElementById('live-badge').textContent = 'RECONNECTING';
+            document.getElementById('live-badge').classList.remove('bg-success');
+            document.getElementById('live-badge').classList.add('bg-warning');
+        });
+
+        connection.onreconnected(() => {
+            console.log("SignalR Reconnected.");
+            document.getElementById('live-badge').textContent = 'LIVE';
+            document.getElementById('live-badge').classList.remove('bg-warning');
+            document.getElementById('live-badge').classList.add('bg-success');
+            connection.invoke("JoinAdminGroup");
+        });
+
+        start();
+    </script>
+}
