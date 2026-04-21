@@ -1,8 +1,46 @@
 # GitHub Linguist overrides
 # Keep repository language stats focused on application source code.
 
-# Exclude PowerShell helper scripts from language breakdown
-*.ps1 linguist-detectable=false
+# Keep C# and core .NET solution files detectable
+*.cs linguist-detectable=true
+*.csproj linguist-language=C#
+*.sln linguist-language=C#
+*.slnx linguist-language=C#
 
-# Exclude SQL bootstrap scripts from language breakdown
+# Exclude UI/markup/web/doc/assets from language stats
+*.xaml linguist-detectable=false
+*.axaml linguist-detectable=false
+*.xml linguist-detectable=false
+*.json linguist-detectable=false
+*.md linguist-detectable=false
+*.txt linguist-detectable=false
+*.csv linguist-detectable=false
+*.yml linguist-detectable=false
+*.yaml linguist-detectable=false
+
+*.cshtml linguist-detectable=false
+*.html linguist-detectable=false
+*.htm linguist-detectable=false
+*.css linguist-detectable=false
+*.js linguist-detectable=false
+
+*.svg linguist-detectable=false
+*.png linguist-detectable=false
+*.jpg linguist-detectable=false
+*.jpeg linguist-detectable=false
+*.gif linguist-detectable=false
+*.webp linguist-detectable=false
+*.ico linguist-detectable=false
+*.mp3 linguist-detectable=false
+
+# Exclude helper scripts and SQL bootstrap files from language breakdown
+*.ps1 linguist-detectable=false
 *.sql linguist-detectable=false
+
+# Ignore generated/build output and vendored client libraries
+bin/** linguist-generated=true
+obj/** linguist-generated=true
+TourMap.AdminWeb/wwwroot/lib/** linguist-vendored
+
+# Treat docs as documentation (excluded from language graph)
+TourMap/_docs/** linguist-documentation
