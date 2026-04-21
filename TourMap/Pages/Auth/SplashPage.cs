@@ -103,34 +103,55 @@ public class SplashPage : ContentPage
         base.OnAppearing();
         try
         {
-            // Nếu đã chọn ngôn ngữ rồi → kiểm tra auth state
             var savedLang = Preferences.Default.Get("selected_language", string.Empty);
-            if (!string.IsNullOrEmpty(savedLang))
+            var hasPendingPoiDeepLink = !string.IsNullOrEmpty(DeepLinkHelper.PeekPendingPoiId());
+
+            if (string.IsNullOrEmpty(savedLang))
+            {
+                if (!hasPendingPoiDeepLink)
+                {
+                    return;
+                }
+
+                var fallbackLanguage = LocalizationService.SupportedLanguages
+                    .Select(x => x.Code)
+                    .FirstOrDefault() ?? "vi";
+                Preferences.Default.Set("selected_language", fallbackLanguage);
+                LocalizationService.Current.CurrentLanguage = fallbackLanguage;
+                await Task.Delay(300);
+            }
+            else
             {
                 LocalizationService.Current.CurrentLanguage = savedLang;
                 await Task.Delay(600);
+            }
 
-                // === AUTH CHECK ===
-                if (_authService != null)
+            // === AUTH CHECK ===
+            if (_authService != null)
+            {
+                await _authService.InitializeAsync();
+                if (_authService.IsAuthenticated)
                 {
-                    await _authService.InitializeAsync();
-                    if (_authService.IsAuthenticated)
+                    NavigateToShell();
+                    return;
+                }
+
+                if (hasPendingPoiDeepLink)
+                {
+                    var guestSignedIn = await _authService.LoginAnonymousAsync();
+                    if (guestSignedIn)
                     {
-                        // Đã login → vào app chính
                         NavigateToShell();
-                        return;
-                    }
-                    else
-                    {
-                        // Chưa login → về LoginPage
-                        NavigateToLogin();
                         return;
                     }
                 }
 
-                // Fallback: no auth service → go to shell directly
-                NavigateToShell();
+                NavigateToLogin();
+                return;
             }
+
+            // Fallback: no auth service → go to shell directly
+            NavigateToShell();
         }
         catch (Exception ex)
         {
@@ -188,51 +209,25 @@ public class SplashPage : ContentPage
         // If app was launched via deeplink (stored by platform MainActivity), navigate to POI detail
         try
         {
-            var pending = Preferences.Default.Get("pending_deeplink", string.Empty);
-            if (!string.IsNullOrEmpty(pending))
+            var finalPoiId = DeepLinkHelper.ConsumePendingPoiId();
+            if (!string.IsNullOrEmpty(finalPoiId))
             {
-                // Tiêu thụ (xoá) link để các lần sau vào app không bị gán lại
-                Preferences.Default.Remove("pending_deeplink");
-
-                string? finalPoiId = null;
-
-                // Xử lý Custom URI Scheme (vd: audiotour://poi/f47ac10b)
-                if (pending.StartsWith("audiotour://"))
-                {
-                    var uri = new Uri(pending);
-                    
-                    // Host = "poi", AbsolutePath = "/f47ac10b"
-                    if (uri.Host.Equals("poi", StringComparison.OrdinalIgnoreCase))
-                    {
-                        finalPoiId = uri.AbsolutePath.Trim('/');
-                    }
-                }
-                // Xử lý HTTPS Scheme (vd: https://domain.com/Launch/f47ac10b)
-                else if (pending.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                {
-                    var uri = new Uri(pending);
-                    var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    if (segments.Length > 0)
-                    {
-                        finalPoiId = segments.Last();
-                    }
-                }
-
                 // Chờ Routing thiết lập xong UI rồi mới Navigate
-                if (!string.IsNullOrEmpty(finalPoiId))
+                _ = Task.Run(async () =>
                 {
-                    // Đẩy quá trình điều hướng sang Thread khác để không block MainThread
-                    _ = Task.Run(async () =>
+                    await Task.Delay(500); // Chờ AppShell khởi tạo Frame
+                    MainThread.BeginInvokeOnMainThread(async () =>
                     {
-                        await Task.Delay(500); // Chờ AppShell khởi tạo Frame
-                        MainThread.BeginInvokeOnMainThread(async () =>
+                        try
                         {
                             await Shell.Current.GoToAsync($"{nameof(Pages.PoiDetailPage)}?poiId={finalPoiId}");
-                        });
+                        }
+                        catch (Exception navEx)
+                        {
+                            Console.WriteLine($"[SplashPage] Deep link navigation failed: {navEx.Message}");
+                        }
                     });
-                     // Note: We don't return early here because we want the Shell logic above to finish launching the page first.
-                     // The navigation will kick in asynchronously 500ms after.
-                }
+                });
             }
         }
         catch (Exception ex)

@@ -21,7 +21,7 @@
     <hr />
     <div class="row">
         <div class="col-md-8">
-            <form asp-action="Edit" id="poiEditForm" class="card shadow p-4 border-0" enctype="multipart/form-data">
+            <form asp-action="Edit" method="post" id="poiEditForm" class="card shadow p-4 border-0" enctype="multipart/form-data">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <input type="hidden" asp-for="Id" />
                 
@@ -163,15 +163,28 @@
             const btnTranslate = document.getElementById('btnTranslateScripts');
             const btnSaveVi = document.getElementById('btnSaveViScript');
             const btnPreviewVi = document.getElementById('btnPreviewViScript');
+            const submitBtn = document.getElementById('btnSubmitPoiEdit');
+            const defaultSubmitText = submitBtn?.textContent || 'Lưu Chỉnh Sửa';
 
             const translateUrl = '@Url.Action("TranslateScripts", "Pois")';
             const previewAudioUrl = '@Url.Action("PreviewLanguageAudio", "Pois")';
             const saveLanguageUrl = '@Url.Action("SaveLanguageScript", "Pois")';
+            let isFormSubmitting = false;
+            let submitRecoverTimer = null;
 
             function showStatus(message, kind) {
                 statusBox.classList.remove('d-none', 'alert-secondary', 'alert-success', 'alert-danger', 'alert-warning');
                 statusBox.classList.add(kind === 'success' ? 'alert-success' : kind === 'error' ? 'alert-danger' : kind === 'warning' ? 'alert-warning' : 'alert-secondary');
                 statusBox.textContent = message;
+            }
+
+            function setSubmitLoading(isLoading) {
+                if (!submitBtn) {
+                    return;
+                }
+
+                submitBtn.disabled = isLoading;
+                submitBtn.textContent = isLoading ? 'Đang lưu...' : defaultSubmitText;
             }
 
             function getAntiForgeryToken() {
@@ -335,9 +348,70 @@
             });
 
             form.addEventListener('submit', function (event) {
+                if (isFormSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                    event.preventDefault();
+                    showStatus('Một số trường dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại trước khi lưu.', 'warning');
+                    if (typeof form.reportValidity === 'function') {
+                        form.reportValidity();
+                    }
+                    return;
+                }
+
+                if (window.jQuery && typeof window.jQuery(form).valid === 'function' && !window.jQuery(form).valid()) {
+                    event.preventDefault();
+                    showStatus('Có dữ liệu chưa hợp lệ nên chưa thể lưu. Vui lòng kiểm tra lại các trường tọa độ/số liệu.', 'warning');
+                    return;
+                }
+
                 const confirmed = confirm('Xác nhận lưu toàn bộ chỉnh sửa của POI này vào database?');
                 if (!confirmed) {
                     event.preventDefault();
+                    return;
+                }
+
+                isFormSubmitting = true;
+                showStatus('Đang lưu toàn bộ chỉnh sửa POI...', 'secondary');
+
+                if (submitRecoverTimer) {
+                    window.clearTimeout(submitRecoverTimer);
+                }
+
+                setSubmitLoading(true);
+
+                // If another handler blocks submit or server stalls too long, recover UI state.
+                submitRecoverTimer = window.setTimeout(function () {
+                    if (!isFormSubmitting) {
+                        return;
+                    }
+
+                    isFormSubmitting = false;
+                    setSubmitLoading(false);
+                    showStatus('Lưu đang phản hồi quá lâu. Vui lòng bấm lưu lại hoặc kiểm tra server/database.', 'warning');
+                }, 25000);
+
+                // Handle cases where submit is canceled by another handler after this listener.
+                window.setTimeout(function () {
+                    if (!event.defaultPrevented) {
+                        return;
+                    }
+
+                    isFormSubmitting = false;
+                    setSubmitLoading(false);
+                }, 0);
+            });
+
+            window.addEventListener('pageshow', function () {
+                isFormSubmitting = false;
+                setSubmitLoading(false);
+
+                if (submitRecoverTimer) {
+                    window.clearTimeout(submitRecoverTimer);
+                    submitRecoverTimer = null;
                 }
             });
         })();

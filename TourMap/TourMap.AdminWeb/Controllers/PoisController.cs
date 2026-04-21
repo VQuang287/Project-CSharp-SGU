@@ -26,6 +26,26 @@ public class PoisController : Controller
         return View(await _context.Pois.OrderByDescending(p => p.Priority).ToListAsync());
     }
 
+    [AllowAnonymous]
+    public async Task<IActionResult> Details(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return NotFound();
+        }
+
+        var poi = await _context.Pois
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (poi == null)
+        {
+            return NotFound();
+        }
+
+        return View(poi);
+    }
+
     public IActionResult Create()
     {
         return View();
@@ -107,13 +127,13 @@ public class PoisController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(string id, Poi poi, IFormFile? ImageFile, IFormFile? AudioFile, bool autoAI = false)
+    public async Task<IActionResult> Edit(string id, Poi poi, IFormFile? ImageFile, IFormFile? AudioFile, [FromForm] bool autoAI = false, CancellationToken cancellationToken = default)
     {
         if (id != poi.Id) return NotFound();
 
         if (ModelState.IsValid)
         {
-            var existingPoi = await _context.Pois.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            var existingPoi = await _context.Pois.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
             if (existingPoi == null) return NotFound();
 
             poi.ImageUrl = existingPoi.ImageUrl;
@@ -183,9 +203,27 @@ public class PoisController : Controller
             {
                 poi.UpdatedAt = DateTime.UtcNow;
                 _context.Update(poi);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(cancellationToken);
+                TempData["Success"] = "Đã lưu chỉnh sửa POI thành công.";
             }
-            catch (DbUpdateConcurrencyException) { }
+            catch (DbUpdateConcurrencyException)
+            {
+                ModelState.AddModelError(string.Empty, "Không thể lưu vì dữ liệu POI đã bị thay đổi ở nơi khác. Vui lòng tải lại trang và thử lại.");
+                TempData["Error"] = "Lưu POI thất bại do xung đột dữ liệu.";
+                return View(poi);
+            }
+            catch (OperationCanceledException)
+            {
+                ModelState.AddModelError(string.Empty, "Yêu cầu lưu đã bị hủy do timeout hoặc mất kết nối. Vui lòng thử lại.");
+                TempData["Error"] = "Lưu POI bị hủy do quá thời gian chờ.";
+                return View(poi);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError(string.Empty, "Có lỗi khi lưu chỉnh sửa POI. Vui lòng thử lại sau.");
+                TempData["Error"] = "Lưu POI thất bại do lỗi hệ thống.";
+                return View(poi);
+            }
             return RedirectToAction(nameof(Index));
         }
         return View(poi);

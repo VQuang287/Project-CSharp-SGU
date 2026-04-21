@@ -26,6 +26,7 @@ namespace TourMap
             base.OnAppearing();
 
             await EnsureDeviceTrackingConnectedAsync();
+            await NavigatePendingDeepLinkAsync();
 
             if (_runtimeBootstrapped)
                 return;
@@ -47,6 +48,24 @@ namespace TourMap
             catch (Exception ex)
             {
                 Console.WriteLine($"[AppShell] Runtime bootstrap failed: {ex.Message}");
+            }
+        }
+
+        private static async Task NavigatePendingDeepLinkAsync()
+        {
+            try
+            {
+                var poiId = Services.DeepLinkHelper.ConsumePendingPoiId();
+                if (string.IsNullOrWhiteSpace(poiId))
+                {
+                    return;
+                }
+
+                await Shell.Current.GoToAsync($"{nameof(Pages.PoiDetailPage)}?poiId={poiId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AppShell] Pending deep-link navigation failed: {ex.Message}");
             }
         }
 

@@ -22,8 +22,9 @@ public static class BackendEndpoints
         AddAuthorityFromUrl(candidates, Preferences.Default.Get(ServerBaseUrlPreferenceKey, string.Empty));
         AddAuthorityFromUrl(candidates, Environment.GetEnvironmentVariable("TOURMAP_SERVER_BASE_URL"));
 
-        // Dev defaults
-        AddAuthorityFromUrl(candidates, "http://192.168.1.7:5042"); // Physical device on WiFi (update if your LAN IP changes)
+        // Dev defaults - UPDATE THIS to match your PC's IP address
+        // Find your IP: cmd -> ipconfig -> IPv4 Address (e.g., 192.168.1.5)
+        AddAuthorityFromUrl(candidates, "http://192.168.1.5:5042"); // ← UPDATE THIS IP
         AddAuthorityFromUrl(candidates, "http://10.0.2.2:5042"); // Android emulator -> host machine
         AddAuthorityFromUrl(candidates, "http://localhost:5042");
         AddAuthorityFromUrl(candidates, "http://127.0.0.1:5042");

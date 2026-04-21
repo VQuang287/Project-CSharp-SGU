@@ -21,8 +21,8 @@ public partial class MapPage : ContentPage
     private readonly TourRuntimeService _tourRuntimeService;
     private readonly GeofenceEngine _geofenceEngine;
     private readonly NarrationEngine _narrationEngine;
-    private readonly SyncService _syncService;
     private readonly AuthService _authService;
+    private readonly AutoSyncService _autoSyncService;
     private readonly MapControl _mapControl;
     private readonly LocalizationService _loc;
 
@@ -57,8 +57,8 @@ public partial class MapPage : ContentPage
         ServiceHelper.GetService<TourRuntimeService>(),
         ServiceHelper.GetService<GeofenceEngine>(),
         ServiceHelper.GetService<NarrationEngine>(),
-        ServiceHelper.GetService<SyncService>(),
-        ServiceHelper.GetService<AuthService>())
+        ServiceHelper.GetService<AuthService>(),
+        ServiceHelper.GetService<AutoSyncService>())
     {
     }
 
@@ -67,16 +67,16 @@ public partial class MapPage : ContentPage
         TourRuntimeService tourRuntimeService,
         GeofenceEngine geofenceEngine,
         NarrationEngine narrationEngine,
-        SyncService syncService,
-        AuthService authService)
+        AuthService authService,
+        AutoSyncService autoSyncService)
     {
         InitializeComponent();
         _vm = vm;
         _tourRuntimeService = tourRuntimeService;
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
-        _syncService = syncService;
         _authService = authService;
+        _autoSyncService = autoSyncService;
         _loc = LocalizationService.Current;
 
         Shell.SetNavBarIsVisible(this, false);
@@ -279,6 +279,8 @@ public partial class MapPage : ContentPage
             _tourRuntimeService.LocationUpdated -= OnGpsLocationChanged;
             _tourRuntimeService.LocationUpdated += OnGpsLocationChanged;
             _narrationEngine.StateChanged += OnNarrationStateChanged;
+            _autoSyncService.SyncCompleted -= OnAutoSyncCompleted;
+            _autoSyncService.SyncCompleted += OnAutoSyncCompleted;
 
             var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
             UpdateGpsBadge(status == PermissionStatus.Granted);
@@ -296,6 +298,7 @@ public partial class MapPage : ContentPage
 
         _tourRuntimeService.LocationUpdated -= OnGpsLocationChanged;
         _narrationEngine.StateChanged -= OnNarrationStateChanged;
+        _autoSyncService.SyncCompleted -= OnAutoSyncCompleted;
         _mapControl.MapTapped -= OnMapTapped;
         
         // Unsubscribe from language changes
@@ -327,30 +330,7 @@ public partial class MapPage : ContentPage
             {
                 try
                 {
-                    foreach (var serverUrl in BackendEndpoints.GetCandidateServerBaseUrls())
-                    {
-                        if (await _syncService.SyncPoisFromServerAsync(serverUrl))
-                        {
-                            BackendEndpoints.RememberWorkingServerFromUrl(serverUrl);
-                            break;
-                        }
-                    }
-
-                    await _tourRuntimeService.RefreshPoisAsync();
-
-                    MainThread.BeginInvokeOnMainThread(async () =>
-                    {
-                        try
-                        {
-                            await _vm.LoadAsync();
-                            ShowPoisOnMap();
-                            EnsureInitialViewport();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[MapPage] UI refresh after sync failed: {ex.Message}");
-                        }
-                    });
+                    await _autoSyncService.EnsureSyncedAsync("map-initial-load", force: true);
                 }
                 catch (Exception ex)
                 {
@@ -360,6 +340,23 @@ public partial class MapPage : ContentPage
         }
 
         await _tourRuntimeService.RefreshPoisAsync();
+    }
+
+    private async void OnAutoSyncCompleted(object? sender, AutoSyncCompletedEventArgs e)
+    {
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await _vm.LoadAsync();
+                ShowPoisOnMap();
+                EnsureInitialViewport();
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MapPage] UI refresh after auto-sync failed: {ex.Message}");
+        }
     }
 
     private void EnsureInitialViewport()

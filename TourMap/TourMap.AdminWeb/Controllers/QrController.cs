@@ -49,20 +49,35 @@ public class QrController : Controller
 
         var poi = await _context.Pois.AsNoTracking().FirstOrDefaultAsync(x => x.Id == poiId);
         if (poi == null) return NotFound();
-        // Create a web landing URL that attempts to open the app and falls back to store/web
-        var launchUrl = Url.Action("Launch", "Qr", new { poiId = poi.Id }, Request.Scheme);
-        var encoded = WebUtility.UrlEncode(launchUrl ?? $"audiotour://poi/{poi.Id}");
+
+        // Use direct custom scheme so both in-app scanner and device camera can open POI directly.
+        var deepLink = $"audiotour://poi/{poi.Id}";
+        var encoded = WebUtility.UrlEncode(deepLink);
         var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={encoded}";
 
         _context.QrCodeEntries.Add(new QrCodeEntry
         {
             PoiId = poi.Id,
-            DeepLink = launchUrl,
+            DeepLink = deepLink,
             QrImageUrl = qrUrl,
             CreatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var entry = await _context.QrCodeEntries.FirstOrDefaultAsync(x => x.Id == id);
+        if (entry != null)
+        {
+            _context.QrCodeEntries.Remove(entry);
+            await _context.SaveChangesAsync();
+        }
+
         return RedirectToAction(nameof(Index));
     }
 

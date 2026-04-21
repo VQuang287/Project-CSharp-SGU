@@ -1,0 +1,57 @@
+@model TourMap.AdminWeb.Models.Poi
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" class="card-img-top" alt="@Model.Title" style="max-height:320px;object-fit:cover;" />
+                }
+                <div class="card-body">
+                    <h1 class="h3 mb-3">@Model.Title</h1>
+                    <p class="text-muted mb-4">@Model.Description</p>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 bg-light">
+                                <div class="small text-muted">Vi do</div>
+                                <div class="fw-semibold">@Model.Latitude</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 bg-light">
+                                <div class="small text-muted">Kinh do</div>
+                                <div class="fw-semibold">@Model.Longitude</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 bg-light">
+                                <div class="small text-muted">Ban kinh kich hoat</div>
+                                <div class="fw-semibold">@Model.RadiusMeters m</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 bg-light">
+                                <div class="small text-muted">Muc uu tien</div>
+                                <div class="fw-semibold">@Model.Priority</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary" href="audiotour://poi/@Model.Id">Mo trong ung dung</a>
+                        @if (!string.IsNullOrWhiteSpace(Model.MapLink))
+                        {
+                            <a class="btn btn-outline-secondary" href="@Model.MapLink" target="_blank" rel="noopener">Mo tren ban do</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

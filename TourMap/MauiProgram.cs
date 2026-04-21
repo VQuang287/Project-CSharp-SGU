@@ -58,6 +58,7 @@ namespace TourMap
             builder.Services.AddHttpClient();
             builder.Services.AddSingleton<Services.AuthService>();
             builder.Services.AddSingleton<Services.SyncService>();
+            builder.Services.AddSingleton<Services.AutoSyncService>();
             builder.Services.AddSingleton<Services.DeviceTrackingService>();
             
             // === Phase 3.3: Logging Framework ===
@@ -78,4 +79,3 @@ namespace TourMap
         }
     }
 }
-

@@ -127,7 +127,10 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDir))
     .SetApplicationName("TourMap.AdminWeb");
 
-builder.Services.AddHttpClient<IAITranslationService, AITranslationService>();
+builder.Services.AddHttpClient<IAITranslationService, AITranslationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
 
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseSqlServer(connectionString)

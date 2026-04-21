@@ -1,5 +1,9 @@
 using BarcodeScanning;
 using TourMap.Services;
+using System.Net;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace TourMap.Pages;
 
@@ -542,16 +546,20 @@ public class QrScannerPage : ContentPage
             _isProcessing = true;
             _cameraView.PauseScanning = true;
 
-            var rawValue = e.BarcodeResults.First().DisplayValue;
+            var rawValue = ExtractBarcodePayload(e.BarcodeResults.First());
             if (string.IsNullOrEmpty(rawValue))
             {
+                Console.WriteLine("[QR] Empty payload from barcode result.");
                 ResetScanner();
                 return;
             }
 
+            Console.WriteLine($"[QR] Payload detected: {TruncateForLog(rawValue)}");
+
             var poiId = ParsePoiId(rawValue);
             if (string.IsNullOrEmpty(poiId))
             {
+                Console.WriteLine($"[QR] Unable to parse POI ID from payload: {TruncateForLog(rawValue)}");
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     _statusLabel.Text = _loc["CameraInvalidQr"] ?? "Mã QR không hợp lệ. Đang quét lại...";
@@ -566,17 +574,17 @@ public class QrScannerPage : ContentPage
             {
                 if (poi != null)
                 {
-                    // Show success card
                     _scannedPoi = poi;
                     _successPoiTitle.Text = poi.Title;
                     _successPoiDesc.Text = poi.Description;
                     _successCard.IsVisible = true;
+
+                    await OpenPoiDetailAsync(poi, poiId);
                 }
                 else
                 {
-                    _statusLabel.Text = _loc["CameraInvalidQr"] ?? "Mã QR không hợp lệ. Đang quét lại...";
-                    await Task.Delay(2000);
-                    ResetScanner();
+                    _statusLabel.Text = _loc["QrScanHint"] ?? "Đang mở chi tiết POI...";
+                    await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
                 }
             });
         }
@@ -592,9 +600,8 @@ public class QrScannerPage : ContentPage
         try
         {
             if (_scannedPoi == null) return;
-            
-            await _narrationEngine.OnPOITriggeredAsync(_scannedPoi, "QR");
-            await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={_scannedPoi.Id}");
+
+            await OpenPoiDetailAsync(_scannedPoi, _scannedPoi.Id);
         }
         catch (Exception ex)
         {
@@ -602,31 +609,184 @@ public class QrScannerPage : ContentPage
         }
     }
 
+    private async Task OpenPoiDetailAsync(Models.Poi poi, string poiId)
+    {
+        await _narrationEngine.OnPOITriggeredAsync(poi, "QR");
+        await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
+    }
+
     // SUG-06: Validate POI ID format (must be valid GUID or safe alphanumeric)
     private static string? ParsePoiId(string rawValue)
     {
-        string poiId;
-        
-        if (rawValue.StartsWith("audiotour://poi/", StringComparison.OrdinalIgnoreCase))
-            poiId = rawValue.Substring("audiotour://poi/".Length).Trim();
-        else if (rawValue.Contains("/poi/", StringComparison.OrdinalIgnoreCase))
-        {
-            var idx = rawValue.IndexOf("/poi/", StringComparison.OrdinalIgnoreCase);
-            poiId = rawValue.Substring(idx + 5).Trim().TrimEnd('/');
-        }
-        else
-            poiId = rawValue.Trim();
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return null;
 
-        // Validate POI ID format
-        if (Guid.TryParse(poiId, out _))
-            return poiId;
+        var normalized = NormalizeScannedValue(rawValue);
+        var decoded = normalized.Contains('%') ? WebUtility.UrlDecode(normalized) : normalized;
 
-        // Also accept short alphanumeric IDs (max 64 chars, no special chars)
-        if (poiId.Length > 0 && poiId.Length <= 64 && 
-            poiId.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
+        var poiId = TryExtractPoiIdFromCandidate(normalized)
+            ?? TryExtractPoiIdFromCandidate(decoded);
+
+        if (string.IsNullOrWhiteSpace(poiId))
+            return null;
+
+        if (IsSafePoiId(poiId))
             return poiId;
 
         Console.WriteLine($"[QR] ⚠️ Invalid POI ID format rejected: {poiId}");
         return null;
+    }
+
+    private static string? TryExtractPoiIdFromCandidate(string candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate))
+            return null;
+
+        var poiId = DeepLinkHelper.ExtractPoiId(candidate);
+        if (!string.IsNullOrWhiteSpace(poiId))
+            return poiId.Trim();
+
+        // Android referrer style payload: deep_link=audiotour%3A%2F%2Fpoi%2F{id}
+        if (candidate.Contains("deep_link=", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var part in candidate.Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kv = part.Split('=', 2);
+                if (kv.Length != 2)
+                    continue;
+
+                if (!kv[0].Equals("deep_link", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var deepLinkValue = WebUtility.UrlDecode(kv[1]);
+                poiId = DeepLinkHelper.ExtractPoiId(deepLinkValue);
+                if (!string.IsNullOrWhiteSpace(poiId))
+                    return poiId.Trim();
+            }
+        }
+
+        // Android intent URL form: intent://poi/{id}#Intent;...
+        if (candidate.StartsWith("intent://poi/", StringComparison.OrdinalIgnoreCase))
+        {
+            var remainder = candidate.Substring("intent://poi/".Length);
+            var hashIndex = remainder.IndexOf('#');
+            poiId = (hashIndex >= 0 ? remainder[..hashIndex] : remainder).Trim();
+            if (!string.IsNullOrWhiteSpace(poiId))
+                return poiId;
+        }
+
+        // Some scanners strip scheme from URL, e.g. 127.0.0.1:5042/Launch/{id}
+        if (!candidate.Contains("://", StringComparison.Ordinal)
+            && candidate.Contains('/')
+            && candidate.Contains(':'))
+        {
+            var reconstructed = $"http://{candidate}";
+            poiId = DeepLinkHelper.ExtractPoiId(reconstructed);
+            if (!string.IsNullOrWhiteSpace(poiId))
+                return poiId.Trim();
+        }
+
+        // Fallback: pick a GUID anywhere in the scanned text.
+        var guidMatch = Regex.Match(candidate, @"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b");
+        if (guidMatch.Success)
+            return guidMatch.Value;
+
+        // Final fallback: last path-like segment.
+        var tail = candidate
+            .Split('?', '#', '&')[0]
+            .TrimEnd('/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault();
+
+        return string.IsNullOrWhiteSpace(tail) ? null : tail.Trim();
+    }
+
+    private static string NormalizeScannedValue(string value)
+    {
+        var normalized = value.Trim();
+
+        // Remove common invisible characters emitted by some scanner engines.
+        normalized = normalized
+            .Replace("\uFEFF", string.Empty, StringComparison.Ordinal)
+            .Replace("\u200B", string.Empty, StringComparison.Ordinal)
+            .Replace("\u200C", string.Empty, StringComparison.Ordinal)
+            .Replace("\u200D", string.Empty, StringComparison.Ordinal);
+
+        return normalized;
+    }
+
+    private static bool IsSafePoiId(string poiId)
+    {
+        if (Guid.TryParse(poiId, out _))
+            return true;
+
+        return poiId.Length > 0
+            && poiId.Length <= 128
+            && poiId.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
+    }
+
+    private static string? ExtractBarcodePayload(object? barcodeResult)
+    {
+        if (barcodeResult == null)
+            return null;
+
+        var triedProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var propertyName in new[] { "DisplayValue", "RawValue", "Value", "Text", "Data" })
+        {
+            triedProperties.Add(propertyName);
+            var candidate = TryReadBarcodeProperty(barcodeResult, propertyName);
+            if (!string.IsNullOrWhiteSpace(candidate))
+                return candidate;
+        }
+
+        // Library versions may rename the payload property; inspect all readable properties as fallback.
+        foreach (var prop in barcodeResult.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!prop.CanRead || prop.GetIndexParameters().Length > 0)
+                continue;
+
+            if (triedProperties.Contains(prop.Name))
+                continue;
+
+            var value = prop.GetValue(barcodeResult);
+            var candidate = value switch
+            {
+                null => null,
+                string s => s,
+                byte[] bytes when bytes.Length > 0 => Encoding.UTF8.GetString(bytes),
+                _ => null
+            };
+
+            if (!string.IsNullOrWhiteSpace(candidate))
+                return candidate;
+        }
+
+        var fallback = barcodeResult.ToString();
+        return string.IsNullOrWhiteSpace(fallback) ? null : fallback;
+    }
+
+    private static string? TryReadBarcodeProperty(object barcodeResult, string propertyName)
+    {
+        var prop = barcodeResult.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+        if (prop == null)
+            return null;
+
+        var value = prop.GetValue(barcodeResult);
+        return value switch
+        {
+            null => null,
+            string s => s,
+            byte[] bytes when bytes.Length > 0 => Encoding.UTF8.GetString(bytes),
+            _ => value.ToString()
+        };
+    }
+
+    private static string TruncateForLog(string value, int max = 160)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= max)
+            return value;
+
+        return value[..max] + "...";
     }
 }

@@ -242,6 +242,26 @@ public class LoginPage : ContentPage
             // Prevent fallback to legacy MainPage menu on fresh installs.
             Preferences.Default.Set("onboarding_completed", true);
             window.Page = ServiceHelper.GetService<AppShell>();
+
+            var pendingPoiId = DeepLinkHelper.ConsumePendingPoiId();
+            if (!string.IsNullOrEmpty(pendingPoiId))
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(500);
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        try
+                        {
+                            await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={pendingPoiId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[LoginPage] Deep link navigation failed: {ex.Message}");
+                        }
+                    });
+                });
+            }
         }
         return Task.CompletedTask;
     }
