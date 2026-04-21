@@ -2,6 +2,18 @@
 
 @{
     ViewData["Title"] = "Chỉnh sửa Điểm";
+    var viScript = Model.TtsScriptVi ?? Model.Description ?? string.Empty;
+    var scriptEn = Model.TtsScriptEn ?? Model.DescriptionEn ?? string.Empty;
+    var scriptZh = Model.TtsScriptZh ?? Model.DescriptionZh ?? string.Empty;
+    var scriptKo = Model.TtsScriptKo ?? Model.DescriptionKo ?? string.Empty;
+    var scriptJa = Model.TtsScriptJa ?? Model.DescriptionJa ?? string.Empty;
+    var scriptFr = Model.TtsScriptFr ?? Model.DescriptionFr ?? string.Empty;
+    var hasTranslatedScripts =
+        !string.IsNullOrWhiteSpace(scriptEn) ||
+        !string.IsNullOrWhiteSpace(scriptZh) ||
+        !string.IsNullOrWhiteSpace(scriptKo) ||
+        !string.IsNullOrWhiteSpace(scriptJa) ||
+        !string.IsNullOrWhiteSpace(scriptFr);
 }
 
 <div class="container mt-4">
@@ -9,7 +21,7 @@
     <hr />
     <div class="row">
         <div class="col-md-8">
-            <form asp-action="Edit" class="card shadow p-4 border-0" enctype="multipart/form-data">
+            <form asp-action="Edit" id="poiEditForm" class="card shadow p-4 border-0" enctype="multipart/form-data">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <input type="hidden" asp-for="Id" />
                 
@@ -20,49 +32,86 @@
                 </div>
                 
                 <div class="form-group mb-3">
-                    <label asp-for="Description" class="form-label fw-bold">Văn bản Thuyết Minh (Scripts TTS)</label>
-                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                    <label for="Description" class="form-label fw-bold">Văn bản Thuyết Minh (Scripts TTS)</label>
+                    <textarea id="Description" name="Description" class="form-control" rows="4">@viScript</textarea>
                     <span asp-validation-for="Description" class="text-danger"></span>
 
-                    <div class="form-check mt-3 border p-2 rounded bg-light">
-                        <input type="checkbox" name="autoAI" value="true" class="form-check-input" id="autoAI_check" checked />
-                        <label class="form-check-label text-success fw-bold" for="autoAI_check">
-                            🤖 Dịch & Tạo lại Audio AI (5 ngôn ngữ)
-                        </label>
-                        <small class="d-block text-muted">Chỉ sinh lại khi nội dung Scripts thực sự thay đổi. AI sẽ dịch sang EN, ZH, KO, JA, FR và tạo sẵn file Audio.</small>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button type="button" id="btnSaveViScript" class="btn btn-outline-success">💾 Lưu Scripts VI</button>
+                        <button type="button" id="btnPreviewViScript" class="btn btn-outline-primary">🔊 Nghe lại</button>
+                        <button type="button" id="btnTranslateScripts" class="btn btn-warning fw-bold">🌐 Dịch sang 5 ngôn ngữ</button>
                     </div>
+
+                    <audio id="audioViPreview" class="w-100 mt-2 d-none" controls style="height:35px;"></audio>
+                    <small class="d-block text-muted mt-2">Nút Lưu Scripts VI chỉ lưu riêng nội dung tiếng Việt và audio tiếng Việt vào database.</small>
                 </div>
 
-                @if(Model.AudioUrlEn != null || Model.AudioUrlJa != null || Model.AudioUrlFr != null)
-                {
-                    <div class="alert alert-info mt-3">
-                        <h5 class="fw-bold mb-3">🌐 Dữ liệu Đa ngôn ngữ (AI Generated)</h5>
-                        @if(!string.IsNullOrEmpty(Model.DescriptionEn)) {
-                            <div class="mt-2"><strong>🇬🇧 EN:</strong> <span class="text-muted small">@Model.DescriptionEn</span></div>
-                            @if(!string.IsNullOrEmpty(Model.AudioUrlEn)) { <audio controls src="@Model.AudioUrlEn" class="w-100 mt-1" style="height:35px;"></audio> }
-                        }
-                        @if(!string.IsNullOrEmpty(Model.DescriptionZh)) {
-                            <div class="mt-2"><strong>🇨🇳 ZH:</strong> <span class="text-muted small">@Model.DescriptionZh</span></div>
-                            @if(!string.IsNullOrEmpty(Model.AudioUrlZh)) { <audio controls src="@Model.AudioUrlZh" class="w-100 mt-1" style="height:35px;"></audio> }
-                        }
-                        @if(!string.IsNullOrEmpty(Model.DescriptionKo)) {
-                            <div class="mt-2"><strong>🇰🇷 KO:</strong> <span class="text-muted small">@Model.DescriptionKo</span></div>
-                            @if(!string.IsNullOrEmpty(Model.AudioUrlKo)) { <audio controls src="@Model.AudioUrlKo" class="w-100 mt-1" style="height:35px;"></audio> }
-                        }
-                        @if(!string.IsNullOrEmpty(Model.DescriptionJa)) {
-                            <div class="mt-2"><strong>🇯🇵 JA:</strong> <span class="text-muted small">@Model.DescriptionJa</span></div>
-                            @if(!string.IsNullOrEmpty(Model.AudioUrlJa)) { <audio controls src="@Model.AudioUrlJa" class="w-100 mt-1" style="height:35px;"></audio> }
-                        }
-                        @if(!string.IsNullOrEmpty(Model.DescriptionFr)) {
-                            <div class="mt-2"><strong>🇫🇷 FR:</strong> <span class="text-muted small">@Model.DescriptionFr</span></div>
-                            @if(!string.IsNullOrEmpty(Model.AudioUrlFr)) { <audio controls src="@Model.AudioUrlFr" class="w-100 mt-1" style="height:35px;"></audio> }
-                        }
-                        @if(!string.IsNullOrEmpty(Model.AudioUrl)) {
-                            <div class="mt-2 text-warning"><strong>🇻🇳 VI (Bản gốc):</strong> <span class="text-muted small">@Model.Description</span></div>
-                            <audio controls src="@Model.AudioUrl" class="w-100 mt-1" style="height:35px;"></audio>
-                        }
+                <div id="translatedScriptsPanel" class="mt-3 @(hasTranslatedScripts ? string.Empty : "d-none")">
+                    <div class="alert alert-info mb-2">
+                        <h5 class="fw-bold mb-1">🌐 Scripts đa ngôn ngữ (5 ngôn ngữ hệ thống)</h5>
+                        <small class="text-muted">Các ô bên dưới ở chế độ chỉ đọc. Mỗi ngôn ngữ có nút Nghe lại và Lưu riêng vào database.</small>
                     </div>
-                }
+
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold mb-0">🇬🇧 English (EN)</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-preview-lang" data-lang="en">🔊 Nghe lại</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-save-lang" data-lang="en">💾 Lưu</button>
+                            </div>
+                        </div>
+                        <textarea id="lang-script-en" class="form-control" rows="3" readonly>@scriptEn</textarea>
+                        <audio id="lang-audio-en" class="w-100 mt-2 @(string.IsNullOrWhiteSpace(Model.AudioUrlEn) ? "d-none" : string.Empty)" controls src="@Model.AudioUrlEn" style="height:35px;"></audio>
+                    </div>
+
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold mb-0">🇨🇳 Chinese (ZH)</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-preview-lang" data-lang="zh">🔊 Nghe lại</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-save-lang" data-lang="zh">💾 Lưu</button>
+                            </div>
+                        </div>
+                        <textarea id="lang-script-zh" class="form-control" rows="3" readonly>@scriptZh</textarea>
+                        <audio id="lang-audio-zh" class="w-100 mt-2 @(string.IsNullOrWhiteSpace(Model.AudioUrlZh) ? "d-none" : string.Empty)" controls src="@Model.AudioUrlZh" style="height:35px;"></audio>
+                    </div>
+
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold mb-0">🇰🇷 Korean (KO)</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-preview-lang" data-lang="ko">🔊 Nghe lại</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-save-lang" data-lang="ko">💾 Lưu</button>
+                            </div>
+                        </div>
+                        <textarea id="lang-script-ko" class="form-control" rows="3" readonly>@scriptKo</textarea>
+                        <audio id="lang-audio-ko" class="w-100 mt-2 @(string.IsNullOrWhiteSpace(Model.AudioUrlKo) ? "d-none" : string.Empty)" controls src="@Model.AudioUrlKo" style="height:35px;"></audio>
+                    </div>
+
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold mb-0">🇯🇵 Japanese (JA)</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-preview-lang" data-lang="ja">🔊 Nghe lại</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-save-lang" data-lang="ja">💾 Lưu</button>
+                            </div>
+                        </div>
+                        <textarea id="lang-script-ja" class="form-control" rows="3" readonly>@scriptJa</textarea>
+                        <audio id="lang-audio-ja" class="w-100 mt-2 @(string.IsNullOrWhiteSpace(Model.AudioUrlJa) ? "d-none" : string.Empty)" controls src="@Model.AudioUrlJa" style="height:35px;"></audio>
+                    </div>
+
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold mb-0">🇫🇷 French (FR)</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-preview-lang" data-lang="fr">🔊 Nghe lại</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-save-lang" data-lang="fr">💾 Lưu</button>
+                            </div>
+                        </div>
+                        <textarea id="lang-script-fr" class="form-control" rows="3" readonly>@scriptFr</textarea>
+                        <audio id="lang-audio-fr" class="w-100 mt-2 @(string.IsNullOrWhiteSpace(Model.AudioUrlFr) ? "d-none" : string.Empty)" controls src="@Model.AudioUrlFr" style="height:35px;"></audio>
+                    </div>
+                </div>
 
                 <div class="row mb-4">
                     <div class="col">
@@ -82,12 +131,215 @@
                         <input asp-for="Priority" class="form-control" />
                     </div>
                 </div>
+
+                <div id="poiEditStatus" class="alert alert-secondary d-none" role="alert"></div>
                 
                 <div class="form-group d-flex justify-content-end gap-2">
                     <a asp-action="Index" class="btn btn-secondary px-4 py-2">Trở về</a>
-                    <input type="submit" value="Lưu Chỉnh Sửa" class="btn btn-success shadow px-4 py-2 fw-bold" />
+                    <button type="submit" id="btnSubmitPoiEdit" class="btn btn-success shadow px-4 py-2 fw-bold">Lưu Chỉnh Sửa</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const poiId = '@Model.Id';
+            const languageLabels = {
+                vi: 'Tiếng Việt',
+                en: 'English',
+                zh: 'Chinese',
+                ko: 'Korean',
+                ja: 'Japanese',
+                fr: 'French'
+            };
+
+            const form = document.getElementById('poiEditForm');
+            const statusBox = document.getElementById('poiEditStatus');
+            const translatedPanel = document.getElementById('translatedScriptsPanel');
+            const btnTranslate = document.getElementById('btnTranslateScripts');
+            const btnSaveVi = document.getElementById('btnSaveViScript');
+            const btnPreviewVi = document.getElementById('btnPreviewViScript');
+
+            const translateUrl = '@Url.Action("TranslateScripts", "Pois")';
+            const previewAudioUrl = '@Url.Action("PreviewLanguageAudio", "Pois")';
+            const saveLanguageUrl = '@Url.Action("SaveLanguageScript", "Pois")';
+
+            function showStatus(message, kind) {
+                statusBox.classList.remove('d-none', 'alert-secondary', 'alert-success', 'alert-danger', 'alert-warning');
+                statusBox.classList.add(kind === 'success' ? 'alert-success' : kind === 'error' ? 'alert-danger' : kind === 'warning' ? 'alert-warning' : 'alert-secondary');
+                statusBox.textContent = message;
+            }
+
+            function getAntiForgeryToken() {
+                return form.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            }
+
+            async function postJson(url, payload) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getAntiForgeryToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch {
+                    data = {};
+                }
+
+                if (!response.ok || data.success === false) {
+                    const errorMessage = data.message || 'Yêu cầu thất bại.';
+                    throw new Error(errorMessage);
+                }
+
+                return data;
+            }
+
+            function getScriptValue(language) {
+                if (language === 'vi') {
+                    return document.getElementById('Description').value || '';
+                }
+
+                const input = document.getElementById(`lang-script-${language}`);
+                return input ? (input.value || '') : '';
+            }
+
+            function setScriptValue(language, text) {
+                if (language === 'vi') {
+                    document.getElementById('Description').value = text || '';
+                    return;
+                }
+
+                const input = document.getElementById(`lang-script-${language}`);
+                if (input) {
+                    input.value = text || '';
+                }
+            }
+
+            async function previewAudio(language, text, audioElementId) {
+                if (!text || !text.trim()) {
+                    showStatus(`Scripts ${languageLabels[language]} đang trống, không thể nghe lại.`, 'warning');
+                    return;
+                }
+
+                showStatus(`Đang tạo audio AI cho ${languageLabels[language]}...`, 'secondary');
+                const result = await postJson(previewAudioUrl, { language: language, text: text });
+                const audioElement = document.getElementById(audioElementId);
+                if (!audioElement || !result.audioUrl) {
+                    throw new Error('Không nhận được đường dẫn audio.');
+                }
+
+                audioElement.src = result.audioUrl;
+                audioElement.classList.remove('d-none');
+                await audioElement.play();
+                showStatus(`Đang phát audio ${languageLabels[language]}.`, 'success');
+            }
+
+            async function saveLanguage(language) {
+                const text = getScriptValue(language);
+                if (!text || !text.trim()) {
+                    showStatus(`Scripts ${languageLabels[language]} đang trống, chưa thể lưu.`, 'warning');
+                    return;
+                }
+
+                const confirmed = confirm(`Xác nhận lưu scripts ${languageLabels[language]} vào database?`);
+                if (!confirmed) {
+                    return;
+                }
+
+                showStatus(`Đang lưu scripts ${languageLabels[language]}...`, 'secondary');
+                const result = await postJson(saveLanguageUrl, {
+                    poiId: poiId,
+                    language: language,
+                    text: text
+                });
+
+                if (result.audioUrl) {
+                    const audioElement = document.getElementById(language === 'vi' ? 'audioViPreview' : `lang-audio-${language}`);
+                    if (audioElement) {
+                        audioElement.src = result.audioUrl;
+                        audioElement.classList.remove('d-none');
+                    }
+                }
+
+                showStatus(`Đã lưu scripts ${languageLabels[language]} vào database.`, 'success');
+            }
+
+            btnTranslate.addEventListener('click', async function () {
+                const sourceText = document.getElementById('Description').value || '';
+                if (!sourceText.trim()) {
+                    showStatus('Bạn cần nhập Scripts TTS tiếng Việt trước khi dịch.', 'warning');
+                    return;
+                }
+
+                try {
+                    showStatus('Đang dịch scripts sang 5 ngôn ngữ...', 'secondary');
+                    const result = await postJson(translateUrl, { sourceText: sourceText });
+                    const translations = result.translations || {};
+
+                    ['en', 'zh', 'ko', 'ja', 'fr'].forEach(function (lang) {
+                        setScriptValue(lang, translations[lang] || '');
+                    });
+
+                    translatedPanel.classList.remove('d-none');
+                    showStatus('Đã dịch xong 5 ngôn ngữ. Bạn có thể nghe lại hoặc lưu từng ngôn ngữ.', 'success');
+                } catch (error) {
+                    showStatus(error.message || 'Dịch scripts thất bại.', 'error');
+                }
+            });
+
+            btnPreviewVi.addEventListener('click', async function () {
+                try {
+                    await previewAudio('vi', getScriptValue('vi'), 'audioViPreview');
+                } catch (error) {
+                    showStatus(error.message || 'Nghe lại audio tiếng Việt thất bại.', 'error');
+                }
+            });
+
+            btnSaveVi.addEventListener('click', async function () {
+                try {
+                    await saveLanguage('vi');
+                } catch (error) {
+                    showStatus(error.message || 'Lưu scripts tiếng Việt thất bại.', 'error');
+                }
+            });
+
+            document.querySelectorAll('.btn-preview-lang').forEach(function (button) {
+                button.addEventListener('click', async function () {
+                    const lang = button.dataset.lang;
+                    try {
+                        await previewAudio(lang, getScriptValue(lang), `lang-audio-${lang}`);
+                    } catch (error) {
+                        showStatus(error.message || `Nghe lại audio ${languageLabels[lang]} thất bại.`, 'error');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-save-lang').forEach(function (button) {
+                button.addEventListener('click', async function () {
+                    const lang = button.dataset.lang;
+                    try {
+                        await saveLanguage(lang);
+                    } catch (error) {
+                        showStatus(error.message || `Lưu scripts ${languageLabels[lang]} thất bại.`, 'error');
+                    }
+                });
+            });
+
+            form.addEventListener('submit', function (event) {
+                const confirmed = confirm('Xác nhận lưu toàn bộ chỉnh sửa của POI này vào database?');
+                if (!confirmed) {
+                    event.preventDefault();
+                }
+            });
+        })();
+    </script>
+}

@@ -1,26 +1,8 @@
-# Keep GitHub language stats focused on authored source code
+# GitHub Linguist overrides
+# Keep repository language stats focused on application source code.
 
-# Third-party frontend libraries (vendor code)
-TourMap.AdminWeb/wwwroot/lib/** linguist-vendored
+# Exclude PowerShell helper scripts from language breakdown
+*.ps1 linguist-detectable=false
 
-# Generated uploads and runtime data
-TourMap.AdminWeb/wwwroot/uploads/** linguist-generated
-TourMap.AdminWeb/App_Data/** linguist-generated
-
-# Build outputs
-**/bin/** linguist-generated
-**/obj/** linguist-generated
-
-# Docs and presentation artifacts (exclude from language stats)
-_docs/** linguist-documentation
-
-# Treat Razor views as C#-side source instead of plain HTML for repo language stats
-*.cshtml linguist-language=C#
-
-# Optional: keep standalone HTML assets out of detected language mix
-*.html linguist-detectable=false
-
-# UI markup and static assets not counted in language mix
-*.xaml linguist-detectable=false
-*.css linguist-detectable=false
-*.js linguist-detectable=false
+# Exclude SQL bootstrap scripts from language breakdown
+*.sql linguist-detectable=false

@@ -83,10 +83,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiXaml Update="Pages\MapPage.xaml">
+	  <MauiXaml Update="Pages\Map\MapPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\PoiListPage.xaml">
+	  <MauiXaml Update="Pages\Poi\PoiListPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>

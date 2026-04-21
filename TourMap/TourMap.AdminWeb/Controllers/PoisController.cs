@@ -55,22 +55,29 @@ public class PoisController : Controller
                 poi.AudioUrl = "/uploads/audio/" + fileName;
             }
 
+            poi.TtsScriptVi = poi.Description;
+
             if (autoAI && !string.IsNullOrWhiteSpace(poi.Description))
             {
                 poi.DescriptionEn = await _aiService.TranslateTextAsync(poi.Description, "en");
                 poi.AudioUrlEn = await _aiService.GenerateTtsAudioAsync(poi.DescriptionEn, "en", _env.WebRootPath);
+                poi.TtsScriptEn = poi.DescriptionEn;
 
                 poi.DescriptionZh = await _aiService.TranslateTextAsync(poi.Description, "zh");
                 poi.AudioUrlZh = await _aiService.GenerateTtsAudioAsync(poi.DescriptionZh, "zh", _env.WebRootPath);
+                poi.TtsScriptZh = poi.DescriptionZh;
 
                 poi.DescriptionKo = await _aiService.TranslateTextAsync(poi.Description, "ko");
                 poi.AudioUrlKo = await _aiService.GenerateTtsAudioAsync(poi.DescriptionKo, "ko", _env.WebRootPath);
+                poi.TtsScriptKo = poi.DescriptionKo;
 
                 poi.DescriptionJa = await _aiService.TranslateTextAsync(poi.Description, "ja");
                 poi.AudioUrlJa = await _aiService.GenerateTtsAudioAsync(poi.DescriptionJa, "ja", _env.WebRootPath);
+                poi.TtsScriptJa = poi.DescriptionJa;
 
                 poi.DescriptionFr = await _aiService.TranslateTextAsync(poi.Description, "fr");
                 poi.AudioUrlFr = await _aiService.GenerateTtsAudioAsync(poi.DescriptionFr, "fr", _env.WebRootPath);
+                poi.TtsScriptFr = poi.DescriptionFr;
             }
 
             poi.Id = Guid.NewGuid().ToString();
@@ -87,6 +94,14 @@ public class PoisController : Controller
         if (id == null) return NotFound();
         var poi = await _context.Pois.FindAsync(id);
         if (poi == null) return NotFound();
+
+        poi.TtsScriptVi ??= poi.Description;
+        poi.TtsScriptEn ??= poi.DescriptionEn;
+        poi.TtsScriptZh ??= poi.DescriptionZh;
+        poi.TtsScriptKo ??= poi.DescriptionKo;
+        poi.TtsScriptJa ??= poi.DescriptionJa;
+        poi.TtsScriptFr ??= poi.DescriptionFr;
+
         return View(poi);
     }
 
@@ -113,6 +128,12 @@ public class PoisController : Controller
             poi.DescriptionKo = existingPoi.DescriptionKo;
             poi.DescriptionJa = existingPoi.DescriptionJa;
             poi.DescriptionFr = existingPoi.DescriptionFr;
+            poi.TtsScriptVi = existingPoi.TtsScriptVi;
+            poi.TtsScriptEn = existingPoi.TtsScriptEn;
+            poi.TtsScriptZh = existingPoi.TtsScriptZh;
+            poi.TtsScriptKo = existingPoi.TtsScriptKo;
+            poi.TtsScriptJa = existingPoi.TtsScriptJa;
+            poi.TtsScriptFr = existingPoi.TtsScriptFr;
 
             if (ImageFile != null)
             {
@@ -132,23 +153,30 @@ public class PoisController : Controller
                 poi.AudioUrl = "/uploads/audio/" + fileName;
             }
 
+            poi.TtsScriptVi = poi.Description;
+
             // Chỉ sinh lại AI nếu description thực sự thay đổi
             if (autoAI && !string.IsNullOrWhiteSpace(poi.Description) && poi.Description != existingPoi.Description)
             {
                 poi.DescriptionEn = await _aiService.TranslateTextAsync(poi.Description, "en");
                 poi.AudioUrlEn = await _aiService.GenerateTtsAudioAsync(poi.DescriptionEn, "en", _env.WebRootPath);
+                poi.TtsScriptEn = poi.DescriptionEn;
 
                 poi.DescriptionZh = await _aiService.TranslateTextAsync(poi.Description, "zh");
                 poi.AudioUrlZh = await _aiService.GenerateTtsAudioAsync(poi.DescriptionZh, "zh", _env.WebRootPath);
+                poi.TtsScriptZh = poi.DescriptionZh;
 
                 poi.DescriptionKo = await _aiService.TranslateTextAsync(poi.Description, "ko");
                 poi.AudioUrlKo = await _aiService.GenerateTtsAudioAsync(poi.DescriptionKo, "ko", _env.WebRootPath);
+                poi.TtsScriptKo = poi.DescriptionKo;
 
                 poi.DescriptionJa = await _aiService.TranslateTextAsync(poi.Description, "ja");
                 poi.AudioUrlJa = await _aiService.GenerateTtsAudioAsync(poi.DescriptionJa, "ja", _env.WebRootPath);
+                poi.TtsScriptJa = poi.DescriptionJa;
 
                 poi.DescriptionFr = await _aiService.TranslateTextAsync(poi.Description, "fr");
                 poi.AudioUrlFr = await _aiService.GenerateTtsAudioAsync(poi.DescriptionFr, "fr", _env.WebRootPath);
+                poi.TtsScriptFr = poi.DescriptionFr;
             }
 
             try
@@ -195,5 +223,186 @@ public class PoisController : Controller
         await _context.SaveChangesAsync();
         
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TranslateScripts([FromBody] TranslateScriptsRequest request)
+    {
+        var sourceText = request.SourceText?.Trim();
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            return BadRequest(new { success = false, message = "Scripts TTS đang trống." });
+        }
+
+        var translations = new Dictionary<string, string>();
+        foreach (var lang in SupportedLanguages)
+        {
+            translations[lang] = await _aiService.TranslateTextAsync(sourceText, lang);
+        }
+
+        return Json(new { success = true, translations });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PreviewLanguageAudio([FromBody] PreviewLanguageAudioRequest request)
+    {
+        if (!TryNormalizeLanguage(request.Language, out var language))
+        {
+            return BadRequest(new { success = false, message = "Ngôn ngữ không hợp lệ." });
+        }
+
+        var text = request.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return BadRequest(new { success = false, message = "Nội dung text đang trống." });
+        }
+
+        var audioUrl = await _aiService.GenerateTtsAudioAsync(text, language, _env.WebRootPath);
+        if (string.IsNullOrWhiteSpace(audioUrl))
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { success = false, message = "Không tạo được audio AI." });
+        }
+
+        return Json(new { success = true, audioUrl });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveLanguageScript([FromBody] SaveLanguageScriptRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoiId))
+        {
+            return BadRequest(new { success = false, message = "Thiếu mã POI." });
+        }
+
+        if (!TryNormalizeLanguage(request.Language, out var language))
+        {
+            return BadRequest(new { success = false, message = "Ngôn ngữ không hợp lệ." });
+        }
+
+        var poi = await _context.Pois.FirstOrDefaultAsync(x => x.Id == request.PoiId);
+        if (poi == null)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy POI." });
+        }
+
+        var scriptText = request.Text?.Trim() ?? string.Empty;
+        SetScriptByLanguage(poi, language, scriptText);
+
+        string? audioUrl = null;
+        if (!string.IsNullOrWhiteSpace(scriptText))
+        {
+            audioUrl = await _aiService.GenerateTtsAudioAsync(scriptText, language, _env.WebRootPath);
+        }
+        SetAudioByLanguage(poi, language, audioUrl);
+
+        poi.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            language,
+            audioUrl = GetAudioByLanguage(poi, language),
+            message = "Đã lưu scripts vào database."
+        });
+    }
+
+    private static readonly string[] SupportedLanguages = ["en", "zh", "ko", "ja", "fr"];
+
+    private static bool TryNormalizeLanguage(string? inputLanguage, out string language)
+    {
+        language = (inputLanguage ?? string.Empty).Trim().ToLowerInvariant();
+        return language is "vi" or "en" or "zh" or "ko" or "ja" or "fr";
+    }
+
+    private static void SetScriptByLanguage(Poi poi, string language, string text)
+    {
+        switch (language)
+        {
+            case "vi":
+                poi.Description = text;
+                poi.TtsScriptVi = text;
+                break;
+            case "en":
+                poi.DescriptionEn = text;
+                poi.TtsScriptEn = text;
+                break;
+            case "zh":
+                poi.DescriptionZh = text;
+                poi.TtsScriptZh = text;
+                break;
+            case "ko":
+                poi.DescriptionKo = text;
+                poi.TtsScriptKo = text;
+                break;
+            case "ja":
+                poi.DescriptionJa = text;
+                poi.TtsScriptJa = text;
+                break;
+            case "fr":
+                poi.DescriptionFr = text;
+                poi.TtsScriptFr = text;
+                break;
+        }
+    }
+
+    private static void SetAudioByLanguage(Poi poi, string language, string? audioUrl)
+    {
+        switch (language)
+        {
+            case "vi":
+                poi.AudioUrl = audioUrl;
+                break;
+            case "en":
+                poi.AudioUrlEn = audioUrl;
+                break;
+            case "zh":
+                poi.AudioUrlZh = audioUrl;
+                break;
+            case "ko":
+                poi.AudioUrlKo = audioUrl;
+                break;
+            case "ja":
+                poi.AudioUrlJa = audioUrl;
+                break;
+            case "fr":
+                poi.AudioUrlFr = audioUrl;
+                break;
+        }
+    }
+
+    private static string? GetAudioByLanguage(Poi poi, string language)
+    {
+        return language switch
+        {
+            "vi" => poi.AudioUrl,
+            "en" => poi.AudioUrlEn,
+            "zh" => poi.AudioUrlZh,
+            "ko" => poi.AudioUrlKo,
+            "ja" => poi.AudioUrlJa,
+            "fr" => poi.AudioUrlFr,
+            _ => null
+        };
+    }
+
+    public sealed class TranslateScriptsRequest
+    {
+        public string? SourceText { get; set; }
+    }
+
+    public sealed class PreviewLanguageAudioRequest
+    {
+        public string? Language { get; set; }
+        public string? Text { get; set; }
+    }
+
+    public sealed class SaveLanguageScriptRequest
+    {
+        public string? PoiId { get; set; }
+        public string? Language { get; set; }
+        public string? Text { get; set; }
     }
 }

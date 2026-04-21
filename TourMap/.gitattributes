@@ -1,8 +1,0 @@
-# GitHub Linguist overrides
-# Keep repository language stats focused on application source code.
-
-# Exclude PowerShell helper scripts from language breakdown
-*.ps1 linguist-detectable=false
-
-# Exclude SQL bootstrap scripts from language breakdown
-*.sql linguist-detectable=false
