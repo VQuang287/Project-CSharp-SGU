@@ -20,7 +20,7 @@
             <dd class="col-sm-9">@Html.DisplayFor(model => model.Latitude), @Html.DisplayFor(model => model.Longitude)</dd>
         </dl>
         
-        <form asp-action="Delete" class="mt-4 border-top pt-3 d-flex gap-2 justify-content-end">
+        <form asp-action="Delete" method="post" class="mt-4 border-top pt-3 d-flex gap-2 justify-content-end">
             <input type="hidden" asp-for="Id" />
             <a asp-action="Index" class="btn btn-secondary">Hủy bỏ quay lại</a>
             <input type="submit" value="Xác Nhận Xóa" class="btn btn-danger shadow" /> 

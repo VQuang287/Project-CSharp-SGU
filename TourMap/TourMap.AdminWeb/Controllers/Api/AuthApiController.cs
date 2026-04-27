@@ -28,7 +28,9 @@ public class AuthApiController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 1. Anonymous Device Login (giữ nguyên cho Guest mode)
+    // 1. Anonymous Device Login (Guest mode)
+    // CHỈ tìm/tạo user có Role="Guest" cho DeviceId.
+    // Nếu device đã gắn với tài khoản đã đăng ký → tạo Guest mới.
     // ═══════════════════════════════════════════════════════════
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] DeviceLoginRequest request)
@@ -36,13 +38,17 @@ public class AuthApiController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.DeviceId))
             return BadRequest(new { Message = "DeviceId is required." });
 
-        var user = await _db.MobileUsers.FirstOrDefaultAsync(u => u.DeviceId == request.DeviceId);
+        // CHỈ tìm Guest user cho device này — KHÔNG trả lại tài khoản đã đăng ký
+        var user = await _db.MobileUsers.FirstOrDefaultAsync(
+            u => u.DeviceId == request.DeviceId && u.Role == "Guest");
+
         if (user == null)
         {
             user = new MobileUser
             {
                 DeviceId = request.DeviceId,
                 Role = "Guest",
+                DisplayName = "Khách",
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
@@ -51,6 +57,9 @@ public class AuthApiController : ControllerBase
         else
         {
             user.LastLoginAt = DateTime.UtcNow;
+            // Xóa refresh token cũ nếu có (reset phiên)
+            user.RefreshToken = null;
+            user.RefreshTokenExpiresAt = null;
         }
 
         await _db.SaveChangesAsync();
@@ -274,6 +283,141 @@ public class AuthApiController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════════
+    // 8. Forgot Password — Gửi email reset password (anonymous)
+    // ═══════════════════════════════════════════════════════════
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
+            return BadRequest(new { Message = "Email không hợp lệ." });
+
+        var emailLower = request.Email.Trim().ToLowerInvariant();
+        var user = await _db.MobileUsers.FirstOrDefaultAsync(u => u.Email == emailLower);
+        
+        // Không reveal nếu email tồn tại hay không (security)
+        if (user == null)
+        {
+            return Ok(new { Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn khôi phục mật khẩu." });
+        }
+
+        // Tạo reset token (simplified - trong production nên gửi email thực)
+        var resetToken = GenerateRefreshToken();
+        // TODO: Lưu reset token vào DB với expiration
+        // TODO: Gửi email chứa link reset
+        
+        Console.WriteLine($"[Auth] Password reset requested for {emailLower}");
+        
+        return Ok(new { Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn khôi phục mật khẩu." });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 9. Logout — Revoke refresh token (called from Mobile)
+    // ═══════════════════════════════════════════════════════════
+    [HttpPost("logout")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> Logout()
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                     ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var user = await _db.MobileUsers.FindAsync(userId);
+        if (user != null)
+        {
+            // Xóa refresh token → không thể lấy access token mới
+            user.RefreshToken = null;
+            user.RefreshTokenExpiresAt = null;
+            await _db.SaveChangesAsync();
+        }
+
+        // Đánh dấu thiết bị offline trong DeviceConnections
+        var deviceId = User.FindFirstValue("DeviceId");
+        if (!string.IsNullOrEmpty(deviceId))
+        {
+            var conn = await _db.DeviceConnections
+                .FirstOrDefaultAsync(d => d.DeviceId == deviceId);
+            if (conn != null)
+            {
+                conn.State = Models.ConnectionState.Offline;
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        return Ok(new { Message = "Đã đăng xuất thành công." });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 9. Admin: Reset token cho thiết bị (force-logout từ CMS)
+    // ═══════════════════════════════════════════════════════════
+    [HttpPost("admin/revoke-device/{deviceId}")]
+    [Authorize(AuthenticationSchemes = "Cookies,Bearer", Roles = "Administrator,Admin")]
+    public async Task<IActionResult> AdminRevokeDevice(string deviceId)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId))
+            return BadRequest(new { Message = "DeviceId is required." });
+
+        // Xóa refresh token của user liên kết device
+        var user = await _db.MobileUsers.FirstOrDefaultAsync(u => u.DeviceId == deviceId);
+        if (user != null)
+        {
+            user.RefreshToken = null;
+            user.RefreshTokenExpiresAt = null;
+        }
+
+        // Đánh dấu offline
+        var conn = await _db.DeviceConnections.FirstOrDefaultAsync(d => d.DeviceId == deviceId);
+        if (conn != null)
+        {
+            conn.State = Models.ConnectionState.Offline;
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new { 
+            Message = $"Đã revoke token và đánh dấu offline cho device {deviceId}.",
+            UserRevoked = user != null,
+            ConnectionReset = conn != null
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 10. Admin: Reset ALL tokens (force-logout tất cả)
+    // ═══════════════════════════════════════════════════════════
+    [HttpPost("admin/revoke-all")]
+    [Authorize(AuthenticationSchemes = "Cookies,Bearer", Roles = "Administrator,Admin")]
+    public async Task<IActionResult> AdminRevokeAll()
+    {
+        var users = await _db.MobileUsers
+            .Where(u => u.RefreshToken != null)
+            .ToListAsync();
+
+        foreach (var u in users)
+        {
+            u.RefreshToken = null;
+            u.RefreshTokenExpiresAt = null;
+        }
+
+        var connections = await _db.DeviceConnections
+            .Where(d => d.State != Models.ConnectionState.Offline)
+            .ToListAsync();
+
+        foreach (var c in connections)
+        {
+            c.State = Models.ConnectionState.Offline;
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new { 
+            Message = "Đã revoke tất cả token và đánh dấu offline tất cả thiết bị.",
+            UsersRevoked = users.Count,
+            ConnectionsReset = connections.Count
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // Helper Methods
     // ═══════════════════════════════════════════════════════════
 
@@ -391,4 +535,9 @@ public class UserProfileDto
     public string Role { get; set; } = "Guest";
     public string AuthProvider { get; set; } = "local";
     public DateTime CreatedAt { get; set; }
+}
+
+public class ForgotPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
 }

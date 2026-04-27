@@ -1,6 +1,6 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using TourMap.AdminWeb.Data;
 using TourMap.AdminWeb.Models;
@@ -19,6 +19,7 @@ public class AnalyticsController : ControllerBase
     }
 
     [HttpPost("play")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "MobileAccess")]
     public async Task<IActionResult> LogPlay([FromBody] PlaybackHistory request)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.PoiId))
@@ -45,6 +46,7 @@ public class AnalyticsController : ControllerBase
     }
 
     [HttpPost("location")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "MobileAccess")]
     public async Task<IActionResult> LogLocation([FromBody] List<UserLocationLog> logs)
     {
         if (logs == null || !logs.Any())

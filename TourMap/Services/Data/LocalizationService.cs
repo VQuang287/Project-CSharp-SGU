@@ -79,22 +79,31 @@ public class LocalizationService : INotifyPropertyChanged
     private LocalizationService()
     {
         var savedLanguage = Preferences.Default.Get<string>(SelectedLanguageKey, string.Empty);
-        if (!string.IsNullOrWhiteSpace(savedLanguage))
-        {
-            _currentLanguage = savedLanguage;
-            var savedCulture = new CultureInfo(_currentLanguage == "zh" ? "zh-CN" : _currentLanguage);
-            CultureInfo.CurrentCulture = savedCulture;
-            CultureInfo.CurrentUICulture = savedCulture;
-            CultureInfo.DefaultThreadCurrentCulture = savedCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = savedCulture;
-            return;
-        }
         var sysLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        if (sysLang == "en") _currentLanguage = "en";
-        else if (sysLang == "zh") _currentLanguage = "zh";
-        else if (sysLang == "ko") _currentLanguage = "ko";
-        else if (sysLang == "ja") _currentLanguage = "ja";
-        else if (sysLang == "fr") _currentLanguage = "fr";
+        
+        // Nếu ngôn ngữ hệ thống nằm trong danh sách hỗ trợ VÀ khác với ngôn ngữ đã lưu
+        // → user đã đổi ngôn ngữ hệ thống → cập nhật theo system language
+        var supportedCodes = SupportedLanguages.Select(l => l.Code).ToHashSet();
+        
+        if (!string.IsNullOrWhiteSpace(savedLanguage) && supportedCodes.Contains(savedLanguage))
+        {
+            // Kiểm tra system language có thay đổi không
+            if (supportedCodes.Contains(sysLang) && sysLang != savedLanguage)
+            {
+                Console.WriteLine($"[LocalizationService] System language changed: {savedLanguage} → {sysLang}, updating");
+                _currentLanguage = sysLang;
+                Preferences.Default.Set(SelectedLanguageKey, sysLang);
+            }
+            else
+            {
+                _currentLanguage = savedLanguage;
+            }
+        }
+        else if (supportedCodes.Contains(sysLang))
+        {
+            _currentLanguage = sysLang;
+        }
+        // else: giữ default "vi"
 
         var culture = new CultureInfo(_currentLanguage == "zh" ? "zh-CN" : _currentLanguage);
         CultureInfo.CurrentCulture = culture;

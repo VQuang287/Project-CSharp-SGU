@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TourMap.AdminWeb.Data;
@@ -20,7 +21,7 @@ public class SyncController : ControllerBase
 
     // Luồng 1: App Mobile ngầm gọi API này để tải danh sách các điểm ăn chơi mới nhất
     [HttpGet("pois")]
-    [AllowAnonymous] // Tạm thời AllowAnonymous cho dễ test, bạn có thể comment lại sau
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "MobileAccess")]
     public async Task<ActionResult<SyncPoisResponse>> GetPois([FromQuery] DateTime? since)
     {
         var query = _context.Pois.AsNoTracking().AsQueryable();

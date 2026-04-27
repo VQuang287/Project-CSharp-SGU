@@ -1,0 +1,30 @@
+. $PROFILE
+
+# Build và chạy trên điện thoại
+run-tourmap
+
+# Chỉ build không deploy
+build-tourmap
+
+# Kiểm tra device trước khi build
+check-device
+
+# Nếu build lỗi, clean rồi build lại
+clean-tourmap
+run-tourmap
+
+# Chạy AdminWeb
+run-admin
+
+# ═══════════════════════════════════════════════════════
+# DEPLOY TOURMAP LÊN THIẾT BỊ MỚI (qua USB Debug)
+# ═══════════════════════════════════════════════════════
+
+# Bước 1: Cắm USB → kiểm tra thiết bị
+adb devices -l
+
+# Bước 2: Gỡ app cũ (nếu đã cài từ nguồn khác)
+adb uninstall com.companyname.tourmap
+
+# Bước 3: Deploy app mới
+dotnet build TourMap.csproj -t:Run -f net10.0-android

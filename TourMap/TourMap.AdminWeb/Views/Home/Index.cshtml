@@ -40,7 +40,12 @@
 <!-- Real-time Device Tracking Panel -->
 <section class="dashboard-section ui-card">
     <div class="ui-card-body">
-        <h2 class="h6 mb-3">Thiết Bị Đang Kết Nối <span class="badge bg-success" id="live-badge">LIVE</span></h2>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h6 mb-0">Thiết Bị Đang Kết Nối <span class="badge bg-success" id="live-badge">LIVE</span></h2>
+            <button class="btn btn-sm btn-outline-danger" id="btn-revoke-all" onclick="revokeAllTokens()">
+                🔒 Revoke All Tokens
+            </button>
+        </div>
         <div id="device-list-container">
             <table class="dashboard-table" id="connected-devices-table">
                 <thead>
@@ -50,11 +55,12 @@
                         <th>Trạng thái</th>
                         <th>Vị trí hiện tại</th>
                         <th>Thời gian kết nối</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody id="device-list">
                     <tr>
-                        <td colspan="5" class="text-center text-muted">Đang tải danh sách thiết bị...</td>
+                        <td colspan="6" class="text-center text-muted">Đang tải danh sách thiết bị...</td>
                     </tr>
                 </tbody>
             </table>
@@ -165,6 +171,10 @@
 
         function updateOnlineCount(count) {
             document.getElementById('online-devices-count').textContent = count;
+            // Cập nhật cả navbar badge
+            const navBadge = document.getElementById('navbar-device-count');
+            if (navBadge) navBadge.textContent = count;
+            
             const status = document.getElementById('online-devices-status');
             if (count === 0) {
                 status.textContent = 'Không có thiết bị nào đang kết nối';
@@ -179,7 +189,7 @@
             const tbody = document.getElementById('device-list');
             
             if (deviceList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Không có thiết bị nào đang kết nối</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có thiết bị nào đang kết nối</td></tr>';
                 return;
             }
 
@@ -203,9 +213,39 @@
                             ${device.currentPoiName ? `<br><small class="text-success">📍 ${escapeHtml(device.currentPoiName)}</small>` : ''}
                         </td>
                         <td>${connectedTime}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-warning" onclick="revokeDevice('${device.deviceId}')" title="Revoke token & kick device">
+                                ⛔ Kick
+                            </button>
+                        </td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        async function revokeDevice(deviceId) {
+            if (!confirm(`Revoke token cho thiết bị ${deviceId.substring(0, 8)}...?\nThiết bị sẽ phải đăng nhập lại.`)) return;
+            try {
+                const resp = await fetch(`/api/v1/auth/admin/revoke-device/${deviceId}`, { method: 'POST' });
+                const data = await resp.json();
+                alert(data.message || 'Đã revoke.');
+                // Refresh device list
+                await connection.invoke("RefreshDeviceList");
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        async function revokeAllTokens() {
+            if (!confirm('⚠️ Revoke TẤT CẢ token?\nTất cả thiết bị sẽ phải đăng nhập lại.')) return;
+            try {
+                const resp = await fetch('/api/v1/auth/admin/revoke-all', { method: 'POST' });
+                const data = await resp.json();
+                alert(data.message || 'Đã revoke tất cả.');
+                await connection.invoke("RefreshDeviceList");
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
         }
 
         function getStateBadge(state) {
@@ -226,13 +266,26 @@
         }
 
         // Start connection and join admin group
+        let refreshInterval = null;
+
         async function start() {
             try {
                 await connection.start();
                 console.log("SignalR Connected.");
                 await connection.invoke("JoinAdminGroup");
+                document.getElementById('live-badge').textContent = 'LIVE';
                 document.getElementById('live-badge').classList.remove('bg-secondary');
                 document.getElementById('live-badge').classList.add('bg-success');
+
+                // Auto-refresh danh sách thiết bị mỗi 10 giây
+                if (refreshInterval) clearInterval(refreshInterval);
+                refreshInterval = setInterval(async () => {
+                    try {
+                        await connection.invoke("RefreshDeviceList");
+                    } catch (e) {
+                        console.warn("Refresh failed:", e.message);
+                    }
+                }, 10000);
             } catch (err) {
                 console.error("SignalR Connection Error:", err);
                 document.getElementById('live-badge').textContent = 'DISCONNECTED';
@@ -247,6 +300,7 @@
             document.getElementById('live-badge').textContent = 'RECONNECTING';
             document.getElementById('live-badge').classList.remove('bg-success');
             document.getElementById('live-badge').classList.add('bg-warning');
+            if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
         });
 
         connection.onreconnected(() => {
@@ -255,6 +309,15 @@
             document.getElementById('live-badge').classList.remove('bg-warning');
             document.getElementById('live-badge').classList.add('bg-success');
             connection.invoke("JoinAdminGroup");
+            // Khôi phục auto-refresh
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(async () => {
+                try {
+                    await connection.invoke("RefreshDeviceList");
+                } catch (e) {
+                    console.warn("Refresh failed:", e.message);
+                }
+            }, 10000);
         });
 
         start();

@@ -53,38 +53,32 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
 
     private void OnLanguageChanged()
     {
-        // Reinitialize TTS with new language
-        _initialized = false;
-        _ = InitializeTtsAsync();
-    }
-    
-    private async Task InitializeTtsAsync()
-    {
-        if (_tts == null) return;
-        
+        // Chỉ cập nhật ngôn ngữ — KHÔNG đặt _initialized = false
+        // vì SpeakAsync đã tự SetLanguage trước mỗi lần phát
+        if (_tts == null || !_initialized) return;
+
         try
         {
-            var langCode = _loc.CurrentLanguage switch
-            {
-                "vi" => "vi-VN",
-                "en" => "en-US", 
-                "zh" => "zh-CN",
-                "ko" => "ko-KR",
-                "ja" => "ja-JP",
-                "fr" => "fr-FR",
-                _ => "vi-VN"
-            };
-            
-            var locale = new JavaLocale(langCode);
+            var locale = LangCodeToLocale(_loc.CurrentLanguage);
             var result = _tts.SetLanguage(locale);
-            
-            Console.WriteLine($"[TTS] Language set to {langCode}, result: {result}");
+            Console.WriteLine($"[TTS] Language changed to {_loc.CurrentLanguage}, result: {result}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[TTS] Failed to set language: {ex.Message}");
+            Console.WriteLine($"[TTS] Failed to set language on change: {ex.Message}");
         }
     }
+
+    /// <summary>Chuyển mã ngôn ngữ ("vi","en",...) sang Java Locale đúng format 2 tham số.</summary>
+    private static JavaLocale LangCodeToLocale(string langCode) => langCode switch
+    {
+        "en" => JavaLocale.Us,
+        "zh" => new JavaLocale("zh", "CN"),
+        "ko" => new JavaLocale("ko", "KR"),
+        "ja" => new JavaLocale("ja", "JP"),
+        "fr" => new JavaLocale("fr", "FR"),
+        _   => new JavaLocale("vi", "VN")  // mặc định tiếng Việt
+    };
 
     /// <summary>Callback khi TTS engine khởi tạo xong.</summary>
     public void OnInit(OperationResult status)
@@ -137,18 +131,9 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         
         try
         {
-            var locale = languageCode switch
-            {
-                "vi" => new JavaLocale("vi", "VN"),
-                "en" => JavaLocale.Us,
-                "zh" => new JavaLocale("zh", "CN"),
-                "ko" => new JavaLocale("ko", "KR"),
-                "ja" => new JavaLocale("ja", "JP"),
-                "fr" => new JavaLocale("fr", "FR"),
-                _ => new JavaLocale("vi", "VN")
-            };
-            
+            var locale = LangCodeToLocale(languageCode);
             var result = _tts.SetLanguage(locale);
+            Console.WriteLine($"[TTS] SetLanguageAsync({languageCode}) -> {result}");
             return result == LanguageAvailableResult.Available || 
                    result == LanguageAvailableResult.CountryAvailable;
         }
@@ -161,17 +146,21 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
 
     public async Task SpeakAsync(string text, string langCode = "vi")
     {
-        if (!_initialized || _tts == null || string.IsNullOrWhiteSpace(text))
+        if (_tts == null || string.IsNullOrWhiteSpace(text))
+        {
+            Console.WriteLine("[TTS] ⚠️ SpeakAsync skipped: TTS null or empty text");
             return;
+        }
 
-        var locale = langCode switch {
-            "en" => JavaLocale.Us,
-            "zh" => JavaLocale.China,
-            "ko" => JavaLocale.Korea,
-            "ja" => JavaLocale.Japan,
-            "fr" => JavaLocale.France,
-            _ => new JavaLocale("vi", "VN")
-        };
+        if (!_initialized)
+        {
+            Console.WriteLine("[TTS] ⚠️ SpeakAsync skipped: TTS chưa khởi tạo xong");
+            // Fire SpeechCompleted để NarrationEngine không bị kẹt ở Playing
+            MainThread.BeginInvokeOnMainThread(() => SpeechCompleted?.Invoke());
+            return;
+        }
+
+        var locale = LangCodeToLocale(langCode);
 
         // Dừng phát cũ nếu đang nói
         Stop();
@@ -184,13 +173,16 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         var utteranceId = Guid.NewGuid().ToString();
         var param = new Android.OS.Bundle();
 
+        Console.WriteLine($"[TTS] 🔊 SpeakAsync: lang={langCode}, text=\"{text.Substring(0, Math.Min(60, text.Length))}...\"");
+
         // Android TTS (JNI Binder calls) often fail silently under VS Debugger 
         // if called from background thread pool. Dispatch to MainThread to ensure execution.
         MainThread.BeginInvokeOnMainThread(() =>
         {
             try
             {
-                _tts.SetLanguage(locale);
+                var langResult = _tts.SetLanguage(locale);
+                Console.WriteLine($"[TTS] SetLanguage({langCode}) -> {langResult}");
                 _tts.Speak(text, QueueMode.Flush, param, utteranceId);
             }
             catch (Exception ex)
@@ -200,8 +192,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             }
         });
 
-        // Đợi TTS đọc xong
-        await _speakTcs.Task;
+        // Đợi TTS đọc xong (hoặc bị cancel/error)
+        await newTcs.Task;
     }
 
     public void Stop()

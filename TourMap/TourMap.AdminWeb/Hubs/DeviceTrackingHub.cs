@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,6 +25,41 @@ public class DeviceTrackingHub : Hub
     }
 
     /// <summary>
+    /// Lấy DeviceId từ JWT token claim (an toàn) thay vì tin tưởng client gửi lên
+    /// </summary>
+    private string? GetDeviceIdFromToken()
+    {
+        return Context.User?.FindFirstValue("DeviceId") 
+            ?? Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+    }
+
+    /// <summary>
+    /// Validate deviceId từ client khớp với token claim để ngăn spoofing
+    /// </summary>
+    private bool ValidateDeviceId(string clientDeviceId)
+    {
+        var tokenDeviceId = GetDeviceIdFromToken();
+        if (string.IsNullOrEmpty(tokenDeviceId))
+        {
+            _logger.LogWarning("DeviceId not found in token - rejecting request");
+            return false;
+        }
+
+        // Cho phép guest device đăng ký lần đầu, nhưng sau đó phải khớp
+        var existingConnection = _dbContext.DeviceConnections
+            .FirstOrDefaultAsync(d => d.SignalRConnectionId == Context.ConnectionId).Result;
+        
+        if (existingConnection != null && existingConnection.DeviceId != clientDeviceId)
+        {
+            _logger.LogWarning("DeviceId mismatch - Token: {TokenDeviceId}, Client: {ClientDeviceId}", 
+                tokenDeviceId, clientDeviceId);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Mobile app calls this when first connecting
     /// </summary>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "MobileAccess")]
@@ -31,6 +67,14 @@ public class DeviceTrackingHub : Hub
     {
         try
         {
+            // SECURITY: Validate deviceId từ token claim để ngăn spoofing
+            if (!ValidateDeviceId(deviceId))
+            {
+                _logger.LogWarning("Device spoofing detected - ConnectionId: {ConnectionId}, DeviceId: {DeviceId}", 
+                    Context.ConnectionId, deviceId);
+                throw new HubException("Invalid device identification");
+            }
+
             // Remove existing connection for this device
             var existing = await _dbContext.DeviceConnections
                 .FirstOrDefaultAsync(d => d.DeviceId == deviceId);
@@ -80,6 +124,14 @@ public class DeviceTrackingHub : Hub
     {
         try
         {
+            // SECURITY: Validate deviceId từ token claim để ngăn spoofing
+            if (!ValidateDeviceId(deviceId))
+            {
+                _logger.LogWarning("Heartbeat spoofing detected - ConnectionId: {ConnectionId}, DeviceId: {DeviceId}", 
+                    Context.ConnectionId, deviceId);
+                throw new HubException("Invalid device identification");
+            }
+
             var connection = await _dbContext.DeviceConnections
                 .FirstOrDefaultAsync(d => d.DeviceId == deviceId);
 
@@ -111,6 +163,14 @@ public class DeviceTrackingHub : Hub
     {
         try
         {
+            // SECURITY: Validate deviceId từ token claim để ngăn spoofing
+            if (!ValidateDeviceId(deviceId))
+            {
+                _logger.LogWarning("State update spoofing detected - ConnectionId: {ConnectionId}, DeviceId: {DeviceId}", 
+                    Context.ConnectionId, deviceId);
+                throw new HubException("Invalid device identification");
+            }
+
             var connection = await _dbContext.DeviceConnections
                 .FirstOrDefaultAsync(d => d.DeviceId == deviceId);
 

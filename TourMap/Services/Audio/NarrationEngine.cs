@@ -161,15 +161,19 @@ public class NarrationEngine : IDisposable
         }
     }
 
-    /// <summary>Dừng phát thủ công.</summary>
+    /// <summary>Dừng phát thủ công — hoạt động ở MỌI trạng thái.</summary>
     public void Stop()
     {
+        // Cancel cooldown timer nếu đang chờ
+        _cooldownCts?.Cancel();
+
         if (_state == NarrationState.Playing)
         {
             StopCurrent();
-            SetState(NarrationState.Idle);
-            _currentPoi = null;
         }
+
+        _currentPoi = null;
+        SetState(NarrationState.Idle);
     }
     
     /// <summary>Set language for TTS service dynamically</summary>
@@ -181,9 +185,13 @@ public class NarrationEngine : IDisposable
         }
     }
     
-    /// <summary>Play specific POI with specified language</summary>
+    /// <summary>Play specific POI with specified language (dùng cho manual play từ UI).</summary>
     public async Task PlayPoiAsync(Poi poi, string languageCode)
     {
+        // Force-reset: dừng mọi thứ đang chạy (bao gồm cooldown)
+        _cooldownCts?.Cancel();
+        StopCurrent();
+
         _currentPoi = poi;
         _currentTriggerType = "Manual";
         SetState(NarrationState.Playing);
@@ -204,7 +212,7 @@ public class NarrationEngine : IDisposable
             return;
         }
         
-        // 1: File audio MP3 cache (Chí dùng khi ngôn ngữ là vi)
+        // 1: File audio MP3 cache (Chỉ dùng khi ngôn ngữ là vi)
         if (languageCode == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
         {
             _currentAudioSource = "AudioFile";
@@ -242,10 +250,17 @@ public class NarrationEngine : IDisposable
     }
 
     /// <summary>Callback khi audio hoặc TTS phát xong.</summary>
-    private async void OnPlaybackCompleted()
+    private void OnPlaybackCompleted()
     {
+        // Guard: chỉ xử lý khi đang thực sự Playing
         if (_disposed || _state != NarrationState.Playing) return;
 
+        // Delegate sang async method với exception guard
+        _ = OnPlaybackCompletedCoreAsync();
+    }
+
+    private async Task OnPlaybackCompletedCoreAsync()
+    {
         var completedPoi = _currentPoi;
 
         try
@@ -256,26 +271,28 @@ public class NarrationEngine : IDisposable
         {
             Console.WriteLine($"[Narration] Error saving playback history: {ex.Message}");
         }
+
         Console.WriteLine($"[Narration] ✅ Phát xong POI \"{completedPoi?.Title}\" → COOLDOWN");
         SetState(NarrationState.Cooldown);
 
         try
         {
-            // SYS-H04 fix: Cancellable cooldown delay
+            // Cancellable cooldown delay — bị hủy khi user bấm Play/Stop
             _cooldownCts?.Cancel();
             _cooldownCts = new CancellationTokenSource();
             await Task.Delay(TimeSpan.FromSeconds(10), _cooldownCts.Token);
+
+            // Chỉ chuyển Idle nếu vẫn đang Cooldown (chưa ai can thiệp)
             if (_state == NarrationState.Cooldown)
             {
+                _currentPoi = null;
                 SetState(NarrationState.Idle);
-                if (_currentPoi == completedPoi)
-                    _currentPoi = null;
                 Console.WriteLine("[Narration] 🔄 Cooldown xong → IDLE, sẵn sàng nhận trigger mới");
             }
         }
         catch (TaskCanceledException)
         {
-            // Cooldown cancelled (new trigger or dispose) — expected
+            // Cooldown cancelled by user Play/Stop — expected, do nothing
         }
         catch (Exception ex)
         {

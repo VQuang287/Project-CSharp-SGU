@@ -71,48 +71,101 @@ public class DatabaseService : IDisposable
             Console.WriteLine($"[Database] Lỗi khởi tạo SQLite: {ex.Message}");
             Console.WriteLine($"[Database] Init exception type: {ex.GetType().Name}");
 
-            // Self-heal: if DB is corrupted or key/file mismatch, recreate clean DB.
-            try
+            // SAFE RECOVERY: Retry với exponential backoff thay vì xóa ngay
+            const int maxRetries = 3;
+            bool recoverySuccess = false;
+            
+            for (int retry = 1; retry <= maxRetries && !recoverySuccess; retry++)
             {
-                if (_db != null)
+                try
                 {
-                    try { await _db.CloseAsync(); }
-                    catch { }
-                    _db = null;
+                    Console.WriteLine($"[Database] Recovery attempt {retry}/{maxRetries}...");
+                    await Task.Delay(retry * 100); // Exponential backoff
+                    
+                    if (_db != null)
+                    {
+                        try { await _db.CloseAsync(); }
+                        catch { }
+                        _db = null;
+                    }
+
+                    // Chỉ xóa file khi retry lần cuối và thực sự là lỗi corrupted
+                    if (retry == maxRetries && IsDbCorrupted(ex))
+                    {
+                        Console.WriteLine("[Database] DB appears corrupted after retries. Creating new DB...");
+                        DeleteDbFiles(databasePath);
+                        secretKey = Guid.NewGuid().ToString("N");
+                        await SecureStorage.Default.SetAsync(SecretKeyPreferenceKey, secretKey);
+                    }
+                    
+                    options = new SQLiteConnectionString(databasePath, true, key: secretKey);
+                    _db = new SQLiteAsyncConnection(options);
+                    await TryEnableWalModeAsync();
+                    await _db.CreateTableAsync<Poi>();
+                    await _db.CreateTableAsync<PlaybackHistoryEntry>();
+                    await EnsureSeedDataAsync();
+                    await NormalizePoiDatasetAsync();
+
+                    _isDbInitialized = true;
+                    recoverySuccess = true;
+                    Console.WriteLine($"[Database] Recovery successful after {retry} attempt(s).");
                 }
-
-                if (File.Exists(databasePath))
-                    File.Delete(databasePath);
-                if (File.Exists(databasePath + "-wal"))
-                    File.Delete(databasePath + "-wal");
-                if (File.Exists(databasePath + "-shm"))
-                    File.Delete(databasePath + "-shm");
-
-                secretKey = Guid.NewGuid().ToString("N");
-                await SecureStorage.Default.SetAsync(SecretKeyPreferenceKey, secretKey);
-                options = new SQLiteConnectionString(databasePath, true, key: secretKey);
-
-                _db = new SQLiteAsyncConnection(options);
-                await TryEnableWalModeAsync();
-                await _db.CreateTableAsync<Poi>();
-                await _db.CreateTableAsync<PlaybackHistoryEntry>();
-                await EnsureSeedDataAsync();
-                await NormalizePoiDatasetAsync();
-
-                _isDbInitialized = true;
-                Console.WriteLine("[Database] Recovery successful. Recreated local DB with seed POIs.");
-            }
-            catch (Exception recoveryEx)
-            {
-                Console.WriteLine($"[Database] Recovery failed: {recoveryEx.Message}");
-                Console.WriteLine($"[Database] Recovery exception type: {recoveryEx.GetType().Name}");
-                _db = null;
-                EnableInMemoryFallback();
+                catch (Exception retryEx)
+                {
+                    Console.WriteLine($"[Database] Recovery attempt {retry} failed: {retryEx.Message}");
+                    if (retry == maxRetries)
+                    {
+                        Console.WriteLine("[Database] All recovery attempts exhausted. Falling back to in-memory mode.");
+                        _db = null;
+                        EnableInMemoryFallback();
+                    }
+                }
             }
         }
         finally
         {
             _initLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Kiểm tra xem exception có phải do DB corrupted không
+    /// </summary>
+    private static bool IsDbCorrupted(Exception ex)
+    {
+        var corruptedIndicators = new[]
+        {
+            "file is not a database",
+            "malformed database",
+            "database disk image is malformed",
+            "not a database",
+            "SQLITE_CORRUPT",
+            "SQLITE_NOTADB",
+            "encryption key incorrect"
+        };
+
+        var message = ex.Message?.ToLowerInvariant() ?? "";
+        return corruptedIndicators.Any(indicator => message.Contains(indicator.ToLowerInvariant()));
+    }
+
+    /// <summary>
+    /// Xóa các file DB một cách an toàn
+    /// </summary>
+    private static void DeleteDbFiles(string databasePath)
+    {
+        try
+        {
+            if (File.Exists(databasePath))
+                File.Delete(databasePath);
+            if (File.Exists(databasePath + "-wal"))
+                File.Delete(databasePath + "-wal");
+            if (File.Exists(databasePath + "-shm"))
+                File.Delete(databasePath + "-shm");
+            Console.WriteLine("[Database] DB files deleted for recreation.");
+        }
+        catch (Exception deleteEx)
+        {
+            Console.WriteLine($"[Database] Error deleting DB files: {deleteEx.Message}");
         }
     }
 
@@ -570,11 +623,37 @@ public class DatabaseService : IDisposable
         finally { _writeLock.Release(); }
     }
 
-    // SYS-W02 fix: Deterministic cleanup
+    // SYS-W02 fix: Deterministic cleanup - an toàn không block thread UI
     public void Dispose()
     {
         if (_disposed) return;
-        _db?.CloseAsync().GetAwaiter().GetResult();
+        
+        // Tránh sync-over-async deadlock bằng cách chạy trên thread pool với timeout
+        if (_db != null)
+        {
+            try
+            {
+                // Dùng Task.Run để tránh block UI thread
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        var closeTask = _db.CloseAsync();
+                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
+                        await Task.WhenAny(closeTask, timeoutTask);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Database] Error closing DB: {ex.Message}");
+                    }
+                }).Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Database] Dispose warning: {ex.Message}");
+            }
+        }
+        
         _initLock.Dispose();
         _writeLock.Dispose();
         _disposed = true;

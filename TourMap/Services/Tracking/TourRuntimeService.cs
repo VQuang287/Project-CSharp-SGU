@@ -41,20 +41,27 @@ public class TourRuntimeService : IDisposable
         _narrationEngine.StateChanged += OnNarrationStateChanged;
     }
     
-    private void OnNarrationStateChanged(NarrationState state, Poi? poi)
+    private async void OnNarrationStateChanged(NarrationState state, Poi? poi)
     {
-        // Update device tracking state based on narration
-        switch (state)
+        // Update device tracking state based on narration (async void là OK cho event handler)
+        try
         {
-            case NarrationState.Playing:
-                _deviceTrackingService.UpdateStateAsync(DeviceState.Playing);
-                break;
-            case NarrationState.Cooldown:
-                _deviceTrackingService.UpdateStateAsync(DeviceState.Idle);
-                break;
-            default:
-                _deviceTrackingService.UpdateStateAsync(DeviceState.Online);
-                break;
+            switch (state)
+            {
+                case NarrationState.Playing:
+                    await _deviceTrackingService.UpdateStateAsync(DeviceState.Playing);
+                    break;
+                case NarrationState.Cooldown:
+                    await _deviceTrackingService.UpdateStateAsync(DeviceState.Idle);
+                    break;
+                default:
+                    await _deviceTrackingService.UpdateStateAsync(DeviceState.Online);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TourRuntime] Error updating device state: {ex.Message}");
         }
     }
 

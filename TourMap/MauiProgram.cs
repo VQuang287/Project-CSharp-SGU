@@ -71,6 +71,13 @@ namespace TourMap
             builder.Services.AddSingleton<Services.ITtsService, TtsService_Android>();
 #endif
 
+            // === Platform-specific Services (iOS) ===
+#if IOS
+            builder.Services.AddSingleton<Services.ILocationService, LocationService_iOS>();
+            builder.Services.AddSingleton<Services.IGpsTrackingService, GpsTrackingService_iOS>();
+            builder.Services.AddSingleton<Services.ITtsService, TtsService_iOS>();
+#endif
+
 #if DEBUG
     		builder.Logging.AddDebug();
 #endif

@@ -28,5 +28,24 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+
+	<!-- Location Permissions -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập vị trí để phát audio hướng dẫn khi bạn đến gần các địa điểm tham quan.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cho phép TourMap phát audio tự động ngay cả khi ứng dụng chạy nền.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Cho phép TourMap phát audio tự động ngay cả khi ứng dụng chạy nền.</string>
+
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+	</array>
+
+	<!-- Privacy - không cần nhưng để tránh rejection -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TourMap không sử dụng microphone.</string>
 </dict>
 </plist>

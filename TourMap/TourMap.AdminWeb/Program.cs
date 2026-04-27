@@ -146,9 +146,26 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
 
-    // Ensure database is created (creates schema based on current model)
-    db.Database.EnsureCreated();
-    logger.LogInformation("Database created successfully");
+    // Apply pending migrations (production-ready approach)
+    try
+    {
+        await db.Database.MigrateAsync();
+        logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error applying database migrations. Ensure database exists and connection string is valid.");
+        // Fallback to EnsureCreated for first-time setup (dev only)
+        if (builder.Environment.IsDevelopment())
+        {
+            logger.LogWarning("Falling back to EnsureCreated for development...");
+            await db.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            throw; // In production, fail fast if migrations can't be applied
+        }
+    }
 
     // Seed initial POIs
     try
@@ -170,41 +187,49 @@ using (var scope = app.Services.CreateScope())
     }
 
     // === BOOTSTRAP ADMIN USER ===
-    // Ensures a properly-hashed admin account always exists.
-    // Runs on every startup to self-heal invalid/legacy hashes.
+    // SECURITY: Chỉ tạo admin khi có cấu hình rõ ràng, không dùng fallback password
     {
-        var username = app.Configuration["AdminBootstrap:Username"] ?? "admin";
-        var password = app.Configuration["AdminBootstrap:Password"] ?? "admin@2026";
-        var hasher = new PasswordHasher<AdminUser>();
-
-        var existingAdmin = db.AdminUsers.FirstOrDefault(u => u.Username == username);
-        if (existingAdmin == null)
+        var username = app.Configuration["AdminBootstrap:Username"];
+        var password = app.Configuration["AdminBootstrap:Password"];
+        
+        // Bắt buộc phải cấu hình qua environment variable hoặc config, không có fallback
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            // First run — create admin from scratch
-            var newAdmin = new AdminUser
-            {
-                Username = username,
-                Role = "Administrator",
-                IsActive = true
-            };
-            newAdmin.PasswordHash = hasher.HashPassword(newAdmin, password);
-            db.AdminUsers.Add(newAdmin);
-            db.SaveChanges();
-            logger.LogWarning($"[Bootstrap] Admin user '{username}' created. Change password after first login.");
+            logger.LogWarning("[Bootstrap] AdminBootstrap:Username và AdminBootstrap:Password chưa được cấu hình. Bỏ qua tạo admin tự động.");
         }
         else
         {
-            // Validate existing hash — if invalid/legacy format, rehash
-            var verifyResult = hasher.VerifyHashedPassword(existingAdmin, existingAdmin.PasswordHash ?? "", password);
-            if (verifyResult == PasswordVerificationResult.Failed && 
-                (string.IsNullOrEmpty(existingAdmin.PasswordHash) || !existingAdmin.PasswordHash.StartsWith("AQ")))
+            var hasher = new PasswordHasher<AdminUser>();
+            var existingAdmin = db.AdminUsers.FirstOrDefault(u => u.Username == username);
+            
+            if (existingAdmin == null)
             {
-                // Legacy plain-text or invalid hash — rehash with ASP.NET Identity format
-                existingAdmin.PasswordHash = hasher.HashPassword(existingAdmin, password);
-                existingAdmin.FailedLoginCount = 0;
-                existingAdmin.LockedUntilUtc = null;
+                // First run — create admin from configured credentials
+                var newAdmin = new AdminUser
+                {
+                    Username = username,
+                    Role = "Administrator",
+                    IsActive = true
+                };
+                newAdmin.PasswordHash = hasher.HashPassword(newAdmin, password);
+                db.AdminUsers.Add(newAdmin);
                 db.SaveChanges();
-                logger.LogWarning($"[Bootstrap] Admin '{username}' password rehashed. Use password: {password}");
+                logger.LogWarning($"[Bootstrap] Admin user '{username}' đã được tạo. HÃY ĐỔI MẬT KHẨU NGAY sau lần đăng nhập đầu tiên!");
+            }
+            else
+            {
+                // Validate existing hash — if invalid/legacy format, rehash với password từ config
+                var verifyResult = hasher.VerifyHashedPassword(existingAdmin, existingAdmin.PasswordHash ?? "", password);
+                if (verifyResult == PasswordVerificationResult.Failed && 
+                    (string.IsNullOrEmpty(existingAdmin.PasswordHash) || !existingAdmin.PasswordHash.StartsWith("AQ")))
+                {
+                    // Legacy plain-text or invalid hash — rehash với password từ config
+                    existingAdmin.PasswordHash = hasher.HashPassword(existingAdmin, password);
+                    existingAdmin.FailedLoginCount = 0;
+                    existingAdmin.LockedUntilUtc = null;
+                    db.SaveChanges();
+                    logger.LogWarning($"[Bootstrap] Admin '{username}' đã được rehash mật khẩu. HÃY ĐỔI MẬT KHẨU NGAY sau lần đăng nhập đầu tiên!");
+                }
             }
         }
     }
@@ -259,11 +284,15 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseRouting();
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// Chỉ bật Swagger trong Development
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TourMap API V1");
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TourMap API V1");
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

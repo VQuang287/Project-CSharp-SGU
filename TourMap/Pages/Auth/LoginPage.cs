@@ -228,10 +228,18 @@ public class LoginPage : ContentPage
         SetLoading(true);
         ShowError(null);
 
-        await _authService.LoginAnonymousAsync();
+        var success = await _authService.LoginAnonymousAsync();
 
         SetLoading(false);
-        await NavigateToMainApp();
+
+        if (success)
+        {
+            await NavigateToMainApp();
+        }
+        else
+        {
+            ShowError("Không thể đăng nhập khách. Vui lòng kiểm tra kết nối mạng và thử lại.");
+        }
     }
 
     private Task NavigateToMainApp()

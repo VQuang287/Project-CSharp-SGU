@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TourMap.AdminWeb.Data;
@@ -8,6 +9,7 @@ using static TourMap.AdminWeb.Models.ConnectionState;
 
 namespace TourMap.AdminWeb.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly AdminDbContext _dbContext;
@@ -48,7 +50,7 @@ public class HomeController : Controller
             TotalPois = await _dbContext.Pois.CountAsync(),
             ActiveTours = await _dbContext.Tours.CountAsync(x => x.IsActive),
             TotalPlays = await _dbContext.PlaybackHistories.CountAsync(),
-            ActiveMobileUsers = await _dbContext.MobileUsers.CountAsync(),
+            ActiveMobileUsers = await _dbContext.MobileUsers.CountAsync(u => u.Role != "Guest"),
             TotalQrCodes = await _dbContext.QrCodeEntries.CountAsync(),
             OnlineDevices = onlineDevices,
             TopPois = topPois.Select(x => new PoiPlaybackItem
@@ -59,16 +61,16 @@ public class HomeController : Controller
             }).ToList()
         };
 
-        ViewData["OnlineDevices"] = model.OnlineDevices;
         return View(model);
     }
 
+    [AllowAnonymous]
     public async Task<IActionResult> Privacy()
     {
-        ViewData["OnlineDevices"] = await GetOnlineDeviceCountAsync();
         return View();
     }
 
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

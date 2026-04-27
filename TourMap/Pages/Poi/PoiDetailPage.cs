@@ -476,23 +476,32 @@ public class PoiDetailPage : ContentPage
     // Audio Controls
     // ═══════════════════════════════════════════════════════════
 
+    private bool _isPlayActionInProgress; // chống spam nút Play/Pause
+
     private async void OnPlayPauseClicked(object? sender, EventArgs e)
     {
+        // Debounce: chặn spam nút
+        if (_isPlayActionInProgress) return;
+        _isPlayActionInProgress = true;
+
         try
         {
             if (_poi == null) return;
 
             if (_isPlaying)
             {
+                // PAUSE/STOP
                 _narrationEngine.Stop();
-                _isPlaying = false;
-                _playPauseBtn.Text = "▶";
+                // State sẽ được cập nhật qua OnNarrationStateChanged → Idle
             }
             else
             {
-                _isPlaying = true;
-                _playPauseBtn.Text = "⏸";
-                await _narrationEngine.OnPOITriggeredAsync(_poi, "Manual");
+                // PLAY — dùng PlayPoiAsync (không phải OnPOITriggeredAsync)
+                // PlayPoiAsync sẽ force-cancel cooldown và reset state
+                var lang = LocalizationService.Current.CurrentLanguage;
+                await _narrationEngine.PlayPoiAsync(_poi, lang);
+                // Nếu TTS phát xong ngay (text rất ngắn), state đã chuyển Cooldown→Idle
+                // UI sẽ tự cập nhật qua OnNarrationStateChanged
             }
         }
         catch (Exception ex)
@@ -500,6 +509,14 @@ public class PoiDetailPage : ContentPage
             Console.WriteLine($"[PoiDetailPage] Error playing/pausing audio: {ex.Message}");
             _isPlaying = false;
             _playPauseBtn.Text = "▶";
+            _statusLabel.Text = "❌ Lỗi phát audio";
+            _statusLabel.TextColor = Color.FromArgb("#EF4444");
+        }
+        finally
+        {
+            // Cho phép bấm lại sau 300ms (chống double-tap)
+            await Task.Delay(300);
+            _isPlayActionInProgress = false;
         }
     }
 
@@ -516,11 +533,21 @@ public class PoiDetailPage : ContentPage
                     _statusLabel.TextColor = Color.FromArgb("#0D7A5F");
                     break;
                 case NarrationState.Cooldown:
-                case NarrationState.Idle:
                     _isPlaying = false;
                     _playPauseBtn.Text = "▶";
                     _statusLabel.Text = "✅ Đã phát xong";
                     _statusLabel.TextColor = Color.FromArgb("#9CA3AF");
+                    break;
+                case NarrationState.Idle:
+                    _isPlaying = false;
+                    _playPauseBtn.Text = "▶";
+                    // Chỉ đổi text nếu đang hiện "Đã phát xong" (không ghi đè lỗi)
+                    if (_statusLabel.Text?.Contains("Đang phát") == true
+                        || _statusLabel.Text?.Contains("Đã phát xong") == true)
+                    {
+                        _statusLabel.Text = "🎧 Sẵn sàng phát";
+                        _statusLabel.TextColor = Color.FromArgb("#9CA3AF");
+                    }
                     break;
             }
         });
@@ -655,7 +682,7 @@ public class PoiDetailPage : ContentPage
                 _gpsLabel.Text = loc["GpsCoordinates"] ?? "Tọa độ GPS";
                 _statAudioLabel.Text = "— " + (loc["AudioStat"] ?? "thuyết minh");
                 _statWalkLabel.Text = "— " + (loc["WalkStat"] ?? "phút đi bộ");
-                _playPauseBtn.Text = _isPlaying ? (loc["StopBtn"] ?? "⏹ Dừng phát") : (loc["PlayBtn"] ?? "🔊 Phát Audio");
+                _playPauseBtn.Text = _isPlaying ? "⏸" : "▶";
                 
                 if (_poi != null)
                 {

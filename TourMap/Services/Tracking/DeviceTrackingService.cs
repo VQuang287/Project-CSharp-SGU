@@ -15,6 +15,7 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
     private readonly ILocationService? _locationService;
     
     private Timer? _heartbeatTimer;
+    private readonly SemaphoreSlim _heartbeatLock = new(1, 1);
     private string? _currentPoiId;
     private string? _currentPoiName;
     private bool _isConnected;
@@ -73,12 +74,9 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, options =>
                 {
-                    // Add JWT token for authentication
-                    var token = _authService.CurrentToken;
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        options.AccessTokenProvider = () => Task.FromResult(token);
-                    }
+                    // Động: luôn đọc token hiện tại từ AuthService (không capture by value)
+                    // Khi user logout → login guest, token sẽ tự động cập nhật
+                    options.AccessTokenProvider = () => Task.FromResult(_authService.CurrentToken);
                 })
                 .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
                 .Build();
@@ -163,7 +161,28 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
     private void StartHeartbeatTimer()
     {
         _heartbeatTimer?.Dispose();
-        _heartbeatTimer = new Timer(async _ => await SendHeartbeatAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        _heartbeatTimer = new Timer(async _ => 
+        {
+            // Ngăn callback chồng chập với SemaphoreSlim
+            if (!await _heartbeatLock.WaitAsync(0))
+            {
+                _logger.LogDebug("Heartbeat callback skipped - previous still running");
+                return;
+            }
+            
+            try
+            {
+                await SendHeartbeatAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Heartbeat timer error", ex);
+            }
+            finally
+            {
+                _heartbeatLock.Release();
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
         _logger.LogInformation("Heartbeat timer started (30s interval)");
     }
 

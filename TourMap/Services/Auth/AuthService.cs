@@ -224,6 +224,13 @@ public class AuthService
     {
         try
         {
+            // QUAN TRỌNG: Xóa token cũ trước khi login dạng khách
+            // để không bị dính token của tài khoản đã đăng nhập trước đó
+            await ClearTokensAsync();
+            CurrentToken = null;
+            CurrentUser = null;
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+
             _deviceId = GetOrCreateDeviceId();
             var request = new { DeviceId = _deviceId };
 
@@ -231,6 +238,7 @@ public class AuthService
             {
                 try
                 {
+                    _logger.LogInformation("[Auth] Trying anonymous login at {0}", baseUrl);
                     var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login", request);
                     if (response.IsSuccessStatusCode)
                     {
@@ -241,6 +249,7 @@ public class AuthService
                         {
                             await SaveTokensAsync(result);
                             BackendEndpoints.RememberWorkingServerFromUrl(baseUrl);
+                            _logger.LogInformation("[Auth] Anonymous login success. Role: {0}", result.User?.Role);
                             return true;
                         }
                     }
@@ -300,13 +309,36 @@ public class AuthService
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Logout
+    // Logout — revoke token trên server rồi xóa local
     // ═══════════════════════════════════════════════════════════
     public async Task LogoutAsync()
     {
+        // Best-effort: gọi server để revoke refresh token
+        if (!string.IsNullOrEmpty(CurrentToken))
+        {
+            foreach (var baseUrl in BackendEndpoints.GetAuthBaseUrls())
+            {
+                try
+                {
+                    using var message = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/logout");
+                    message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CurrentToken);
+                    var response = await _httpClient.SendAsync(message);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        _logger.LogInformation("[Auth] Server-side logout success");
+                        break;
+                    }
+                }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
+            }
+        }
+
+        // Xóa local tokens
         await ClearTokensAsync();
         CurrentToken = null;
         CurrentUser = null;
+        _httpClient.DefaultRequestHeaders.Authorization = null;
         _logger.LogInformation("User logged out");
     }
 
@@ -364,7 +396,7 @@ public class AuthService
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
                         response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed)
                     {
-                        return new AuthResult(false, "TÃ­nh nÄƒng khÃ´i phá»¥c máº­t kháº©u chÆ°a Ä‘Æ°á»£c há»— trá»£ trÃªn server nÃ y.");
+                        return new AuthResult(false, "Tính năng khôi phục mật khẩu chưa được hỗ trợ trên server này.");
                     }
                 }
                 catch (HttpRequestException) { continue; }

@@ -1,14 +1,15 @@
 // =====================================================================
 // One-time tool: Reset AdminUser password to a known value (SQL Server)
 // Run from TourMap.AdminWeb folder:
-//   dotnet run --project .\ResetAdminPassword\ResetAdminPassword.csproj
+//   dotnet run --project .\ResetAdminPassword\ResetAdminPassword.csproj -- "username" "password"
 // =====================================================================
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 
-const string TargetUsername = "admin";
-const string NewPassword = "admin123";
+// Get username/password from command line args or use defaults
+var TargetUsername = args.Length > 0 ? args[0] : "admin";
+var NewPassword = args.Length > 1 ? args[1] : "admin123";
 const string EnvConnectionStringName = "TOURMAP_ADMINWEB_CONNECTION_STRING";
 
 string? ReadConnectionStringFromJson(string path)

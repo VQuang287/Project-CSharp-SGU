@@ -79,19 +79,9 @@ public class QrScannerPage : ContentPage
             Margin = 0,
         };
 
-        // Header
-        var backBtn = new Border
-        {
-            WidthRequest = 40, HeightRequest = 40,
-            BackgroundColor = Color.FromRgba(1.0, 1.0, 1.0, 0.15),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = Colors.Transparent,
-            Content = new Label { Text = "←", FontSize = 18, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center },
-        };
-        backBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(() => _ = Navigation.PopAsync()) });
-
-        _qrHeaderLabel = new Label { Text = _loc["QrHeader"] ?? "Quét mã QR", FontFamily = "InterBold", FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center };
-        _qrInstructionsLabel = new Label { Text = _loc["QrInstructions"] ?? "Đưa mã vào khung để quét", FontFamily = "InterRegular", FontSize = 11, TextColor = Color.FromRgba(1.0, 1.0, 1.0, 0.6), HorizontalTextAlignment = TextAlignment.Center };
+        // Header (chỉ còn title, không có back button và torch)
+        _qrHeaderLabel = new Label { Text = _loc["QrHeader"] ?? "Quét mã QR", FontFamily = "InterBold", FontSize = 18, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center };
+        _qrInstructionsLabel = new Label { Text = _loc["QrInstructions"] ?? "Đưa mã vào khung để quét", FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromRgba(1.0, 1.0, 1.0, 0.7), HorizontalTextAlignment = TextAlignment.Center };
 
         var headerTitle = new VerticalStackLayout
         {
@@ -100,26 +90,13 @@ public class QrScannerPage : ContentPage
             Children = { _qrHeaderLabel, _qrInstructionsLabel }
         };
 
-        _torchIcon = new Label { Text = "⚡", FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center };
-        _torchBtnBg = new Border
-        {
-            WidthRequest = 40, HeightRequest = 40,
-            BackgroundColor = Color.FromRgba(1.0, 1.0, 1.0, 0.15),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = Colors.Transparent,
-            Content = _torchIcon,
-        };
-        _torchBtnBg.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(ToggleTorch) });
-
         var headerGrid = new Grid
         {
-            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
             Margin = new Thickness(16, 44, 16, 0),
             VerticalOptions = LayoutOptions.Start,
+            HorizontalOptions = LayoutOptions.Center
         };
-        headerGrid.Add(backBtn, 0, 0);
-        headerGrid.Add(headerTitle, 1, 0);
-        headerGrid.Add(_torchBtnBg, 2, 0);
+        headerGrid.Add(headerTitle);
 
         // Scan Frame
         _scanBox = new BoxView
@@ -578,11 +555,11 @@ public class QrScannerPage : ContentPage
                     _successPoiTitle.Text = poi.Title;
                     _successPoiDesc.Text = poi.Description;
                     _successCard.IsVisible = true;
-
-                    await OpenPoiDetailAsync(poi, poiId);
+                    // KHÔNG tự động mở POI - chờ user nhấn nút "Mở và phát thuyết minh"
                 }
                 else
                 {
+                    // POI không tồn tại trong DB - vẫn navigate để hiển thị thông báo lỗi
                     _statusLabel.Text = _loc["QrScanHint"] ?? "Đang mở chi tiết POI...";
                     await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
                 }

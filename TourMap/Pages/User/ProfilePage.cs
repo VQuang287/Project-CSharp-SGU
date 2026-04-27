@@ -170,14 +170,55 @@ public class ProfilePage : ContentPage
         _guestBenefit1 = new Label { FontSize = 14, TextColor = Color.FromArgb("#4B5563") };
         _guestBenefit2 = new Label { FontSize = 14, TextColor = Color.FromArgb("#4B5563") };
         _guestBenefit3 = new Label { FontSize = 14, TextColor = Color.FromArgb("#4B5563") };
-        _registerBtn = new Button { FontFamily = "InterSemiBold", BackgroundColor = Color.FromArgb("#1565C0"), TextColor = Colors.White, CornerRadius = 10, HeightRequest = 44, Margin = new Thickness(0, 16, 0, 0) };
+        // Guest: Nút đăng ký nhẹ nhàng (outline style)
+        _registerBtn = new Button 
+        { 
+            FontFamily = "InterSemiBold", 
+            BackgroundColor = Colors.Transparent,
+            BorderColor = Color.FromArgb("#1565C0"),
+            BorderWidth = 1.5,
+            TextColor = Color.FromArgb("#1565C0"), 
+            CornerRadius = 10, 
+            HeightRequest = 40, 
+            Margin = new Thickness(0, 12, 0, 0) 
+        };
         _registerBtn.Clicked += OnAuthActionClicked;
 
+        // Guest card: Layout nhẹ nhàng hơn, không pushy
+        var guestContent = new VerticalStackLayout { Spacing = 6 };
+        
+        // Header nhẹ nhàng
+        var guestHeader = new Label 
+        { 
+            Text = "💡 Lưu lịch sử tour của bạn", 
+            FontFamily = "InterSemiBold", 
+            FontSize = 14, 
+            TextColor = Color.FromArgb("#4B5563"),
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+        
+        // Mô tả nhỏ
+        var guestDesc = new Label 
+        { 
+            Text = "Đăng ký để đồng bộ dữ liệu giữa các thiết bị",
+            FontSize = 13, 
+            TextColor = Color.FromArgb("#6B7280"),
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        
+        guestContent.Children.Add(guestHeader);
+        guestContent.Children.Add(guestDesc);
+        guestContent.Children.Add(_registerBtn);
+        
         _guestInfoCard = new Border
         {
-            BackgroundColor = Colors.White, StrokeShape = new RoundRectangle { CornerRadius = 16 }, Stroke = Color.FromArgb("#E5E7EB"), StrokeThickness = 1,
-            Padding = new Thickness(20), Margin = new Thickness(20, 0),
-            Content = new VerticalStackLayout { Spacing = 4, Children = { _guestBenefitsHeader, _guestBenefit1, _guestBenefit2, _guestBenefit3, _registerBtn } }
+            BackgroundColor = Colors.White, 
+            StrokeShape = new RoundRectangle { CornerRadius = 16 }, 
+            Stroke = Color.FromArgb("#E5E7EB"), 
+            StrokeThickness = 1,
+            Padding = new Thickness(16), 
+            Margin = new Thickness(20, 0),
+            Content = guestContent
         };
 
         // User Setup
@@ -248,18 +289,6 @@ public class ProfilePage : ContentPage
     {
         base.OnAppearing();
 
-        // Redirect Guests
-        if (_authService.IsGuest)
-        {
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await Shell.Current.GoToAsync("..");
-                if (Application.Current?.Windows.FirstOrDefault() is Window window)
-                    window.Page = new LoginPage(_authService);
-            });
-            return;
-        }
-
         _loc.LanguageChanged += OnLanguageChanged;
         RefreshProfile();
         OnLanguageChanged(); // Apply Initial Translation
@@ -293,7 +322,7 @@ public class ProfilePage : ContentPage
             _guestBenefit1.Text = _loc["GuestBenefit1"] ?? "• Lưu lịch sử tour";
             _guestBenefit2.Text = _loc["GuestBenefit2"] ?? "• Đồng bộ dữ liệu";
             _guestBenefit3.Text = _loc["GuestBenefit3"] ?? "• Trải nghiệm đầy đủ";
-            _registerBtn.Text = _loc["RegisterNowBtn"] ?? "Đăng ký ngay";
+            _registerBtn.Text = _loc["RegisterNowBtn"] ?? "Tạo tài khoản";
 
             // User card
             _authEmailLabel.Text = _loc["EmailLabel"] ?? "📧 Email";
@@ -376,6 +405,7 @@ public class ProfilePage : ContentPage
         else
         {
             _changePasswordBtn.IsVisible = false;
+            _logoutBtn.IsVisible = false;  // Guest không cần đăng xuất
             _statAudioValue.Text = "0h";
             _statPlacesValue.Text = "0";
             _statBadgesValue.Text = "-";
@@ -417,6 +447,15 @@ public class ProfilePage : ContentPage
 
     private async void OnAuthActionClicked(object? sender, EventArgs e)
     {
+        // Disconnect tracking trước khi logout
+        try
+        {
+            var tracking = ServiceHelper.GetService<DeviceTrackingService>();
+            if (tracking != null)
+                await tracking.DisconnectAsync();
+        }
+        catch { }
+
         await _authService.LogoutAsync();
         if (Application.Current?.Windows.FirstOrDefault() is Window window)
             window.Page = new LoginPage(_authService);
@@ -431,6 +470,19 @@ public class ProfilePage : ContentPage
 
         var confirm = await DisplayAlertAsync(title, msg, ok, cancel);
         if (!confirm) return;
+
+        // Disconnect DeviceTracking TRƯỚC khi xóa token
+        // để hub biết device đã offline và tránh dính token cũ
+        try
+        {
+            var tracking = ServiceHelper.GetService<DeviceTrackingService>();
+            if (tracking != null)
+                await tracking.DisconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProfilePage] Error disconnecting tracking: {ex.Message}");
+        }
 
         await _authService.LogoutAsync();
 

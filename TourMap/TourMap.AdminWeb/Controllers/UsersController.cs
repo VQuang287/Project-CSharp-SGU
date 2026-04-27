@@ -22,6 +22,12 @@ public class UsersController : Controller
     {
         var query = _context.MobileUsers.AsNoTracking().AsQueryable();
 
+        // Mặc định ẩn Guest — chỉ hiện khi admin chọn filter role=Guest
+        if (!string.IsNullOrWhiteSpace(role))
+            query = query.Where(u => u.Role == role);
+        else
+            query = query.Where(u => u.Role != "Guest");
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -31,9 +37,6 @@ public class UsersController : Controller
                 u.DeviceId.Contains(s));
         }
 
-        if (!string.IsNullOrWhiteSpace(role))
-            query = query.Where(u => u.Role == role);
-
         var users = await query
             .OrderByDescending(u => u.LastLoginAt)
             .Take(200)
@@ -41,8 +44,8 @@ public class UsersController : Controller
 
         ViewData["Search"] = search;
         ViewData["Role"] = role;
-        ViewData["TotalUsers"] = await _context.MobileUsers.CountAsync();
-        ViewData["TotalRegistered"] = await _context.MobileUsers.CountAsync(u => u.Email != null);
+        ViewData["TotalUsers"] = await _context.MobileUsers.CountAsync(u => u.Role != "Guest");
+        ViewData["TotalRegistered"] = await _context.MobileUsers.CountAsync(u => u.Email != null && u.Role != "Guest");
         ViewData["TotalGuests"] = await _context.MobileUsers.CountAsync(u => u.Role == "Guest");
 
         return View(users);

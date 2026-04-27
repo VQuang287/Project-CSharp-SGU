@@ -1,9 +1,12 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using Android.Content.Res;
 using Android.OS;
 using Microsoft.Maui.Storage;
 using System;
+using System.Globalization;
+using TourMap.Services;
 
 namespace TourMap
 {
@@ -11,7 +14,7 @@ namespace TourMap
         Theme = "@style/Maui.SplashTheme", 
         MainLauncher = true, 
         LaunchMode = LaunchMode.SingleTop, 
-        ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+        ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density | ConfigChanges.Locale | ConfigChanges.LayoutDirection)]
     [IntentFilter(new[] { Android.Content.Intent.ActionView },
         Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
         DataSchemes = new[] { "audiotour" },
@@ -80,6 +83,53 @@ namespace TourMap
                 Console.WriteLine($"[MainActivity] Error handling intent: {ex}");
             }
         }
+
+        /// <summary>
+        /// Detect system language change while app is in foreground.
+        /// </summary>
+        public override void OnConfigurationChanged(Configuration newConfig)
+        {
+            base.OnConfigurationChanged(newConfig);
+            SyncSystemLanguage();
+        }
+
+        /// <summary>
+        /// Detect system language change when returning from Settings.
+        /// </summary>
+        protected override void OnResume()
+        {
+            base.OnResume();
+            SyncSystemLanguage();
+        }
+
+        /// <summary>
+        /// Đồng bộ ngôn ngữ app theo ngôn ngữ hệ thống Android.
+        /// </summary>
+        private void SyncSystemLanguage()
+        {
+            try
+            {
+                var sysLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+                var loc = LocalizationService.Current;
+                
+                if (loc.CurrentLanguage != sysLang)
+                {
+                    var supportedCodes = LocalizationService.SupportedLanguages
+                        .Select(l => l.Code).ToHashSet();
+                    
+                    if (supportedCodes.Contains(sysLang))
+                    {
+                        Console.WriteLine($"[MainActivity] System language changed → {sysLang}, syncing app");
+                        loc.CurrentLanguage = sysLang;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainActivity] Error syncing language: {ex.Message}");
+            }
+        }
+
         // MAUI 8/10 automatically handles permission callbacks via ActivityResultCallbackRegistry
         // No manual forwarding needed - keeping override for Android lifecycle compatibility only
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
