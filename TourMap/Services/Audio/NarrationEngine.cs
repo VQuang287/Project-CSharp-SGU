@@ -130,7 +130,7 @@ public class NarrationEngine : IDisposable
         RequestAudioFocus();
 #endif
 
-        var lang = LocalizationService.Current.CurrentLanguage;
+        var lang = LocalizationService.NormalizeLanguageCode(LocalizationService.Current.CurrentLanguage);
         
         // Debug: Log thông tin POI và audio paths
         Console.WriteLine($"[Narration] OnPOITriggered: POI={poi.Title}, Lang={lang}");
@@ -159,6 +159,7 @@ public class NarrationEngine : IDisposable
 
         // Ưu tiên 2: TTS script từ database (nếu có)
         var ttsScript = await _databaseService.GetPoiTtsScriptAsync(poi.Id, lang);
+        Console.WriteLine($"[Narration] TTS from DB: poiId={poi.Id}, lang={lang}, script={(ttsScript?.Substring(0, Math.Min(30, ttsScript?.Length ?? 0)) ?? "NULL")}...");
         if (!string.IsNullOrWhiteSpace(ttsScript))
         {
             _currentAudioSource = "TTS-DB";
@@ -210,6 +211,9 @@ public class NarrationEngine : IDisposable
     /// <summary>Play specific POI with specified language (dùng cho manual play từ UI).</summary>
     public async Task PlayPoiAsync(Poi poi, string languageCode)
     {
+        // Normalize language code
+        languageCode = LocalizationService.NormalizeLanguageCode(languageCode);
+        
         // Force-reset: dừng mọi thứ đang chạy (bao gồm cooldown)
         _cooldownCts?.Cancel();
         StopCurrent();

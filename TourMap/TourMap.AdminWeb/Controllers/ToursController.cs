@@ -9,13 +9,10 @@ using TourMap.AdminWeb.ViewModels;
 namespace TourMap.AdminWeb.Controllers;
 
 [Authorize(Roles = "Administrator")]
-public class ToursController : Controller
+public class ToursController : BaseAdminController
 {
-    private readonly AdminDbContext _context;
-
-    public ToursController(AdminDbContext context)
+    public ToursController(AdminDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IActionResult> Index()

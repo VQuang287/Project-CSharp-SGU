@@ -8,13 +8,10 @@ using TourMap.AdminWeb.ViewModels;
 namespace TourMap.AdminWeb.Controllers;
 
 [Authorize(Roles = "Administrator")]
-public class AnalyticsController : Controller
+public class AnalyticsController : BaseAdminController
 {
-    private readonly AdminDbContext _context;
-
-    public AnalyticsController(AdminDbContext context)
+    public AnalyticsController(AdminDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IActionResult> Index()

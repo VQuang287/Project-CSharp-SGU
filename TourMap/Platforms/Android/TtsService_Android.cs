@@ -59,9 +59,10 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
 
         try
         {
-            var locale = LangCodeToLocale(_loc.CurrentLanguage);
+            var langCode = LocalizationService.NormalizeLanguageCode(_loc.CurrentLanguage);
+            var locale = LangCodeToLocale(langCode);
             var result = _tts.SetLanguage(locale);
-            Console.WriteLine($"[TTS] Language changed to {_loc.CurrentLanguage}, result: {result}");
+            Console.WriteLine($"[TTS] Language changed to {langCode}, result: {result}");
         }
         catch (Exception ex)
         {
@@ -87,15 +88,28 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         {
             if (status == OperationResult.Success && _tts != null)
             {
-                // Mặc định: tiếng Việt
-                var result = _tts.SetLanguage(new JavaLocale("vi", "VN"));
+                // Dùng current language thay vì hardcode Vietnamese
+                var currentLang = LocalizationService.NormalizeLanguageCode(_loc.CurrentLanguage);
+                var locale = LangCodeToLocale(currentLang);
+                var result = _tts.SetLanguage(locale);
 
-                // Nếu thiết bị không hỗ trợ tiếng Việt → fallback sang English
+                Console.WriteLine($"[TTS] OnInit: SetLanguage({currentLang}) -> {result}");
+
+                // Nếu ngôn ngữ hiện tại không khả dụng → thử fallback
                 if (result == LanguageAvailableResult.MissingData ||
                     result == LanguageAvailableResult.NotSupported)
                 {
-                    _tts.SetLanguage(JavaLocale.Us);
-                    Console.WriteLine("[TTS] Tiếng Việt không khả dụng, fallback sang English");
+                    // Thử English
+                    var enResult = _tts.SetLanguage(JavaLocale.Us);
+                    Console.WriteLine($"[TTS] Fallback to English -> {enResult}");
+                    
+                    // Nếu English cũng không được, thử tiếng Việt
+                    if (enResult == LanguageAvailableResult.MissingData ||
+                        enResult == LanguageAvailableResult.NotSupported)
+                    {
+                        _tts.SetLanguage(new JavaLocale("vi", "VN"));
+                        Console.WriteLine("[TTS] Fallback to Vietnamese");
+                    }
                 }
 
                 // Tốc độ đọc bình thường
@@ -106,7 +120,7 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
                 _tts.SetOnUtteranceProgressListener(new TtsProgressListener(this));
 
                 _initialized = true;
-                Console.WriteLine("[TTS] ✅ Engine khởi tạo thành công");
+                Console.WriteLine($"[TTS] ✅ Engine khởi tạo thành công, lang={currentLang}");
             }
             else
             {
@@ -131,6 +145,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
         
         try
         {
+            // Normalize language code
+            languageCode = LocalizationService.NormalizeLanguageCode(languageCode);
             var locale = LangCodeToLocale(languageCode);
             var result = _tts.SetLanguage(locale);
             Console.WriteLine($"[TTS] SetLanguageAsync({languageCode}) -> {result}");
@@ -160,6 +176,8 @@ public class TtsService_Android : Java.Lang.Object, ITtsService, AndroidTts.IOnI
             return;
         }
 
+        // Normalize language code
+        langCode = LocalizationService.NormalizeLanguageCode(langCode);
         var locale = LangCodeToLocale(langCode);
 
         // Dừng phát cũ nếu đang nói

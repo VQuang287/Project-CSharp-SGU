@@ -8,15 +8,13 @@ using TourMap.AdminWeb.Services;
 namespace TourMap.AdminWeb.Controllers;
 
 [Authorize]
-public class PoisController : Controller
+public class PoisController : BaseAdminController
 {
-    private readonly AdminDbContext _context;
     private readonly IWebHostEnvironment _env;
     private readonly IAITranslationService _aiService;
 
-    public PoisController(AdminDbContext context, IWebHostEnvironment env, IAITranslationService aiService)
+    public PoisController(AdminDbContext context, IWebHostEnvironment env, IAITranslationService aiService) : base(context)
     {
-        _context = context;
         _env = env;
         _aiService = aiService;
     }
@@ -75,7 +73,9 @@ public class PoisController : Controller
                 poi.AudioUrl = "/uploads/audio/" + fileName;
             }
 
-            poi.TtsScriptVi = poi.Description;
+            // If no TTS script provided, use Description as fallback
+            if (string.IsNullOrWhiteSpace(poi.TtsScriptVi))
+                poi.TtsScriptVi = poi.Description;
 
             if (autoAI && !string.IsNullOrWhiteSpace(poi.Description))
             {
@@ -178,12 +178,13 @@ public class PoisController : Controller
             poi.DescriptionKo = existingPoi.DescriptionKo;
             poi.DescriptionJa = existingPoi.DescriptionJa;
             poi.DescriptionFr = existingPoi.DescriptionFr;
-            poi.TtsScriptVi = existingPoi.TtsScriptVi;
-            poi.TtsScriptEn = existingPoi.TtsScriptEn;
-            poi.TtsScriptZh = existingPoi.TtsScriptZh;
-            poi.TtsScriptKo = existingPoi.TtsScriptKo;
-            poi.TtsScriptJa = existingPoi.TtsScriptJa;
-            poi.TtsScriptFr = existingPoi.TtsScriptFr;
+            // Preserve TTS scripts only if form didn't submit new values (null/empty)
+            if (string.IsNullOrEmpty(poi.TtsScriptVi)) poi.TtsScriptVi = existingPoi.TtsScriptVi;
+            if (string.IsNullOrEmpty(poi.TtsScriptEn)) poi.TtsScriptEn = existingPoi.TtsScriptEn;
+            if (string.IsNullOrEmpty(poi.TtsScriptZh)) poi.TtsScriptZh = existingPoi.TtsScriptZh;
+            if (string.IsNullOrEmpty(poi.TtsScriptKo)) poi.TtsScriptKo = existingPoi.TtsScriptKo;
+            if (string.IsNullOrEmpty(poi.TtsScriptJa)) poi.TtsScriptJa = existingPoi.TtsScriptJa;
+            if (string.IsNullOrEmpty(poi.TtsScriptFr)) poi.TtsScriptFr = existingPoi.TtsScriptFr;
 
             if (ImageFile != null)
             {
@@ -203,7 +204,9 @@ public class PoisController : Controller
                 poi.AudioUrl = "/uploads/audio/" + fileName;
             }
 
-            poi.TtsScriptVi = poi.Description;
+            // If no TTS script provided, use Description as fallback
+            if (string.IsNullOrWhiteSpace(poi.TtsScriptVi))
+                poi.TtsScriptVi = poi.Description;
 
             // Chỉ sinh lại AI nếu description thực sự thay đổi
             if (autoAI && !string.IsNullOrWhiteSpace(poi.Description) && poi.Description != existingPoi.Description)

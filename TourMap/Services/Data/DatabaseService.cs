@@ -62,6 +62,10 @@ public class DatabaseService : IDisposable
             await _db.CreateTableAsync<PlaybackHistoryEntry>();
             await _db.CreateTableAsync<Tour>();
             await _db.CreateTableAsync<TourPoiMapping>();
+            
+            // Migration: Thêm TTS columns nếu thiếu (database cũ không có các columns này)
+            await MigrateTtsColumnsAsync();
+            
             await EnsureSeedDataAsync();
             await NormalizePoiDatasetAsync();
 
@@ -105,6 +109,7 @@ public class DatabaseService : IDisposable
                     await TryEnableWalModeAsync();
                     await _db.CreateTableAsync<Poi>();
                     await _db.CreateTableAsync<PlaybackHistoryEntry>();
+                    await MigrateTtsColumnsAsync();
                     await EnsureSeedDataAsync();
                     await NormalizePoiDatasetAsync();
 
@@ -192,6 +197,70 @@ public class DatabaseService : IDisposable
         _inMemoryFallbackPois = BuildSeedPois();
         _isDbInitialized = true;
         Console.WriteLine("[Database] Fallback mode enabled: using in-memory seed POIs.");
+    }
+
+    /// <summary>
+    /// Migration: Thêm TTS columns nếu table Poi đã tồn tại nhưng thiếu columns.
+    /// SQLite CreateTableAsync chỉ tạo table mới, không thêm columns vào table cũ.
+    /// </summary>
+    private async Task MigrateTtsColumnsAsync()
+    {
+        if (_db == null) return;
+
+        try
+        {
+            Console.WriteLine("[Database.Migration] Kiểm tra và thêm TTS columns nếu thiếu...");
+
+            // Lấy danh sách columns hiện tại trong bảng Poi
+            var columns = await _db.QueryAsync<TableColumnInfo>(
+                "PRAGMA table_info(Poi);");
+            var columnNames = columns.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Danh sách TTS columns cần có
+            var ttsColumns = new[] { "TtsScriptVi", "TtsScriptEn", "TtsScriptZh", "TtsScriptKo", "TtsScriptJa", "TtsScriptFr" };
+            var missingColumns = ttsColumns.Where(c => !columnNames.Contains(c)).ToList();
+
+            if (missingColumns.Count > 0)
+            {
+                Console.WriteLine($"[Database.Migration] Thiếu columns: {string.Join(", ", missingColumns)}");
+                
+                foreach (var col in missingColumns)
+                {
+                    try
+                    {
+                        await _db.ExecuteAsync($"ALTER TABLE Poi ADD COLUMN {col} TEXT;");
+                        Console.WriteLine($"[Database.Migration] ✅ Đã thêm column: {col}");
+                    }
+                    catch (Exception ex)
+                    {
+                        // Column có thể đã tồn tại hoặc lỗi khác
+                        Console.WriteLine($"[Database.Migration] ⚠️ Lỗi thêm column {col}: {ex.Message}");
+                    }
+                }
+                
+                Console.WriteLine($"[Database.Migration] ✅ Hoàn thành migration TTS columns");
+            }
+            else
+            {
+                Console.WriteLine("[Database.Migration] ✅ Tất cả TTS columns đã tồn tại");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Database.Migration] ❌ Lỗi migration: {ex.Message}");
+            // Không throw exception để tránh crash app
+        }
+    }
+
+    /// <summary>Helper class cho PRAGMA table_info</summary>
+    private class TableColumnInfo
+    {
+        public int Cid { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public int NotNull { get; set; }
+        public string? DfltValue { get; set; }
+        public int Pk { get; set; }
     }
 
     public async Task<List<Poi>> GetPoisAsync()
@@ -428,8 +497,12 @@ public class DatabaseService : IDisposable
     {
         await InitAsync();
 
+        // Debug: Log TTS scripts
+        Console.WriteLine($"[DB.UpsertPoi] POI={poi.Id}, TTS VI={(poi.TtsScriptVi?.Substring(0, Math.Min(20, poi.TtsScriptVi?.Length ?? 0)) ?? "null")}...");
+
         if (_db == null)
         {
+            Console.WriteLine($"[DB.UpsertPoi] WARNING: Using in-memory fallback!");
             var fallback = _inMemoryFallbackPois ??= BuildSeedPois();
             var idx = fallback.FindIndex(p => p.Id == poi.Id);
             if (idx >= 0)
@@ -445,6 +518,7 @@ public class DatabaseService : IDisposable
             var existing = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poi.Id);
             if (existing != null)
             {
+                Console.WriteLine($"[DB.UpsertPoi] Updating existing POI: {poi.Id}");
                 await _db.UpdateAsync(poi);
                 return;
             }
@@ -503,12 +577,16 @@ public class DatabaseService : IDisposable
     {
         await InitAsync();
 
+        // Normalize language code để handle các locale như zh-CN, zh-TW, zh-Hans...
+        var normalizedLang = LocalizationService.NormalizeLanguageCode(languageCode);
+        Console.WriteLine($"[DB.UpdateTtsScript] poiId={poiId}, raw={languageCode}, normalized={normalizedLang}");
+
         if (_db == null)
         {
             var fallbackPoi = (_inMemoryFallbackPois ??= BuildSeedPois()).FirstOrDefault(p => p.Id == poiId);
             if (fallbackPoi == null) return;
 
-            switch (languageCode.ToLower())
+            switch (normalizedLang)
             {
                 case "vi": fallbackPoi.TtsScriptVi = ttsScript; break;
                 case "en": fallbackPoi.TtsScriptEn = ttsScript; break;
@@ -527,7 +605,7 @@ public class DatabaseService : IDisposable
             var poi = await _db!.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
             if (poi == null) return;
             
-            switch (languageCode.ToLower())
+            switch (normalizedLang)
             {
                 case "vi": poi.TtsScriptVi = ttsScript; break;
                 case "en": poi.TtsScriptEn = ttsScript; break;
@@ -539,6 +617,7 @@ public class DatabaseService : IDisposable
             
             poi.UpdatedAt = DateTime.UtcNow;
             await _db.UpdateAsync(poi);
+            Console.WriteLine($"[DB.UpdateTtsScript] Updated POI {poiId} with TTS script ({normalizedLang})");
         }
         finally { _writeLock.Release(); }
     }
@@ -549,18 +628,25 @@ public class DatabaseService : IDisposable
         await InitAsync();
 
         Poi? poi;
+        string source;
         if (_db == null)
         {
             poi = (_inMemoryFallbackPois ??= BuildSeedPois()).FirstOrDefault(p => p.Id == poiId);
+            source = "FALLBACK";
         }
         else
         {
             poi = await _db.Table<Poi>().FirstOrDefaultAsync(p => p.Id == poiId);
+            source = "SQLITE";
         }
 
+        // Normalize language code để handle các locale như zh-CN, zh-TW, zh-Hans...
+        var normalizedLang = LocalizationService.NormalizeLanguageCode(languageCode);
+        
+        Console.WriteLine($"[DB.GetTtsScript] poiId={poiId}, raw={languageCode}, normalized={normalizedLang}, source={source}, found={(poi != null)}");
         if (poi == null) return null;
         
-        return languageCode.ToLower() switch
+        return normalizedLang switch
         {
             "vi" => poi.TtsScriptVi,
             "en" => poi.TtsScriptEn,
@@ -584,7 +670,8 @@ public class DatabaseService : IDisposable
 
             foreach (var (lang, script) in ttsScripts)
             {
-                switch (lang.ToLower())
+                var normalizedLang = LocalizationService.NormalizeLanguageCode(lang);
+                switch (normalizedLang)
                 {
                     case "vi": poiFallback.TtsScriptVi = script; break;
                     case "en": poiFallback.TtsScriptEn = script; break;
@@ -607,7 +694,8 @@ public class DatabaseService : IDisposable
             
             foreach (var (lang, script) in ttsScripts)
             {
-                switch (lang.ToLower())
+                var normalizedLang = LocalizationService.NormalizeLanguageCode(lang);
+                switch (normalizedLang)
                 {
                     case "vi": poi.TtsScriptVi = script; break;
                     case "en": poi.TtsScriptEn = script; break;

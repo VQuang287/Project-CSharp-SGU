@@ -119,6 +119,10 @@ public class SyncService
                 Console.WriteLine($"[Sync]   LocalPathKo: {poi.AudioLocalPathKo}");
                 Console.WriteLine($"[Sync]   LocalPathJa: {poi.AudioLocalPathJa}");
                 Console.WriteLine($"[Sync]   LocalPathFr: {poi.AudioLocalPathFr}");
+                
+                // Debug: Log TTS scripts
+                Console.WriteLine($"[Sync]   TTS VI: {(poi.TtsScriptVi?.Substring(0, Math.Min(30, poi.TtsScriptVi?.Length ?? 0)) ?? "null")}...");
+                Console.WriteLine($"[Sync]   TTS EN: {(poi.TtsScriptEn?.Substring(0, Math.Min(30, poi.TtsScriptEn?.Length ?? 0)) ?? "null")}...");
 
                 await _dbService.UpsertPoiAsync(poi);
                 count++;

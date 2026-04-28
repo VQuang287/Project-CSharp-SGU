@@ -1,15 +1,19 @@
 # TourMap - Hướng dẫn Setup Project
 
+Ứng dụng thuyết minh tự động tại các điểm du lịch sử dụng công nghệ GPS và QR Code.
+
+---
+
 ## Yêu cầu hệ thống
 
 ### Backend (AdminWeb)
-- **.NET 9 SDK** hoặc cao hơn
+- **.NET 10 SDK** (khuyến nghị .NET 10.0+)
 - **SQL Server 2019+** hoặc **SQL Server Express**
-- **Visual Studio 2022** hoặc **VS Code**
+- **Visual Studio 2022** hoặc **VS Code + C# Dev Kit**
 
 ### Mobile App
 - **.NET 10 SDK**
-- **Android SDK** (API 31+)
+- **Android SDK** (API 34+, target Android 14+)
 - **Android Emulator** hoặc **thiết bị thật**
 - **JDK 17**
 
@@ -20,21 +24,30 @@
 ```
 Project-CSharp-SGU-MobileApp/
 ├── TourMap/                          # Mobile App (.NET MAUI)
-│   ├── Platforms/Android/            # Android-specific code
-│   ├── Platforms/iOS/                # iOS-specific code (mới thêm)
-│   ├── Pages/                        # UI Pages
+│   ├── Platforms/
+│   │   ├── Android/                  # Android-specific code (TTS, GPS, QR)
+│   │   └── iOS/                      # iOS-specific code
+│   ├── Pages/                        # UI Pages (Map, QR, POI Details)
 │   ├── Services/                     # Business Logic
+│   │   ├── Audio/                    # TTS & Audio Player
+│   │   ├── Data/                     # Database & Sync
+│   │   ├── Tracking/                 # GPS & Geofence
+│   │   └── Infrastructure/           # Backend endpoints
+│   ├── Models/                       # Entity Models
+│   ├── ViewModels/                   # MVVM ViewModels
 │   └── TourMap.csproj
 │
 ├── TourMap.AdminWeb/                 # Backend (ASP.NET Core)
-│   ├── Controllers/                  # API Controllers
-│   ├── Data/                         # DbContext
+│   ├── Controllers/                  # MVC + API Controllers
+│   ├── Hubs/                         # SignalR Real-time
+│   ├── Data/                         # DbContext & EF Core
 │   ├── Models/                       # Entity Models
 │   ├── Views/                        # Razor Views
-│   └── TourMap.AdminWeb.csproj
+│   └── appsettings.json
 │
-└── scripts/                          # PowerShell scripts
-    └── Start-NgrokTunnel.ps1
+├── _docs/                            # Documentation
+├── scripts/                          # PowerShell scripts
+└── database_setup.sql                # SQL Server setup script
 ```
 
 ---
@@ -43,15 +56,19 @@ Project-CSharp-SGU-MobileApp/
 
 ### 2.1 Tạo Database SQL Server
 
-**Cách 1: Dùng script SQL**
-```sql
--- Mở file TourMap.AdminWeb/create_database.sql trong SSMS
+**Cách 1: Dùng script SQL (Khuyến nghị)**
+```powershell
+-- Mở file _docs/database_setup.sql trong SQL Server Management Studio (SSMS)
 -- Execute script
+USE master;
+CREATE DATABASE TourMapAdmin;
+GO
 ```
 
 **Cách 2: Dùng EF Core Migrations**
 ```powershell
 cd TourMap.AdminWeb
+dotnet ef migrations add InitialCreate
 dotnet ef database update
 ```
 
@@ -61,14 +78,20 @@ File: `TourMap.AdminWeb/appsettings.json`
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=VQUANG\\SQLEXPRESS;Database=TourMapAdmin;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+    "DefaultConnection": "Server=YOUR_SERVER;Database=TourMapAdmin;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+  },
+  "AppLinks": {
+    "AndroidPackage": "com.companyname.tourmap"
+  },
+  "Admin": {
+    "Username": "admin",
+    "Password": "admin2026"
   }
 }
 ```
 
 **Thay đổi:**
-- `VQUANG\SQLEXPRESS` → Server name của bạn
-- `TourMapAdmin` → Tên database
+- `YOUR_SERVER` → Server name của bạn (ví dụ: `localhost\SQLEXPRESS`)
 
 ---
 
@@ -83,14 +106,14 @@ dotnet build
 
 ### 3.2 Chạy Server
 ```powershell
-dotnet run --urls "http://localhost:5042"
+dotnet run --urls "http://localhost:5042;https://localhost:5043"
 ```
 
 Hoặc dùng Visual Studio: `F5` (Debug) hoặc `Ctrl+F5` (Run without debug)
 
 ### 3.3 Kiểm tra
 - **Admin Web:** http://localhost:5042
-- **Swagger API:** http://localhost:5042/swagger (chỉ Development)
+- **API Docs:** http://localhost:5042/swagger (chỉ Development)
 
 **Default Admin Account:**
 - Username: `admin`
@@ -110,11 +133,14 @@ dotnet restore
 
 File: `TourMap/Services/Infrastructure/BackendEndpoints.cs`
 ```csharp
-// Thêm IP của PC chạy backend
-candidates.Add("http://192.168.1.X:5042");  // Thay X bằng IP thật
+// Thêm IP của PC chạy backend (thay YOUR_IP bằng IP thật)
+candidates.Add("http://YOUR_IP:5042");
+
+// Hoặc dùng Ngrok cho thiết bị từ xa
+// AddAuthorityFromUrl(candidates, "https://abc123.ngrok-free.dev");
 ```
 
-**Tìm IP:**
+**Tìm IP máy:**
 ```powershell
 ipconfig | findstr IPv4
 ```
@@ -128,7 +154,7 @@ dotnet build -t:Run -f net10.0-android
 
 **Android Device (qua USB):**
 ```powershell
-dotnet build -t:Run -f net10.0-android -p:AndroidSdkDirectory="%ANDROID_HOME%"
+dotnet build -t:Run -f net10.0-android
 ```
 
 **Hoặc dùng Visual Studio:**
@@ -143,6 +169,11 @@ dotnet build -t:Run -f net10.0-android -p:AndroidSdkDirectory="%ANDROID_HOME%"
 choco install ngrok
 # hoặc
 winget install ngrok.ngrok
+```
+
+Đăng ký tài khoản Ngrok (free): https://ngrok.com/
+```powershell
+ngrok config add-authtoken YOUR_AUTH_TOKEN
 ```
 
 ### 5.2 Start Ngrok Tunnel
@@ -160,31 +191,61 @@ File: `TourMap/Services/Infrastructure/BackendEndpoints.cs`
 AddAuthorityFromUrl(candidates, "https://abc123.ngrok-free.dev");
 ```
 
-Rebuild và cài đặt lại app.
+**Rebuild và cài đặt lại app.**
 
 ---
 
 ## 6. Lệnh hữu ích
 
-### Build Mobile App
+### Build & Deploy
 ```powershell
+# Build Mobile App (Android)
 dotnet build TourMap/TourMap.csproj -f net10.0-android
+
+# Deploy và chạy (Android)
+dotnet build -t:Run -f net10.0-android
+
+# Build Admin Web
+dotnet build TourMap.AdminWeb/TourMap.AdminWeb.csproj
+
+# Run Admin Web
+dotnet run --project TourMap.AdminWeb --urls "http://localhost:5042"
 ```
 
 ### Clean & Rebuild
 ```powershell
 dotnet clean
+rd /s /q TourMap/obj TourMap/bin /q 2>$null
+dotnet restore
 dotnet build
 ```
 
 ### Xem Logs (Android)
 ```powershell
-adb logcat -s "TourMap" -s "QR" -s "TTS" -s "Narration"
+# Tất cả log liên quan đến app
+adb logcat -s "TourMap" -s "QR" -s "TTS" -s "Narration" -s "Database" -s "Sync"
+
+# Chỉ TTS & Narration
+adb logcat -s "TTS" -s "Narration"
+
+# Chỉ Database
+adb logcat -s "Database" -s "Sync"
 ```
 
-### Deploy mới nhất
+### Database Management
 ```powershell
-dotnet build -t:Run -f net10.0-android
+# Kiểm tra devices
+adb devices
+
+# Truy cập SQLite database trên device (debug)
+adb shell
+run-as com.companyname.tourmap
+cd files
+ls *.db
+
+# Pull database về máy
+adb shell run-as com.companyname.tourmap cp files/TourMap.db /sdcard/
+adb pull /sdcard/TourMap.db C:\Temp\
 ```
 
 ---
@@ -192,71 +253,152 @@ dotnet build -t:Run -f net10.0-android
 ## 7. Troubleshooting
 
 ### Lỗi: "Cannot connect to backend"
-- Kiểm tra firewall (cho phép port 5042)
-- Kiểm tra IP trong `BackendEndpoints.cs`
-- Ping test: `ping 192.168.1.X` từ điện thoại
+**Nguyên nhân:**
+- Backend không chạy
+- Firewall chặn port 5042
+- Sai IP trong `BackendEndpoints.cs`
+
+**Giải pháp:**
+```powershell
+# Kiểm tra backend có chạy không
+curl http://localhost:5042/api/v1/pois/sync/pois
+
+# Kiểm tra firewall
+netsh advfirewall firewall add rule name="TourMap" dir=in action=allow protocol=TCP localport=5042
+
+# Ping test từ điện thoại
+adb shell ping YOUR_IP
+```
 
 ### Lỗi: "Camera permission denied"
+**Giải pháp:**
 - Vào Settings → Apps → TourMap → Permissions
-- Bật Camera permission
+- Bật Camera và Location
+- Hoặc uninstall → reinstall app
 
 ### Lỗi: "Database connection failed"
-- Kiểm tra SQL Server đang chạy
-- Kiểm tra connection string
-- Thử dùng SQL Server Authentication thay vì Windows Auth
+**Giải pháp:**
+- Kiểm tra SQL Server đang chạy: `services.msc` → SQL Server
+- Thử dùng SQL Server Authentication:
+```json
+"DefaultConnection": "Server=localhost;Database=TourMapAdmin;User Id=sa;Password=YOUR_PASSWORD;TrustServerCertificate=True"
+```
 
-### Lỗi Build
+### Lỗi Build: Java Out of Memory
+**Giải pháp:**
 ```powershell
-dotnet clean
-rd /s /q obj bin  # Xóa thư mục build cũ
-dotnet restore
+# Tăng Java heap size
+$env:JAVA_TOOL_OPTIONS = "-Xmx4g"
 dotnet build
 ```
+
+### Lỗi: "TTS không hoạt động"
+**Giải pháp:**
+1. Kiểm tra log: `adb logcat -s "TTS"`
+2. Kiểm tra ngôn ngữ đã được hỗ trợ trên device
+3. Xóa app data và cài đặt lại
 
 ---
 
 ## 8. Cấu trúc Database
 
+### SQL Server (AdminWeb)
+
 | Bảng | Mô tả |
 |------|-------|
-| `AdminUsers` | Tài khoản admin |
-| `MobileUsers` | Tài khoản mobile app |
-| `Pois` | Điểm tham quan (POI) |
+| `AdminUsers` | Tài khoản admin CMS |
+| `MobileUsers` | Tài khoản mobile app (Guest, User, Admin) |
+| `Pois` | Điểm tham quan (POI) với TTS scripts |
 | `Tours` | Tour du lịch |
-| `TourPoiMappings` | Liên kết Tour-POI |
-| `PlaybackHistories` | Lịch sử phát audio |
-| `DeviceConnections` | Kết nối real-time |
-| `QrCodeEntries` | QR codes |
+| `TourPoiMappings` | Liên kết Tour-POI với thứ tự |
+| `PlaybackHistories` | Lịch sử phát audio (analytics) |
+| `DeviceConnections` | Kết nối real-time qua SignalR |
+| `QrCodeEntries` | Danh sách QR codes đã tạo |
 | `UserLocationLogs` | Log vị trí user |
+
+### SQLite (Mobile App)
+
+| Bảng | Mô tả |
+|------|-------|
+| `Poi` | POI data (local cache) |
+| `Tour` | Tour data |
+| `TourPoiMapping` | Tour-POI mappings |
+| `PlaybackHistoryEntry` | Lịch sử phát local |
 
 ---
 
 ## 9. Tính năng chính
 
 ### Mobile App
-- ✅ Quét QR code → phát audio thuyết minh
-- ✅ GPS tự động phát khi đến gần POI
-- ✅ Ngôn ngữ: Tiếng Việt, English, 中文, 한국어, 日本語, Français
-- ✅ Offline mode (download POI data)
-- ✅ Guest mode (không cần đăng ký)
+- **Quét QR Code:** Phát audio ngay lập tức
+- **GPS Auto-play:** Tự động phát khi đến gần POI (Geofence)
+- **Đa ngôn ngữ:** Tiếng Việt, English, 中文 (Chinese), 한국어 (Korean), 日本語 (Japanese), Français (French)
+- **Offline Mode:** Download POI data để dùng offline
+- **TTS (Text-to-Speech):** Phát nội dung thuyết minh qua giọng nói
+- **Guest Mode:** Không cần đăng ký để sử dụng cơ bản
+- **Tour Mode:** Theo dõi lộ trình tour với nhiều POI
 
 ### Admin Web
-- ✅ Quản lý POIs (CRUD)
-- ✅ Quản lý Tours
-- ✅ Upload audio files
-- ✅ QR code generation
-- ✅ Real-time device tracking
-- ✅ Playback analytics
+- **Quản lý POIs:** CRUD với hỗ trợ 6 ngôn ngữ
+- **Quản lý Tours:** Tạo tour từ danh sách POI
+- **TTS Scripts:** Quản lý nội dung thuyết minh TTS
+- **Upload Audio:** Upload file MP3 cho mỗi ngôn ngữ
+- **QR Code Generator:** Tạo QR cho từng POI
+- **Real-time Tracking:** Xem thiết bị đang online
+- **Analytics:** Thống kê lượt phát audio
+- **Device Management:** Quản lý thiết bị kết nối
 
 ---
 
-## Liên hệ hỗ trợ
+## 10. Kiến trúc kỹ thuật
 
-Nếu gặp vấn đề, kiểm tra:
-1. Log files trong `TourMap.AdminWeb/logs/`
-2. Console output của mobile app
-3. Network connectivity giữa device và PC
+### Mobile App Architecture
+```
+┌─────────────────────────────────────┐
+│           UI Layer (Pages)           │
+├─────────────────────────────────────┤
+│         ViewModels (MVVM)            │
+├─────────────────────────────────────┤
+│      Services (Business Logic)       │
+│  ├─ GeofenceEngine (GPS + Radius)    │
+│  ├─ NarrationEngine (TTS + Audio)    │
+│  ├─ DatabaseService (SQLite)         │
+│  ├─ SyncService (API Sync)           │
+│  └─ AuthService (JWT)                │
+├─────────────────────────────────────┤
+│      Platform (Android/iOS)            │
+│  ├─ TtsService_Android               │
+│  ├─ GpsTrackingService                │
+│  └─ MainActivity (QR Scanner)        │
+└─────────────────────────────────────┘
+```
+
+### API Endpoints chính
+- `GET /api/v1/pois/sync/pois` - Sync POIs
+- `GET /api/v1/tours/sync/tours` - Sync Tours
+- `POST /api/v1/pois/sync/history` - Log playback
+- `POST /api/auth/login` - JWT authentication
 
 ---
 
-**Last Updated:** 2025-04-27
+## 11. Liên hệ & Hỗ trợ
+
+**Nếu gặp vấn đề:**
+1. Kiểm tra log files trong `TourMap.AdminWeb/logs/`
+2. Xem console output của mobile app (`adb logcat`)
+3. Kiểm tra network connectivity: `ping`, `telnet`
+4. Review code trên repository
+
+**Debug tips:**
+```powershell
+# Enable verbose logging trong Mobile App
+# Thêm vào MauiProgram.cs:
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+# Kiểm tra API response
+curl -v http://localhost:5042/api/v1/pois/sync/pois
+```
+
+---
+
+**Last Updated:** 2025-04-29

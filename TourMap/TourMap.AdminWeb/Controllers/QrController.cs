@@ -10,14 +10,12 @@ using TourMap.AdminWeb.Models;
 namespace TourMap.AdminWeb.Controllers;
 
 [Authorize(Roles = "Administrator")]
-public class QrController : Controller
+public class QrController : BaseAdminController
 {
-    private readonly AdminDbContext _context;
     private readonly IConfiguration _config;
 
-    public QrController(AdminDbContext context, IConfiguration config)
+    public QrController(AdminDbContext context, IConfiguration config) : base(context)
     {
-        _context = context;
         _config = config;
     }
 

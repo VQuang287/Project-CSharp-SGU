@@ -870,6 +870,13 @@
                     isFormSubmitting = true;
                     setSubmitLoading(true);
                     
+                    // Cập nhật TTS scripts và gọi API lưu trước khi submit
+                    (async () => {
+                        await updateTtsScriptsInForm();
+                        // Submit form sau khi TTS đã được lưu
+                        form.submit();
+                    })();
+                    
                     if (submitRecoverTimer) {
                         window.clearTimeout(submitRecoverTimer);
                     }
@@ -903,6 +910,51 @@
                     form.submit();
                 });
             });
+
+            // Cập nhật TTS scripts từ textarea vào form trước khi submit (tích hợp Lưu Tất Cả)
+            async function updateTtsScriptsInForm() {
+                // Tạo hoặc cập nhật hidden inputs cho TTS scripts
+                const ttsFields = [
+                    { id: 'TtsScriptVi', value: document.getElementById('Description')?.value || '' },
+                    { id: 'TtsScriptEn', value: document.getElementById('lang-script-en')?.value || '' },
+                    { id: 'TtsScriptZh', value: document.getElementById('lang-script-zh')?.value || '' },
+                    { id: 'TtsScriptKo', value: document.getElementById('lang-script-ko')?.value || '' },
+                    { id: 'TtsScriptJa', value: document.getElementById('lang-script-ja')?.value || '' },
+                    { id: 'TtsScriptFr', value: document.getElementById('lang-script-fr')?.value || '' }
+                ];
+
+                ttsFields.forEach(field => {
+                    let input = document.getElementById(field.id);
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.id = field.id;
+                        input.name = field.id;
+                        form.appendChild(input);
+                    }
+                    input.value = field.value;
+                });
+
+                console.log('[Edit POI] TTS scripts updated in form:', ttsFields.map(f => ({ field: f.id, value: f.value.substring(0, 30) + '...' })));
+                
+                // Cũng gọi API SaveAllScripts để đảm bảo TTS được lưu ngay
+                try {
+                    const scripts = {
+                        'vi': ttsFields[0].value,
+                        'en': ttsFields[1].value,
+                        'zh': ttsFields[2].value,
+                        'ko': ttsFields[3].value,
+                        'ja': ttsFields[4].value,
+                        'fr': ttsFields[5].value
+                    };
+                    
+                    console.log('[Edit POI] Calling SaveAllScripts API...');
+                    await postJson(saveAllScriptsUrl, { poiId: poiId, scripts: scripts });
+                    console.log('[Edit POI] SaveAllScripts API success!');
+                } catch (error) {
+                    console.warn('[Edit POI] SaveAllScripts API failed (will retry via form):', error);
+                }
+            }
 
             window.addEventListener('pageshow', function () {
                 isFormSubmitting = false;

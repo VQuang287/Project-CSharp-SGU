@@ -8,13 +8,10 @@ using TourMap.AdminWeb.Models;
 namespace TourMap.AdminWeb.Controllers;
 
 [Authorize(Roles = "Administrator")]
-public class UsersController : Controller
+public class UsersController : BaseAdminController
 {
-    private readonly AdminDbContext _context;
-
-    public UsersController(AdminDbContext context)
+    public UsersController(AdminDbContext context) : base(context)
     {
-        _context = context;
     }
 
     // GET: /Users

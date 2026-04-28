@@ -33,12 +33,48 @@ public class LocalizationService : INotifyPropertyChanged
         };
 
     private string _currentLanguage = "vi";
+    /// <summary>Chuẩn hóa mã ngôn ngữ từ các locale khác nhau (zh-CN, zh-TW, vi-VN...) về dạng đơn giản (zh, vi...)</summary>
+    public static string NormalizeLanguageCode(string langCode)
+    {
+        if (string.IsNullOrWhiteSpace(langCode))
+            return "vi";
+        
+        var normalized = langCode.Trim().ToLowerInvariant();
+        
+        // Xử lý các Chinese locales
+        if (normalized.StartsWith("zh") || normalized.StartsWith("cn") || normalized.StartsWith("ch"))
+            return "zh";
+        
+        // Xử lý các Korean locales  
+        if (normalized.StartsWith("ko") || normalized.StartsWith("kr"))
+            return "ko";
+        
+        // Xử lý các Japanese locales
+        if (normalized.StartsWith("ja") || normalized.StartsWith("jp"))
+            return "ja";
+        
+        // Xử lý các French locales
+        if (normalized.StartsWith("fr"))
+            return "fr";
+        
+        // Xử lý các English locales
+        if (normalized.StartsWith("en"))
+            return "en";
+        
+        // Xử lý các Vietnamese locales
+        if (normalized.StartsWith("vi") || normalized.StartsWith("vn"))
+            return "vi";
+        
+        // Trả về 2 ký tự đầu nếu không khớp các trường hợp đặc biệt
+        return normalized.Length >= 2 ? normalized[..2] : "vi";
+    }
+
     public string CurrentLanguage
     {
         get => _currentLanguage;
         set
         {
-            value = value.Trim().ToLowerInvariant();
+            value = NormalizeLanguageCode(value);
 
             // Validate input
             if (string.IsNullOrWhiteSpace(value))
@@ -78,8 +114,24 @@ public class LocalizationService : INotifyPropertyChanged
 
     private LocalizationService()
     {
+        DetectSystemLanguage();
+
+    #if DEBUG
+        ValidateDictionariesOnce();
+    #endif
+    }
+
+    private void DetectSystemLanguage()
+    {
         var savedLanguage = Preferences.Default.Get<string>(SelectedLanguageKey, string.Empty);
-        var sysLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        var rawSysLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        var fullCulture = CultureInfo.CurrentUICulture.Name;
+        
+        // Normalize language code để handle các locale đặc biệt
+        var sysLang = NormalizeLanguageCode(rawSysLang);
+        savedLanguage = NormalizeLanguageCode(savedLanguage);
+        
+        Console.WriteLine($"[LocalizationService] DetectSystemLanguage: raw={rawSysLang}, normalized={sysLang}, full={fullCulture}, saved={savedLanguage}");
         
         // Nếu ngôn ngữ hệ thống nằm trong danh sách hỗ trợ VÀ khác với ngôn ngữ đã lưu
         // → user đã đổi ngôn ngữ hệ thống → cập nhật theo system language
@@ -97,14 +149,22 @@ public class LocalizationService : INotifyPropertyChanged
             else
             {
                 _currentLanguage = savedLanguage;
+                Console.WriteLine($"[LocalizationService] Using saved language: {savedLanguage}");
             }
         }
         else if (supportedCodes.Contains(sysLang))
         {
             _currentLanguage = sysLang;
+            Console.WriteLine($"[LocalizationService] Using system language: {sysLang}");
         }
-        // else: giữ default "vi"
+        else
+        {
+            // Giữ default "vi"
+            Console.WriteLine($"[LocalizationService] System lang '{sysLang}' not supported, using default: vi");
+        }
 
+        Console.WriteLine($"[LocalizationService] Final language: {_currentLanguage}");
+        
         var culture = new CultureInfo(_currentLanguage == "zh" ? "zh-CN" : _currentLanguage);
         CultureInfo.CurrentCulture = culture;
         CultureInfo.CurrentUICulture = culture;
@@ -261,6 +321,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "Tự động phát khi đến gần" },
         { "BackgroundPlay", "Phát khi khóa màn hình" },
         { "CacheSection", "💾 Audio Cache" },
+        { "OfflineSection", "📦 Tải offline tự động" },
+        { "AutoDownloadLabel", "Tự động tải audio" },
+        { "WifiOnlyLabel", "Chỉ tải khi có WiFi" },
         { "DataSection", "💾 Quản lý dữ liệu" },
         { "CacheDataLabel", "Dữ liệu đệm (Cache)" },
         { "CleanupDownloads", "Dọn dẹp tải xuống" },
@@ -422,6 +485,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "Auto-play when nearby" },
         { "BackgroundPlay", "Play when screen is locked" },
         { "CacheSection", "💾 Audio Cache" },
+        { "OfflineSection", "📦 Auto Offline Download" },
+        { "AutoDownloadLabel", "Auto-download audio" },
+        { "WifiOnlyLabel", "WiFi only download" },
         { "DataSection", "💾 Data Management" },
         { "CacheDataLabel", "Cached data" },
         { "CleanupDownloads", "Clean up downloads" },
@@ -581,6 +647,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "靠近时自动播放" },
         { "BackgroundPlay", "锁屏时播放" },
         { "CacheSection", "💾 音频缓存" },
+        { "OfflineSection", "📦 自动离线下载" },
+        { "AutoDownloadLabel", "自动下载音频" },
+        { "WifiOnlyLabel", "仅WiFi下载" },
         { "DataSection", "💾 数据管理" },
         { "CacheDataLabel", "缓存数据" },
         { "CleanupDownloads", "清理下载内容" },
@@ -679,6 +748,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "근처 도착 시 자동 재생" },
         { "BackgroundPlay", "화면 잠금 시 재생" },
         { "CacheSection", "💾 오디오 캐시" },
+        { "OfflineSection", "📦 자동 오프라인 다운로드" },
+        { "AutoDownloadLabel", "오디오 자동 다운로드" },
+        { "WifiOnlyLabel", "WiFi에서만 다운로드" },
         { "DataSection", "💾 데이터 관리" },
         { "CacheDataLabel", "캐시 데이터" },
         { "CleanupDownloads", "다운로드 정리" },
@@ -777,6 +849,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "近くで自動再生" },
         { "BackgroundPlay", "画面ロック時も再生" },
         { "CacheSection", "💾 音声キャッシュ" },
+        { "OfflineSection", "📦 自動オフラインDL" },
+        { "AutoDownloadLabel", "オーディオ自動DL" },
+        { "WifiOnlyLabel", "WiFiのみでDL" },
         { "DataSection", "💾 データ管理" },
         { "CacheDataLabel", "キャッシュデータ" },
         { "CleanupDownloads", "ダウンロードを整理" },
@@ -875,6 +950,9 @@ public class LocalizationService : INotifyPropertyChanged
         { "AutoPlayNear", "Lecture auto à proximité" },
         { "BackgroundPlay", "Lire écran verrouillé" },
         { "CacheSection", "💾 Cache Audio" },
+        { "OfflineSection", "📦 DL Offline Auto" },
+        { "AutoDownloadLabel", "Téléchargement auto" },
+        { "WifiOnlyLabel", "WiFi uniquement" },
         { "DataSection", "💾 Gestion des données" },
         { "CacheDataLabel", "Données en cache" },
         { "CleanupDownloads", "Nettoyer les téléchargements" },
