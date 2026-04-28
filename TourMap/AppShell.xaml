@@ -33,14 +33,7 @@
             ContentTemplate="{DataTemplate pages:QrScannerPage}"
             Route="QrScannerPage" />
 
-        <!-- Tab 4: Offline Packs -->
-        <ShellContent
-            x:Name="OfflineTab"
-            Title="{Binding [OfflineBtn], Source={x:Static services:LocalizationService.Current}}"
-            ContentTemplate="{DataTemplate pages:OfflinePacksPage}"
-            Route="OfflinePacksPage" />
-
-        <!-- Tab 5: Settings (Cài đặt) -->
+        <!-- Tab 4: Settings (Cài đặt) -->
         <ShellContent
             x:Name="SettingsTab"
             Title="{Binding [SettingsTitle], Source={x:Static services:LocalizationService.Current}}"

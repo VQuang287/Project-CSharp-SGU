@@ -100,13 +100,13 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
                 return Task.CompletedTask;
             };
 
-            _hubConnection.Reconnected += (connectionId) =>
+            _hubConnection.Reconnected += async (connectionId) =>
             {
                 IsConnected = true;
                 _logger.LogInformation("Reconnected to device tracking hub. ConnectionId: {ConnectionId}", connectionId);
-                // Re-register after reconnection
-                _ = RegisterDeviceAsync();
-                return Task.CompletedTask;
+                // Re-register và gửi heartbeat ngay để CMS cập nhật nhanh
+                await RegisterDeviceAsync();
+                await SendHeartbeatAsync();
             };
 
             await _hubConnection.StartAsync();
@@ -182,8 +182,8 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
             {
                 _heartbeatLock.Release();
             }
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
-        _logger.LogInformation("Heartbeat timer started (30s interval)");
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        _logger.LogInformation("Heartbeat timer started (5s interval)");
     }
 
     /// <summary>
@@ -247,17 +247,11 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
     /// </summary>
     public async Task UpdateStateAsync(int state)
     {
-        if (_hubConnection == null || !IsConnected) return;
+        if (_hubConnection == null || !IsConnected) 
+            throw new InvalidOperationException("Not connected to device tracking hub");
 
-        try
-        {
-            await _hubConnection.InvokeAsync("UpdateState", DeviceId, state);
-            _logger.LogInformation("Device state updated to: {State}", state);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Error updating state for {DeviceId}: {Error}", ex, DeviceId, ex.Message);
-        }
+        await _hubConnection.InvokeAsync("UpdateState", DeviceId, state);
+        _logger.LogInformation("Device state updated to: {State}", state);
     }
 
     /// <summary>

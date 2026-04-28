@@ -176,11 +176,21 @@ public class DeviceTrackingHub : Hub
 
             if (connection != null)
             {
-                connection.State = state;
-                connection.LastHeartbeatAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-
-                await Clients.Group("Admins").SendAsync("DeviceUpdated", connection);
+                // Nếu state là Offline -> xóa record khỏi database
+                if (state == ConnectionState.Offline)
+                {
+                    _dbContext.DeviceConnections.Remove(connection);
+                    await _dbContext.SaveChangesAsync();
+                    await Clients.Group("Admins").SendAsync("DeviceDisconnected", deviceId);
+                    _logger.LogInformation("Device {DeviceId} marked offline and removed from tracking", deviceId);
+                }
+                else
+                {
+                    connection.State = state;
+                    connection.LastHeartbeatAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync();
+                    await Clients.Group("Admins").SendAsync("DeviceUpdated", connection);
+                }
             }
         }
         catch (Exception ex)
@@ -198,9 +208,35 @@ public class DeviceTrackingHub : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
         _logger.LogInformation("Admin joined tracking group");
         
-        // Send current device list to admin
+        // Cleanup: Xóa các device quá hạn (không có heartbeat > 30s) hoặc đã offline
+        var thirtySecondsAgo = DateTime.UtcNow.AddSeconds(-30);
+        var staleDevices = await _dbContext.DeviceConnections
+            .Where(d => d.LastHeartbeatAt <= thirtySecondsAgo || d.State == ConnectionState.Offline)
+            .ToListAsync();
+        
+        if (staleDevices.Any())
+        {
+            _dbContext.DeviceConnections.RemoveRange(staleDevices);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Cleaned up {Count} stale device connections", staleDevices.Count);
+        }
+        
+        // FORCE CLEANUP: Xóa device cũ hơn 1 giờ (bất kể có heartbeat hay không)
+        var oneHourAgo = DateTime.UtcNow.AddHours(-1);
+        var oldDevices = await _dbContext.DeviceConnections
+            .Where(d => d.ConnectedAt <= oneHourAgo)
+            .ToListAsync();
+        
+        if (oldDevices.Any())
+        {
+            _dbContext.DeviceConnections.RemoveRange(oldDevices);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Force cleanup: removed {Count} old devices (connected > 1 hour ago)", oldDevices.Count);
+        }
+        
+        // Send current device list to admin (chỉ gửi device đang active)
         var devices = await _dbContext.DeviceConnections
-            .Where(d => d.LastHeartbeatAt > DateTime.UtcNow.AddMinutes(-5))
+            .Where(d => d.LastHeartbeatAt > thirtySecondsAgo && d.State != ConnectionState.Offline)
             .ToListAsync();
         
         await Clients.Caller.SendAsync("DeviceList", devices);
@@ -217,31 +253,31 @@ public class DeviceTrackingHub : Hub
     }
 
     /// <summary>
-    /// Get count of online devices
+    /// Get count of online devices (không tính offline)
     /// </summary>
     public async Task<int> GetOnlineCount()
     {
-        var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
+        var fiveMinutesAgo = DateTime.UtcNow.AddSeconds(-30);
         return await _dbContext.DeviceConnections
-            .CountAsync(d => d.LastHeartbeatAt > fiveMinutesAgo);
+            .CountAsync(d => d.LastHeartbeatAt > fiveMinutesAgo && d.State != ConnectionState.Offline);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         try
         {
-            // Mark device as disconnected
+            // Xóa device khỏi database khi disconnect
             var connection = await _dbContext.DeviceConnections
                 .FirstOrDefaultAsync(d => d.SignalRConnectionId == Context.ConnectionId);
 
             if (connection != null)
             {
-                connection.State = ConnectionState.Offline;
+                _dbContext.DeviceConnections.Remove(connection);
                 await _dbContext.SaveChangesAsync();
 
                 await Clients.Group("Admins").SendAsync("DeviceDisconnected", connection.DeviceId);
                 
-                _logger.LogInformation("Device {DeviceId} disconnected", connection.DeviceId);
+                _logger.LogInformation("Device {DeviceId} disconnected and removed", connection.DeviceId);
             }
         }
         catch (Exception ex)

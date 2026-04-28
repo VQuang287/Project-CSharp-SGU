@@ -137,5 +137,75 @@ namespace TourMap
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
             // Permission results are automatically handled by MAUI's Permissions class
         }
+
+        /// <summary>
+        /// OnStop: App vào background (không hiển thị nữa) -> gửi Offline.
+        /// Khi user vào lại app -> Resumed sẽ gửi Online.
+        /// </summary>
+        protected override void OnStop()
+        {
+            base.OnStop();
+            Console.WriteLine("[MainActivity] OnStop - app entering background -> sending Offline");
+
+            try
+            {
+                var trackingService = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services
+                    ?.GetService(typeof(Services.DeviceTrackingService)) as Services.DeviceTrackingService;
+
+                if (trackingService != null && trackingService.IsConnected)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await trackingService.UpdateStateAsync(3); // Offline = 3
+                            Console.WriteLine("[MainActivity] Sent Offline state from OnStop");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[MainActivity] Error sending Offline in OnStop: {ex.Message}");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainActivity] Error in OnStop: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Xử lý khi Activity bị hủy hoàn toàn
+        /// </summary>
+        protected override void OnDestroy()
+        {
+            Console.WriteLine("[MainActivity] OnDestroy - activity destroying");
+            
+            try
+            {
+                var trackingService = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services
+                    ?.GetService(typeof(Services.DeviceTrackingService)) as Services.DeviceTrackingService;
+                
+                if (trackingService != null && trackingService.IsConnected)
+                {
+                    // Đồng bộ để đảm bảo gửi được trước khi hủy
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await trackingService.UpdateStateAsync(3); // Offline
+                            await trackingService.DisconnectAsync();
+                        }
+                        catch { /* Best effort */ }
+                    }).Wait(TimeSpan.FromSeconds(2)); // Chờ tối đa 2 giây
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainActivity] Error in OnDestroy: {ex.Message}");
+            }
+            
+            base.OnDestroy();
+        }
     }
 }

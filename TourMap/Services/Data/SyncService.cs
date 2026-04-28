@@ -92,13 +92,33 @@ public class SyncService
                     TtsScriptFr = dto.TtsScriptFr
                 };
 
-                // Tải audio file về local nếu có URL
+                // Tải audio file về local nếu có URL (tiếng Việt)
                 if (!string.IsNullOrEmpty(poi.AudioUrl))
                 {
                     var localPath = await DownloadAudioAsync(poi.AudioUrl, serverBaseUrl, poi.Id);
                     if (localPath != null)
                         poi.AudioLocalPath = localPath;
                 }
+
+                // Tải audio đa ngôn ngữ về local
+                Console.WriteLine($"[Sync] Đang tải audio đa ngôn ngữ cho POI: {poi.Title} ({poi.Id})");
+                Console.WriteLine($"[Sync]   AudioUrlEn: {poi.AudioUrlEn}");
+                Console.WriteLine($"[Sync]   AudioUrlZh: {poi.AudioUrlZh}");
+                Console.WriteLine($"[Sync]   AudioUrlKo: {poi.AudioUrlKo}");
+                Console.WriteLine($"[Sync]   AudioUrlJa: {poi.AudioUrlJa}");
+                Console.WriteLine($"[Sync]   AudioUrlFr: {poi.AudioUrlFr}");
+                
+                poi.AudioLocalPathEn = await DownloadAudioAsync(poi.AudioUrlEn, serverBaseUrl, $"{poi.Id}_en");
+                poi.AudioLocalPathZh = await DownloadAudioAsync(poi.AudioUrlZh, serverBaseUrl, $"{poi.Id}_zh");
+                poi.AudioLocalPathKo = await DownloadAudioAsync(poi.AudioUrlKo, serverBaseUrl, $"{poi.Id}_ko");
+                poi.AudioLocalPathJa = await DownloadAudioAsync(poi.AudioUrlJa, serverBaseUrl, $"{poi.Id}_ja");
+                poi.AudioLocalPathFr = await DownloadAudioAsync(poi.AudioUrlFr, serverBaseUrl, $"{poi.Id}_fr");
+                
+                Console.WriteLine($"[Sync]   LocalPathEn: {poi.AudioLocalPathEn}");
+                Console.WriteLine($"[Sync]   LocalPathZh: {poi.AudioLocalPathZh}");
+                Console.WriteLine($"[Sync]   LocalPathKo: {poi.AudioLocalPathKo}");
+                Console.WriteLine($"[Sync]   LocalPathJa: {poi.AudioLocalPathJa}");
+                Console.WriteLine($"[Sync]   LocalPathFr: {poi.AudioLocalPathFr}");
 
                 await _dbService.UpsertPoiAsync(poi);
                 count++;

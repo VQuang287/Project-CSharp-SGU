@@ -136,6 +136,9 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseSqlServer(connectionString)
         .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
+// Background service to cleanup stale device connections
+builder.Services.AddHostedService<DeviceCleanupService>();
+
 var app = builder.Build();
 app.Logger.LogInformation("AdminWeb content root: {ContentRoot}", builder.Environment.ContentRootPath);
 app.Logger.LogInformation("Using SQL Server database");
@@ -184,6 +187,26 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         logger.LogError(ex, "Error seeding initial data");
+    }
+
+    // Cleanup stale device connections on startup
+    try
+    {
+        var fiveMinutesAgo = DateTime.UtcNow.AddSeconds(-30);
+        var staleDevices = db.DeviceConnections
+            .Where(d => d.LastHeartbeatAt <= fiveMinutesAgo || d.State == ConnectionState.Offline)
+            .ToList();
+        
+        if (staleDevices.Any())
+        {
+            db.DeviceConnections.RemoveRange(staleDevices);
+            db.SaveChanges();
+            logger.LogInformation("Startup cleanup: removed {Count} stale device connections", staleDevices.Count);
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error during startup device cleanup");
     }
 
     // === BOOTSTRAP ADMIN USER ===

@@ -9,15 +9,21 @@
     <a asp-action="Create" class="btn btn-primary fw-bold">+ Thêm mới POI</a>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
+<!-- Modal thông báo -->
+<div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" id="modalHeader">
+                <h5 class="modal-title" id="modalTitle">Thông báo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="d-flex gap-2 mb-3">
     <input type="text" id="searchPoi" class="form-control" placeholder="🔍 Tìm theo tên, mô tả POI..." />
@@ -92,6 +98,45 @@
 
 @section Scripts {
 <script>
+// Show modal if TempData has message
+@if (TempData["Success"] != null)
+{
+    <text>
+    document.addEventListener('DOMContentLoaded', function() {
+        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Success"].ToString()) + "'"), 'success');
+    });
+    </text>
+}
+@if (TempData["Error"] != null)
+{
+    <text>
+    document.addEventListener('DOMContentLoaded', function() {
+        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Error"].ToString()) + "'"), 'error');
+    });
+    </text>
+}
+
+function showModal(message, type) {
+    var modal = new bootstrap.Modal(document.getElementById('messageModal'));
+    var modalHeader = document.getElementById('modalHeader');
+    var modalTitle = document.getElementById('modalTitle');
+    var modalBody = document.getElementById('modalBody');
+
+    if (type === 'success') {
+        modalHeader.className = 'modal-header bg-success text-white';
+        modalTitle.textContent = 'Thành công';
+    } else if (type === 'error') {
+        modalHeader.className = 'modal-header bg-danger text-white';
+        modalTitle.textContent = 'Lỗi';
+    } else {
+        modalHeader.className = 'modal-header';
+        modalTitle.textContent = 'Thông báo';
+    }
+
+    modalBody.textContent = message;
+    modal.show();
+}
+
 document.getElementById('searchPoi').addEventListener('input', function () {
     var q = this.value.toLowerCase();
     document.querySelectorAll('table tbody tr').forEach(function (row) {

@@ -131,11 +131,41 @@ public class PoisController : Controller
     {
         if (id != poi.Id) return NotFound();
 
-        if (ModelState.IsValid)
+        // Xóa validation errors cho Latitude/Longitude để parse thủ công
+        ModelState.Remove("Latitude");
+        ModelState.Remove("Longitude");
+
+        // Parse số từ form với cả dấu phẩy và chấm (hỗ trợ locale Việt Nam)
+        var latStr = Request.Form["Latitude"].ToString().Replace(",", ".");
+        var lngStr = Request.Form["Longitude"].ToString().Replace(",", ".");
+        
+        if (double.TryParse(latStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat))
+            poi.Latitude = lat;
+        else
+            ModelState.AddModelError("Latitude", "Vĩ độ không hợp lệ. Vui lòng nhập số (ví dụ: 10.7608247 hoặc 10,7608247)");
+        
+        if (double.TryParse(lngStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng))
+            poi.Longitude = lng;
+        else
+            ModelState.AddModelError("Longitude", "Kinh độ không hợp lệ. Vui lòng nhập số (ví dụ: 106.7034143 hoặc 106,7034143)");
+
+        // Log ModelState errors for debugging
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+            foreach (var error in errors)
+            {
+                Console.WriteLine($"[Edit POI] ModelState Error: {error}");
+            }
+            return View(poi);
+        }
+
+        try
         {
             var existingPoi = await _context.Pois.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
             if (existingPoi == null) return NotFound();
 
+            // Preserve existing data
             poi.ImageUrl = existingPoi.ImageUrl;
             poi.AudioUrl = existingPoi.AudioUrl;
             poi.AudioUrlEn = existingPoi.AudioUrlEn;
@@ -199,34 +229,30 @@ public class PoisController : Controller
                 poi.TtsScriptFr = poi.DescriptionFr;
             }
 
-            try
-            {
-                poi.UpdatedAt = DateTime.UtcNow;
-                _context.Update(poi);
-                await _context.SaveChangesAsync(cancellationToken);
-                TempData["Success"] = "Đã lưu chỉnh sửa POI thành công.";
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                ModelState.AddModelError(string.Empty, "Không thể lưu vì dữ liệu POI đã bị thay đổi ở nơi khác. Vui lòng tải lại trang và thử lại.");
-                TempData["Error"] = "Lưu POI thất bại do xung đột dữ liệu.";
-                return View(poi);
-            }
-            catch (OperationCanceledException)
-            {
-                ModelState.AddModelError(string.Empty, "Yêu cầu lưu đã bị hủy do timeout hoặc mất kết nối. Vui lòng thử lại.");
-                TempData["Error"] = "Lưu POI bị hủy do quá thời gian chờ.";
-                return View(poi);
-            }
-            catch (Exception)
-            {
-                ModelState.AddModelError(string.Empty, "Có lỗi khi lưu chỉnh sửa POI. Vui lòng thử lại sau.");
-                TempData["Error"] = "Lưu POI thất bại do lỗi hệ thống.";
-                return View(poi);
-            }
+            poi.UpdatedAt = DateTime.UtcNow;
+            _context.Update(poi);
+            await _context.SaveChangesAsync(cancellationToken);
+            TempData["Success"] = "Đã lưu chỉnh sửa POI thành công.";
             return RedirectToAction(nameof(Index));
         }
-        return View(poi);
+        catch (DbUpdateConcurrencyException)
+        {
+            ModelState.AddModelError(string.Empty, "Không thể lưu vì dữ liệu POI đã bị thay đổi ở nơi khác. Vui lòng tải lại trang và thử lại.");
+            TempData["Error"] = "Lưu POI thất bại do xung đột dữ liệu.";
+            return View(poi);
+        }
+        catch (OperationCanceledException)
+        {
+            ModelState.AddModelError(string.Empty, "Yêu cầu lưu đã bị hủy do timeout hoặc mất kết nối. Vui lòng thử lại.");
+            TempData["Error"] = "Lưu POI bị hủy do quá thời gian chờ.";
+            return View(poi);
+        }
+        catch (Exception)
+        {
+            ModelState.AddModelError(string.Empty, "Có lỗi khi lưu chỉnh sửa POI. Vui lòng thử lại sau.");
+            TempData["Error"] = "Lưu POI thất bại do lỗi hệ thống.";
+            return View(poi);
+        }
     }
 
     public async Task<IActionResult> Delete(string id)
@@ -442,5 +468,54 @@ public class PoisController : Controller
         public string? PoiId { get; set; }
         public string? Language { get; set; }
         public string? Text { get; set; }
+    }
+
+    public sealed class SaveAllScriptsRequest
+    {
+        public string? PoiId { get; set; }
+        public Dictionary<string, string?>? Scripts { get; set; }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveAllScripts([FromBody] SaveAllScriptsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoiId))
+        {
+            return BadRequest(new { success = false, message = "Thiếu mã POI." });
+        }
+
+        var poi = await _context.Pois.FirstOrDefaultAsync(x => x.Id == request.PoiId);
+        if (poi == null)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy POI." });
+        }
+
+        var scripts = request.Scripts ?? new Dictionary<string, string?>();
+        var results = new Dictionary<string, object>();
+        var savedCount = 0;
+
+        foreach (var lang in new[] { "vi", "en", "zh", "ko", "ja", "fr" })
+        {
+            if (scripts.TryGetValue(lang, out var text) && !string.IsNullOrWhiteSpace(text))
+            {
+                SetScriptByLanguage(poi, lang, text.Trim());
+                var audioUrl = await _aiService.GenerateTtsAudioAsync(text.Trim(), lang, _env.WebRootPath);
+                SetAudioByLanguage(poi, lang, audioUrl);
+                savedCount++;
+                results[lang] = new { saved = true, audioUrl };
+            }
+        }
+
+        poi.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            savedCount,
+            results,
+            message = $"Đã lưu {savedCount}/6 scripts vào database."
+        });
     }
 }

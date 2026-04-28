@@ -64,6 +64,9 @@ namespace TourMap
             // === Phase 3.3: Logging Framework ===
             builder.Services.AddSingleton<Services.ILoggerService, Services.LoggerService>();
 
+            // === Phase 3.4: Auto Download (thay thế tab Offline) ===
+            builder.Services.AddSingleton<Services.AutoDownloadService>();
+
             // === Platform-specific Services (Android) ===
 #if ANDROID
             builder.Services.AddSingleton<Services.ILocationService, LocationService_Android>();

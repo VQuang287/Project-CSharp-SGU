@@ -38,18 +38,25 @@ body.admin-body {
 }
 
 .admin-sidebar {
-    width: 260px;
+    width: 16rem;
+    min-width: 16rem;
     background: var(--sidebar-bg);
     color: var(--sidebar-fg);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    transition: width 0.25s ease;
+    transition: width 0.25s ease, min-width 0.25s ease;
     overflow: hidden;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    z-index: 1000;
 }
 
 .admin-sidebar.is-collapsed {
-    width: 68px;
+    width: 4.25rem;
+    min-width: 4.25rem;
 }
 
 .admin-brand {
@@ -62,9 +69,9 @@ body.admin-body {
 }
 
 .admin-brand-icon {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
     border-radius: var(--radius);
     background: var(--primary);
     color: #fff;
@@ -107,15 +114,15 @@ body.admin-body {
 
 .sidebar-toggle-btn {
     position: absolute;
-    right: 8px;
+    right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.1);
     border: none;
     color: #93c5fd;
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: 0.375rem;
     cursor: pointer;
     font-size: 0.7rem;
     display: flex;
@@ -135,6 +142,26 @@ body.admin-body {
 
 .admin-nav {
     padding: var(--space-4) var(--space-3);
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.admin-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.admin-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.admin-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .admin-nav-label {
@@ -346,6 +373,14 @@ body.admin-body {
 
     .admin-sidebar {
         width: 100%;
+        min-width: auto;
+        position: relative;
+        height: auto;
+        max-height: 60vh;
+    }
+
+    .admin-sidebar .admin-nav {
+        max-height: 40vh;
     }
 
     .dashboard-grid,

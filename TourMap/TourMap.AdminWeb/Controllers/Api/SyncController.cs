@@ -57,6 +57,12 @@ public class SyncController : ControllerBase
             AudioUrlJa = ToAbsoluteAssetUrl(p.AudioUrlJa),
             DescriptionFr = p.DescriptionFr,
             AudioUrlFr = ToAbsoluteAssetUrl(p.AudioUrlFr),
+            TtsScriptVi = p.TtsScriptVi,
+            TtsScriptEn = p.TtsScriptEn,
+            TtsScriptZh = p.TtsScriptZh,
+            TtsScriptKo = p.TtsScriptKo,
+            TtsScriptJa = p.TtsScriptJa,
+            TtsScriptFr = p.TtsScriptFr,
             UpdatedAt = p.UpdatedAt
         }).ToList();
 
@@ -125,5 +131,11 @@ public sealed class SyncPoiDto
     public string? AudioUrlJa { get; set; }
     public string? DescriptionFr { get; set; }
     public string? AudioUrlFr { get; set; }
+    public string? TtsScriptVi { get; set; }
+    public string? TtsScriptEn { get; set; }
+    public string? TtsScriptZh { get; set; }
+    public string? TtsScriptKo { get; set; }
+    public string? TtsScriptJa { get; set; }
+    public string? TtsScriptFr { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

@@ -78,8 +78,7 @@ namespace TourMap
             {
                 var authService = Services.ServiceHelper.GetService<Services.AuthService>();
                 await authService.InitializeAsync();
-                if (!authService.IsAuthenticated)
-                    return;
+                // Guest cũng được connect device tracking (không cần check IsAuthenticated)
 
                 var trackingService = Services.ServiceHelper.GetService<Services.DeviceTrackingService>();
                 if (trackingService.IsConnected)
@@ -126,7 +125,6 @@ namespace TourMap
             MapTab.Title = loc["MapBtn"];
             PoiListTab.Title = loc["PoiListBtn"];
             QrTab.Title = loc["QrBtn"];
-            OfflineTab.Title = loc["OfflineBtn"];
             SettingsTab.Title = loc["SettingsTitle"];
         }
     }

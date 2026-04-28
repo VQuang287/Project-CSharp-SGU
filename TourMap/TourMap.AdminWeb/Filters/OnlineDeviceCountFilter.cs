@@ -26,7 +26,7 @@ public class OnlineDeviceCountFilter : IAsyncActionFilter
         // Chỉ set ViewData cho MVC controller (không phải API)
         if (resultContext.Controller is Controller controller)
         {
-            var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
+            var fiveMinutesAgo = DateTime.UtcNow.AddSeconds(-30);
             var count = await _dbContext.DeviceConnections
                 .CountAsync(d => d.State != ConnectionState.Offline && d.LastHeartbeatAt > fiveMinutesAgo);
 

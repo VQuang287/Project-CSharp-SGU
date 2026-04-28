@@ -21,6 +21,10 @@ public class SettingsPage : ContentPage
     private readonly Label _clearCacheActionLabel;
     private readonly Label _infoHeader;
     private readonly Label _versionTitle;
+    private readonly Label _autoDownloadTitle;
+    private readonly Label _wifiOnlyTitle;
+    private readonly Switch _autoDownloadSwitch;
+    private readonly Switch _wifiOnlySwitch;
 
     public SettingsPage()
     {
@@ -60,6 +64,23 @@ public class SettingsPage : ContentPage
         var prefSection = new VerticalStackLayout { Children = { _prefHeader, CreateGroupCard(new VerticalStackLayout { Children = { autoPlayRow, CreateDivider(), bgPlayRow } }) } };
 
         // ═══════════════════════════════════════════
+        // SECTION: OFFLINE & AUTO DOWNLOAD
+        // ═══════════════════════════════════════════
+        var offlineHeader = CreateSectionHeader(loc["OfflineSection"] ?? "Tải offline tự động");
+        
+        // Auto-download toggle
+        _autoDownloadSwitch = new Switch { IsToggled = true, OnColor = Color.FromArgb("#0D7A5F") };
+        _autoDownloadSwitch.Toggled += OnAutoDownloadToggled;
+        var autoDownloadRow = CreateSettingRow("📥", loc["AutoDownloadLabel"] ?? "Tự động tải audio", _autoDownloadSwitch, false, out _autoDownloadTitle);
+        
+        // WiFi only toggle
+        _wifiOnlySwitch = new Switch { IsToggled = true, OnColor = Color.FromArgb("#0D7A5F") };
+        _wifiOnlySwitch.Toggled += OnWifiOnlyToggled;
+        var wifiOnlyRow = CreateSettingRow("📶", loc["WifiOnlyLabel"] ?? "Chỉ tải khi có WiFi", _wifiOnlySwitch, false, out _wifiOnlyTitle);
+
+        var offlineSection = new VerticalStackLayout { Children = { offlineHeader, CreateGroupCard(new VerticalStackLayout { Children = { autoDownloadRow, CreateDivider(), wifiOnlyRow } }) } };
+
+        // ═══════════════════════════════════════════
         // SECTION: DATA & CACHE
         // ═══════════════════════════════════════════
         _dataHeader = CreateSectionHeader(loc["DataSection"] ?? "Quản lý dữ liệu");
@@ -94,7 +115,7 @@ public class SettingsPage : ContentPage
             {
                 Spacing = 24,
                 Padding = new Thickness(16, 0, 16, 16),
-                Children = { _headerTitle, langSection, prefSection, dataSection, infoSection, bottomPadding }
+                Children = { _headerTitle, langSection, prefSection, offlineSection, dataSection, infoSection, bottomPadding }
             }
         };
 
@@ -108,6 +129,18 @@ public class SettingsPage : ContentPage
         // Subscribe to events when page appears
         var loc = LocalizationService.Current;
         loc.LanguageChanged += OnLanguageChanged;
+        
+        // Load auto-download settings
+        try
+        {
+            var autoDownloadService = ServiceHelper.GetService<AutoDownloadService>();
+            _autoDownloadSwitch.IsToggled = autoDownloadService.IsAutoDownloadEnabled;
+            _wifiOnlySwitch.IsToggled = autoDownloadService.DownloadOnWifiOnly;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Settings] Error loading auto-download settings: {ex.Message}");
+        }
         
         UpdateCacheSize();
         RebuildLanguageGroup();
@@ -165,6 +198,34 @@ public class SettingsPage : ContentPage
         }
     }
 
+    private void OnAutoDownloadToggled(object? sender, ToggledEventArgs e)
+    {
+        try
+        {
+            var autoDownloadService = ServiceHelper.GetService<AutoDownloadService>();
+            autoDownloadService.IsAutoDownloadEnabled = e.Value;
+            Console.WriteLine($"[Settings] Auto-download enabled: {e.Value}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Settings] Error toggling auto-download: {ex.Message}");
+        }
+    }
+
+    private void OnWifiOnlyToggled(object? sender, ToggledEventArgs e)
+    {
+        try
+        {
+            var autoDownloadService = ServiceHelper.GetService<AutoDownloadService>();
+            autoDownloadService.DownloadOnWifiOnly = e.Value;
+            Console.WriteLine($"[Settings] WiFi-only download: {e.Value}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Settings] Error toggling WiFi-only: {ex.Message}");
+        }
+    }
+
     private void OnLanguageChanged()
     {
         MainThread.BeginInvokeOnMainThread(() =>
@@ -198,6 +259,8 @@ public class SettingsPage : ContentPage
         _clearCacheActionLabel.Text = loc["ClearCache"] ?? "Xóa dữ liệu bộ đệm";
         _infoHeader.Text = (loc["InfoSection"] ?? "Thông tin").ToUpper();
         _versionTitle.Text = loc["VersionLabel"] ?? "Phiên bản";
+        _autoDownloadTitle.Text = loc["AutoDownloadLabel"] ?? "Tự động tải audio";
+        _wifiOnlyTitle.Text = loc["WifiOnlyLabel"] ?? "Chỉ tải khi có WiFi";
     }
 
     private void UpdateCacheSize()

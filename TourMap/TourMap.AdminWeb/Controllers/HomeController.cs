@@ -21,7 +21,7 @@ public class HomeController : Controller
 
     private async Task<int> GetOnlineDeviceCountAsync()
     {
-        var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
+        var fiveMinutesAgo = DateTime.UtcNow.AddSeconds(-30);
         return await _dbContext.DeviceConnections
             .CountAsync(d => d.LastHeartbeatAt > fiveMinutesAgo && d.State != ConnectionState.Offline);
     }
@@ -40,8 +40,8 @@ public class HomeController : Controller
             .AsNoTracking()
             .ToDictionaryAsync(x => x.Id, x => x.Title);
 
-        // Count devices online in last 5 minutes
-        var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
+        // Count devices online in last 30 seconds
+        var fiveMinutesAgo = DateTime.UtcNow.AddSeconds(-30);
         var onlineDevices = await _dbContext.DeviceConnections
             .CountAsync(d => d.LastHeartbeatAt > fiveMinutesAgo && d.State != ConnectionState.Offline);
 

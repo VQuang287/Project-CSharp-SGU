@@ -32,6 +32,13 @@ public class Poi
     public string? DescriptionFr { get; set; }
     public string? AudioUrlFr { get; set; }
     
+    // Local cached audio paths for multilingual audio
+    public string? AudioLocalPathEn { get; set; }
+    public string? AudioLocalPathZh { get; set; }
+    public string? AudioLocalPathKo { get; set; }
+    public string? AudioLocalPathJa { get; set; }
+    public string? AudioLocalPathFr { get; set; }
+    
     // TTS Scripts - stored in database for offline TTS generation
     public string? TtsScriptVi { get; set; }
     public string? TtsScriptEn { get; set; }

@@ -16,6 +16,7 @@ public class TourRuntimeService : IDisposable
     private readonly IGpsTrackingService _gpsTrackingService;
     private readonly NarrationEngine _narrationEngine;
     private readonly DeviceTrackingService _deviceTrackingService;
+    private readonly AutoDownloadService _autoDownloadService;
 
     private bool _isInitialized;
     private bool _disposed;
@@ -29,13 +30,15 @@ public class TourRuntimeService : IDisposable
         GeofenceEngine geofenceEngine,
         IGpsTrackingService gpsTrackingService,
         NarrationEngine narrationEngine,
-        DeviceTrackingService deviceTrackingService)
+        DeviceTrackingService deviceTrackingService,
+        AutoDownloadService autoDownloadService)
     {
         _databaseService = databaseService;
         _geofenceEngine = geofenceEngine;
         _gpsTrackingService = gpsTrackingService;
         _narrationEngine = narrationEngine;
         _deviceTrackingService = deviceTrackingService;
+        _autoDownloadService = autoDownloadService;
         
         // Subscribe to narration state changes for device tracking
         _narrationEngine.StateChanged += OnNarrationStateChanged;
@@ -109,6 +112,20 @@ public class TourRuntimeService : IDisposable
             // Update device tracking with current POI
             _currentPoiId = poi.Id;
             _deviceTrackingService.UpdateCurrentPoi(poi.Id, poi.Title);
+
+            // Auto-download audio cho POI này (fire-and-forget, không block narration)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _autoDownloadService.EnsurePoiAudioDownloadedAsync(poi.Id, poi.AudioUrl);
+                }
+                catch (Exception ex)
+                {
+                    // Log nhưng không ảnh hưởng narration
+                    Console.WriteLine($"[Runtime] Auto-download failed for POI {poi.Id}: {ex.Message}");
+                }
+            });
             
             await _narrationEngine.OnPOITriggeredAsync(poi, "GPS");
         }

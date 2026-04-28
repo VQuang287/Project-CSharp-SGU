@@ -82,6 +82,16 @@ public class NarrationEngine : IDisposable
 #endif
     }
 
+    /// <summary>Lấy đường dẫn file audio local theo ngôn ngữ.</summary>
+    private static string? GetAudioLocalPath(Poi poi, string lang) => lang switch {
+        "en" => poi.AudioLocalPathEn,
+        "zh" => poi.AudioLocalPathZh,
+        "ko" => poi.AudioLocalPathKo,
+        "ja" => poi.AudioLocalPathJa,
+        "fr" => poi.AudioLocalPathFr,
+        _ => poi.AudioLocalPath
+    };
+
     /// <summary>
     /// Gọi khi Geofence Engine phát hiện user đi vào vùng POI.
     /// </summary>
@@ -122,7 +132,32 @@ public class NarrationEngine : IDisposable
 
         var lang = LocalizationService.Current.CurrentLanguage;
         
-        // 0: Ưu tiên cao nhất - TTS script từ database (nếu có)
+        // Debug: Log thông tin POI và audio paths
+        Console.WriteLine($"[Narration] OnPOITriggered: POI={poi.Title}, Lang={lang}");
+        Console.WriteLine($"[Narration]   AudioLocalPath={poi.AudioLocalPath}");
+        Console.WriteLine($"[Narration]   AudioLocalPathEn={poi.AudioLocalPathEn}");
+        Console.WriteLine($"[Narration]   AudioLocalPathZh={poi.AudioLocalPathZh}");
+        Console.WriteLine($"[Narration]   AudioLocalPathKo={poi.AudioLocalPathKo}");
+        Console.WriteLine($"[Narration]   AudioLocalPathJa={poi.AudioLocalPathJa}");
+        Console.WriteLine($"[Narration]   AudioLocalPathFr={poi.AudioLocalPathFr}");
+        
+        // Ưu tiên 1: File audio MP3 đã download về local (từ Admin TTS API)
+        var audioPath = GetAudioLocalPath(poi, lang);
+        Console.WriteLine($"[Narration] GetAudioLocalPath({lang}) = {audioPath}");
+        if (!string.IsNullOrEmpty(audioPath))
+        {
+            bool fileExists = File.Exists(audioPath);
+            Console.WriteLine($"[Narration] File.Exists({audioPath}) = {fileExists}");
+            if (fileExists)
+            {
+                _currentAudioSource = "AI-Audio-File";
+                Console.WriteLine($"[Narration] 🔊 Phát AI Audio: {Path.GetFileName(audioPath)} ({lang})");
+                await _audioPlayer.PlayAsync(audioPath);
+                return;
+            }
+        }
+
+        // Ưu tiên 2: TTS script từ database (nếu có)
         var ttsScript = await _databaseService.GetPoiTtsScriptAsync(poi.Id, lang);
         if (!string.IsNullOrWhiteSpace(ttsScript))
         {
@@ -131,34 +166,21 @@ public class NarrationEngine : IDisposable
             await _ttsService.SpeakAsync(ttsScript, lang);
             return;
         }
-        
-        bool playedFile = false;
-        // 1: File audio MP3 đã cache trên thiết bị (Chỉ dùng khi ngôn ngữ là vi)
-        if (lang == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
-        {
-            _currentAudioSource = "AudioFile";
-            Console.WriteLine($"[Narration] 🔊 Phát Audio File: {Path.GetFileName(poi.AudioLocalPath)}");
-            await _audioPlayer.PlayAsync(poi.AudioLocalPath);
-            playedFile = true;
-        }
 
-        if (!playedFile)
-        {
-            // Fallback: TTS từ Description được dịch
-            _currentAudioSource = "TTS";
-            var localizedDesc = lang switch {
-                "en" => poi.DescriptionEn,
-                "zh" => poi.DescriptionZh,
-                "ko" => poi.DescriptionKo,
-                "ja" => poi.DescriptionJa,
-                "fr" => poi.DescriptionFr,
-                _ => poi.Description
-            } ?? poi.Description;
+        // Fallback: TTS từ Description được dịch
+        _currentAudioSource = "TTS";
+        var localizedDesc = lang switch {
+            "en" => poi.DescriptionEn,
+            "zh" => poi.DescriptionZh,
+            "ko" => poi.DescriptionKo,
+            "ja" => poi.DescriptionJa,
+            "fr" => poi.DescriptionFr,
+            _ => poi.Description
+        } ?? poi.Description;
 
-            var speechText = $"{poi.Title}. {localizedDesc}";
-            Console.WriteLine($"[Narration] 🔊 Phát TTS: \"{speechText}\" ({lang})");
-            await _ttsService.SpeakAsync(speechText, lang);
-        }
+        var speechText = $"{poi.Title}. {localizedDesc}";
+        Console.WriteLine($"[Narration] 🔊 Phát TTS: \"{speechText}\" ({lang})");
+        await _ttsService.SpeakAsync(speechText, lang);
     }
 
     /// <summary>Dừng phát thủ công — hoạt động ở MỌI trạng thái.</summary>
@@ -200,9 +222,17 @@ public class NarrationEngine : IDisposable
         RequestAudioFocus();
 #endif
 
-        bool playedFile = false;
+        // Ưu tiên 1: File audio MP3 đã download về local (từ Admin TTS API)
+        var audioPath = GetAudioLocalPath(poi, languageCode);
+        if (!string.IsNullOrEmpty(audioPath) && File.Exists(audioPath))
+        {
+            _currentAudioSource = "AI-Audio-File";
+            Console.WriteLine($"[Narration] Phát AI Audio: {Path.GetFileName(audioPath)} ({languageCode})");
+            await _audioPlayer.PlayAsync(audioPath);
+            return;
+        }
         
-        // 0: Ưu tiên cao nhất - TTS script từ database (nếu có)
+        // Ưu tiên 2: TTS script từ database (nếu có)
         var ttsScript = await _databaseService.GetPoiTtsScriptAsync(poi.Id, languageCode);
         if (!string.IsNullOrWhiteSpace(ttsScript))
         {
@@ -211,33 +241,21 @@ public class NarrationEngine : IDisposable
             await _ttsService.SpeakAsync(ttsScript, languageCode);
             return;
         }
-        
-        // 1: File audio MP3 cache (Chỉ dùng khi ngôn ngữ là vi)
-        if (languageCode == "vi" && !string.IsNullOrEmpty(poi.AudioLocalPath) && File.Exists(poi.AudioLocalPath))
-        {
-            _currentAudioSource = "AudioFile";
-            Console.WriteLine($"[Narration] Phát Audio File: {Path.GetFileName(poi.AudioLocalPath)}");
-            await _audioPlayer.PlayAsync(poi.AudioLocalPath);
-            playedFile = true;
-        }
 
-        if (!playedFile)
-        {
-            // Fallback: TTS from localized description
-            _currentAudioSource = "TTS";
-            var localizedDesc = languageCode switch {
-                "en" => poi.DescriptionEn,
-                "zh" => poi.DescriptionZh,
-                "ko" => poi.DescriptionKo,
-                "ja" => poi.DescriptionJa,
-                "fr" => poi.DescriptionFr,
-                _ => poi.Description
-            } ?? poi.Description;
+        // Fallback: TTS from localized description
+        _currentAudioSource = "TTS";
+        var localizedDesc = languageCode switch {
+            "en" => poi.DescriptionEn,
+            "zh" => poi.DescriptionZh,
+            "ko" => poi.DescriptionKo,
+            "ja" => poi.DescriptionJa,
+            "fr" => poi.DescriptionFr,
+            _ => poi.Description
+        } ?? poi.Description;
 
-            var speechText = $"{poi.Title}. {localizedDesc}";
-            Console.WriteLine($"[Narration] Phát TTS: \"{speechText}\" ({languageCode})");
-            await _ttsService.SpeakAsync(speechText, languageCode);
-        }
+        var speechText = $"{poi.Title}. {localizedDesc}";
+        Console.WriteLine($"[Narration] Phát TTS: \"{speechText}\" ({languageCode})");
+        await _ttsService.SpeakAsync(speechText, languageCode);
     }
 
     private void StopCurrent()
