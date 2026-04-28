@@ -233,6 +233,102 @@ public class SyncService
 
         return JsonSerializer.Deserialize<List<SyncPoiDto>>(json, options);
     }
+
+    /// <summary>
+    /// Đồng bộ danh sách Tours từ server.
+    /// </summary>
+    public async Task<bool> SyncToursFromServerAsync(string serverBaseUrl)
+    {
+        try
+        {
+            var url = $"{serverBaseUrl.TrimEnd('/')}/api/v1/tours/sync/tours";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrEmpty(_authService.CurrentToken))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
+            }
+
+            Console.WriteLine($"[Sync] 🔄 Đang đồng bộ Tours từ: {url}");
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var tours = ParseToursFromJson(json);
+            if (tours == null || tours.Count == 0)
+            {
+                Console.WriteLine("[Sync] ⚠️ Không có Tour mới từ Server");
+                return true;
+            }
+
+            int count = 0;
+            foreach (var dto in tours)
+            {
+                // Lưu Tour
+                var tour = new Tour
+                {
+                    Id = dto.Id ?? Guid.NewGuid().ToString(),
+                    Name = dto.Name ?? string.Empty,
+                    Description = dto.Description,
+                    IsActive = dto.IsActive,
+                    ThumbnailUrl = dto.ThumbnailUrl,
+                    UpdatedAt = dto.UpdatedAt
+                };
+
+                await _dbService.UpsertTourAsync(tour);
+                Console.WriteLine($"[Sync] ✅ Tour: {tour.Name}");
+
+                // Lưu TourPoiMappings
+                if (dto.PoiMappings?.Any() == true)
+                {
+                    foreach (var mapping in dto.PoiMappings)
+                    {
+                        var tourMapping = new TourPoiMapping
+                        {
+                            Id = mapping.Id,
+                            TourId = tour.Id,
+                            PoiId = mapping.PoiId ?? string.Empty,
+                            OrderIndex = mapping.OrderIndex
+                        };
+                        await _dbService.UpsertTourPoiMappingAsync(tourMapping);
+                    }
+                    Console.WriteLine($"[Sync]   └── {dto.PoiMappings.Count} POIs");
+                }
+
+                count++;
+            }
+
+            Console.WriteLine($"[Sync] ✅ Đồng bộ thành công {count} Tours");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Sync] ❌ Lỗi đồng bộ Tours: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static List<SyncTourDto>? ParseToursFromJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new List<SyncTourDto>();
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        try
+        {
+            var wrapped = JsonSerializer.Deserialize<SyncToursResponse>(json, options);
+            if (wrapped?.Tours != null)
+                return wrapped.Tours;
+        }
+        catch { }
+
+        return JsonSerializer.Deserialize<List<SyncTourDto>>(json, options);
+    }
 }
 
 /// <summary>DTO nhận từ Admin Server API (khớp với model Admin Web).</summary>
@@ -270,4 +366,30 @@ public class SyncPoisResponse
 {
     public DateTime ServerTimeUtc { get; set; }
     public List<SyncPoiDto> Pois { get; set; } = new();
+}
+
+/// <summary>DTO nhận từ Admin Server API cho Tour.</summary>
+public class SyncTourDto
+{
+    public string? Id { get; set; }
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string? ThumbnailUrl { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public List<SyncTourPoiMappingDto> PoiMappings { get; set; } = new();
+}
+
+public class SyncTourPoiMappingDto
+{
+    public int Id { get; set; }
+    public string? TourId { get; set; }
+    public string? PoiId { get; set; }
+    public int OrderIndex { get; set; }
+}
+
+public class SyncToursResponse
+{
+    public DateTime ServerTimeUtc { get; set; }
+    public List<SyncTourDto> Tours { get; set; } = new();
 }

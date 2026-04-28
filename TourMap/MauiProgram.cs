@@ -44,6 +44,10 @@ namespace TourMap
             builder.Services.AddTransient<AppShell>();
             // SYS-H02 fix: MainPage is not used in current auth flow; registered Transient in case of future use
             builder.Services.AddTransient<MainPage>();
+            
+            // === Tour Pages ===
+            builder.Services.AddTransient<Pages.Tours.TourListPage>();
+            builder.Services.AddTransient<Pages.Tours.TourDetailPage>();
 
             // === Phase 1: Core Engines ===
             builder.Services.AddSingleton<Services.GeofenceEngine>();

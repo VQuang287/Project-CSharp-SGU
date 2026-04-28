@@ -60,6 +60,8 @@ public class DatabaseService : IDisposable
             Console.WriteLine("[Database] Đang tạo bảng...");
             await _db.CreateTableAsync<Poi>();
             await _db.CreateTableAsync<PlaybackHistoryEntry>();
+            await _db.CreateTableAsync<Tour>();
+            await _db.CreateTableAsync<TourPoiMapping>();
             await EnsureSeedDataAsync();
             await NormalizePoiDatasetAsync();
 
@@ -619,6 +621,84 @@ public class DatabaseService : IDisposable
             poi.UpdatedAt = DateTime.UtcNow;
             await _db.UpdateAsync(poi);
             Console.WriteLine($"[Database] Updated TTS scripts for POI {poiId}");
+        }
+        finally { _writeLock.Release(); }
+    }
+
+    // ========== TOUR METHODS ==========
+
+    public async Task<List<Tour>> GetActiveToursAsync()
+    {
+        await InitAsync();
+        return await _db!.Table<Tour>().Where(t => t.IsActive).ToListAsync();
+    }
+
+    public async Task<Tour?> GetTourByIdAsync(string tourId)
+    {
+        await InitAsync();
+        return await _db!.Table<Tour>().FirstOrDefaultAsync(t => t.Id == tourId);
+    }
+
+    public async Task<List<Poi>> GetTourPoisAsync(string tourId)
+    {
+        await InitAsync();
+        
+        var mappings = await _db!.Table<TourPoiMapping>()
+            .Where(tm => tm.TourId == tourId)
+            .OrderBy(tm => tm.OrderIndex)
+            .ToListAsync();
+
+        if (mappings.Count == 0) return new List<Poi>();
+
+        var poiIds = mappings.Select(m => m.PoiId).ToList();
+        var pois = await _db.Table<Poi>().Where(p => poiIds.Contains(p.Id)).ToListAsync();
+
+        // Order by OrderIndex
+        var orderedPois = mappings
+            .Join(pois, m => m.PoiId, p => p.Id, (m, p) => new { m.OrderIndex, Poi = p })
+            .OrderBy(x => x.OrderIndex)
+            .Select(x => x.Poi)
+            .ToList();
+
+        return orderedPois;
+    }
+
+    public async Task UpsertTourAsync(Tour tour)
+    {
+        await InitAsync();
+        await _writeLock.WaitAsync();
+        try
+        {
+            var existing = await _db!.Table<Tour>().FirstOrDefaultAsync(t => t.Id == tour.Id);
+            if (existing == null)
+            {
+                await _db.InsertAsync(tour);
+            }
+            else
+            {
+                await _db.UpdateAsync(tour);
+            }
+        }
+        finally { _writeLock.Release(); }
+    }
+
+    public async Task UpsertTourPoiMappingAsync(TourPoiMapping mapping)
+    {
+        await InitAsync();
+        await _writeLock.WaitAsync();
+        try
+        {
+            var existing = await _db!.Table<TourPoiMapping>().FirstOrDefaultAsync(tm =>
+                tm.TourId == mapping.TourId && tm.PoiId == mapping.PoiId);
+            if (existing == null)
+            {
+                await _db.InsertAsync(mapping);
+            }
+            else
+            {
+                existing.OrderIndex = mapping.OrderIndex;
+                await _db.UpdateAsync(existing);
+            }
         }
         finally { _writeLock.Release(); }
     }

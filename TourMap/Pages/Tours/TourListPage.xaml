@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TourMap.Pages.Tours.TourListPage"
+             Title="Chọn Tour"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#1A1A1A}">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style x:Key="TourCard" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#2D2D2D}" />
+                <Setter Property="Stroke" Value="{AppThemeBinding Light=#E0E0E0, Dark=#3D3D3D}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="16,8" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+            <!-- Header -->
+            <Frame BackgroundColor="#667eea" 
+                   Padding="20,24" 
+                   CornerRadius="0"
+                   HasShadow="True">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="🍜 Food Tours"
+                           FontSize="28"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                    <Label Text="Chọn lộ trình ẩm thực phù hợp"
+                           FontSize="14"
+                           TextColor="#E8E8E8"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="#667eea"
+                               Margin="20" />
+
+            <!-- Empty State -->
+            <VerticalStackLayout x:Name="EmptyState"
+                                  IsVisible="False"
+                                  Margin="40,60"
+                                  Spacing="16">
+                <Label Text="📭"
+                       FontSize="64"
+                       HorizontalOptions="Center" />
+                <Label Text="Chưa có Tour nào"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#666, Dark=#999}" />
+                <Label Text="Vui lòng đồng bộ dữ liệu để tải các Tour ẩm thực"
+                       FontSize="14"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#999, Dark=#666}" />
+                <Button Text="Đồng bộ ngay"
+                        BackgroundColor="#667eea"
+                        TextColor="White"
+                        CornerRadius="8"
+                        Margin="0,8"
+                        Clicked="OnSyncClicked" />
+            </VerticalStackLayout>
+
+            <!-- Tours Collection -->
+            <CollectionView x:Name="ToursCollection"
+                           SelectionMode="Single"
+                           SelectionChanged="OnTourSelected"
+                           Margin="0,8">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource TourCard}"
+                                HeightRequest="120">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12" />
+                            </Border.StrokeShape>
+                            <Grid ColumnDefinitions="120,*">
+                                <!-- Thumbnail -->
+                                <Image Source="{Binding ThumbnailUrl, FallbackValue='food_placeholder.png'}"
+                                       Aspect="AspectFill"
+                                       HeightRequest="120"
+                                       WidthRequest="120"
+                                       BackgroundColor="#E0E0E0" />
+
+                                <!-- Content -->
+                                <Grid Grid.Column="1" 
+                                      RowDefinitions="Auto,Auto,Auto,*"
+                                      Padding="16,12"
+                                      RowSpacing="4">
+                                    <Label Text="{Binding Name}"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light=#333, Dark=#FFF}"
+                                           LineBreakMode="TailTruncation" />
+                                    
+                                    <Label Grid.Row="1"
+                                           Text="{Binding Description, TargetNullValue='Không có mô tả'}"
+                                           FontSize="13"
+                                           TextColor="{AppThemeBinding Light=#666, Dark=#AAA}"
+                                           LineBreakMode="TailTruncation"
+                                           MaxLines="2" />
+
+                                    <HorizontalStackLayout Grid.Row="2" Spacing="12" Margin="0,8,0,0">
+                                        <Label Text="{Binding PoiCount, StringFormat='🍽️ {0} quán'}"
+                                               FontSize="12"
+                                               TextColor="#667eea"
+                                               VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -19,6 +19,10 @@ namespace TourMap
             Routing.RegisterRoute(nameof(Pages.LoginPage), typeof(Pages.LoginPage));
             Routing.RegisterRoute(nameof(Pages.RegisterPage), typeof(Pages.RegisterPage));
             Routing.RegisterRoute(nameof(Pages.ProfilePage), typeof(Pages.ProfilePage));
+            
+            // Tour pages
+            Routing.RegisterRoute(nameof(Pages.Tours.TourListPage), typeof(Pages.Tours.TourListPage));
+            Routing.RegisterRoute(nameof(Pages.Tours.TourDetailPage), typeof(Pages.Tours.TourDetailPage));
         }
 
         protected override async void OnAppearing()

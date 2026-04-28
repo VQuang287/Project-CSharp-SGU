@@ -15,7 +15,11 @@ public class Tour
 
     public bool IsActive { get; set; } = true;
 
+    public string? ThumbnailUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public List<TourPoiMapping> PoiMappings { get; set; } = new();
 }

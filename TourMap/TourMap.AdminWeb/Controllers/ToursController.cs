@@ -161,4 +161,59 @@ public class ToursController : Controller
             })
             .ToListAsync();
     }
+
+    // ========== API Endpoints for Mobile Sync ==========
+
+    [HttpGet("api/v1/tours/sync/tours")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncTours()
+    {
+        try
+        {
+            var tours = await _context.Tours
+                .AsNoTracking()
+                .Where(t => t.IsActive)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Name,
+                    t.Description,
+                    t.IsActive,
+                    ThumbnailUrl = ToAbsoluteAssetUrl(t.ThumbnailUrl),
+                    t.UpdatedAt,
+                    PoiMappings = _context.TourPoiMappings
+                        .Where(tm => tm.TourId == t.Id)
+                        .OrderBy(tm => tm.OrderIndex)
+                        .Select(tm => new
+                        {
+                            tm.Id,
+                            tm.TourId,
+                            tm.PoiId,
+                            tm.OrderIndex
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
+
+            var response = new
+            {
+                ServerTimeUtc = DateTime.UtcNow,
+                Tours = tours
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] Error syncing tours: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to sync tours" });
+        }
+    }
+
+    private static string? ToAbsoluteAssetUrl(string? relativeUrl)
+    {
+        if (string.IsNullOrEmpty(relativeUrl)) return null;
+        if (relativeUrl.StartsWith("http")) return relativeUrl;
+        return relativeUrl;
+    }
 }

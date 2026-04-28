@@ -62,3 +62,39 @@ public class PlaybackHistoryEntry
     public DateTime PlayedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>Tour/Food tour definition - a collection of POIs in a specific order.</summary>
+[Table("Tours")]
+public class Tour
+{
+    [PrimaryKey]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string? ThumbnailUrl { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    // Not stored in DB - populated from TourPoiMappings
+    [Ignore]
+    public List<TourPoiMapping> PoiMappings { get; set; } = new();
+
+    [Ignore]
+    public List<Poi> Pois { get; set; } = new();
+}
+
+/// <summary>Maps a POI to a Tour with ordering.</summary>
+[Table("TourPoiMappings")]
+public class TourPoiMapping
+{
+    [PrimaryKey, AutoIncrement]
+    public int Id { get; set; }
+
+    [Indexed]
+    public string TourId { get; set; } = string.Empty;
+
+    [Indexed]
+    public string PoiId { get; set; } = string.Empty;
+
+    public int OrderIndex { get; set; } = 0;
+}
+
