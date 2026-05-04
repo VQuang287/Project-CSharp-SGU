@@ -158,10 +158,15 @@ public class SyncService
     /// <summary>
     /// Tải file audio MP3 từ server về local storage.
     /// </summary>
-    private async Task<string?> DownloadAudioAsync(string audioUrl, string serverBaseUrl, string poiId)
+    private async Task<string?> DownloadAudioAsync(string? audioUrl, string serverBaseUrl, string poiId)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(audioUrl))
+            {
+                return null;
+            }
+
             // Nếu audioUrl là relative path → ghép với serverBaseUrl
             var fullUrl = audioUrl.StartsWith("http")
                 ? audioUrl

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 -- Create database (if not exists)
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'TourMap')
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'TourMapAdmin')
 BEGIN
     CREATE DATABASE TourMapAdmin;
 END

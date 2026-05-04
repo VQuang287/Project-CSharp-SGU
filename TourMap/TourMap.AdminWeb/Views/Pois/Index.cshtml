@@ -103,7 +103,7 @@
 {
     <text>
     document.addEventListener('DOMContentLoaded', function() {
-        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Success"].ToString()) + "'"), 'success');
+        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(Convert.ToString(TempData["Success"]) ?? string.Empty) + "'"), 'success');
     });
     </text>
 }
@@ -111,7 +111,7 @@
 {
     <text>
     document.addEventListener('DOMContentLoaded', function() {
-        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["Error"].ToString()) + "'"), 'error');
+        showModal(@Html.Raw("'" + System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(Convert.ToString(TempData["Error"]) ?? string.Empty) + "'"), 'error');
     });
     </text>
 }

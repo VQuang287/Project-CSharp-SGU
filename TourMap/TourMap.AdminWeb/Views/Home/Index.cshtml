@@ -1,4 +1,5 @@
 @model TourMap.AdminWeb.Models.ViewModels.AdminDashboardViewModel
+@using System.Text.Json
 @{
     ViewData["Title"] = "Bảng Điều Khiển";
 }
@@ -22,12 +23,6 @@
             <p class="metric-value">@Model.TotalPlays.ToString("N0")</p>
         </div>
     </article>
-    <article class="ui-card">
-        <div class="ui-card-body">
-            <p class="metric-title">Người dùng Mobile</p>
-            <p class="metric-value">@Model.ActiveMobileUsers</p>
-        </div>
-    </article>
     <article class="ui-card ui-card--highlight">
         <div class="ui-card-body">
             <p class="metric-title">🔴 Thiết bị đang online</p>
@@ -35,6 +30,26 @@
             <p class="metric-subtitle" id="online-devices-status">Đang cập nhật real-time...</p>
         </div>
     </article>
+</section>
+
+<section class="dashboard-section ui-card">
+    <div class="ui-card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h2 class="h6 mb-0">Top POI theo lượt</h2>
+            <span class="text-muted small">Pie Chart</span>
+        </div>
+
+        @if (Model.TopPois.Count == 0)
+        {
+            <div class="dashboard-empty-state">Chưa có dữ liệu playback.</div>
+        }
+        else
+        {
+            <div class="dashboard-chart-wrap">
+                <canvas id="topPoiChart"></canvas>
+            </div>
+        }
+    </div>
 </section>
 
 <!-- Real-time Device Tracking Panel -->
@@ -68,64 +83,57 @@
     </div>
 </section>
 
-<section class="dashboard-section ui-card">
-    <div class="ui-card-body">
-        <h2 class="h6 mb-3">Top POI theo lượt phát</h2>
-        <table class="dashboard-table">
-            <thead>
-                <tr>
-                    <th>POI</th>
-                    <th>Lượt phát</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.TopPois.Count == 0)
-                {
-                    <tr>
-                        <td colspan="2">Chưa có dữ liệu playback.</td>
-                    </tr>
-                }
-                else
-                {
-                    @foreach (var poi in Model.TopPois)
-                    {
-                        <tr>
-                            <td>@poi.PoiTitle</td>
-                            <td>@poi.PlayCount.ToString("N0")</td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<section class="dashboard-section ui-card">
-    <div class="ui-card-body">
-        <h2 class="h6 mb-3">Thao Tác Nhanh</h2>
-        <div class="dashboard-form-grid">
-            <div>
-                <label class="form-label">Tên POI</label>
-                <input class="form-control" placeholder="Nhập tên POI" />
-            </div>
-            <div>
-                <label class="form-label">Bán kính (m)</label>
-                <input class="form-control" type="number" placeholder="50" />
-            </div>
-            <div class="full">
-                <label class="form-label">Mô tả ngắn</label>
-                <textarea class="form-control" rows="3" placeholder="Mô tả cho POI"></textarea>
-            </div>
-            <div class="full">
-                <button class="btn btn-primary">Lưu nháp</button>
-            </div>
-        </div>
-    </div>
-</section>
-
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        const topPois = @Html.Raw(JsonSerializer.Serialize(Model.TopPois.Select(p => new { p.PoiTitle, p.PlayCount })));
+
+        function buildTopPoiChart() {
+            const canvas = document.getElementById('topPoiChart');
+            if (!canvas || !topPois || topPois.length === 0) {
+                return;
+            }
+
+            const palette = ['#0D7A5F', '#14B8A6', '#22C55E', '#06B6D4', '#84CC16', '#F59E0B', '#EF4444', '#8B5CF6'];
+            const colors = topPois.map((_, index) => palette[index % palette.length]);
+
+            new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: topPois.map(item => item.PoiTitle),
+                    datasets: [{
+                        data: topPois.map(item => item.PlayCount),
+                        backgroundColor: colors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${value.toLocaleString('vi-VN')} lượt`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Real-time device tracking
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/hubs/devices")
@@ -134,24 +142,20 @@
 
         let deviceList = [];
 
-        // Handle device list from server
         connection.on("DeviceList", (devices) => {
             deviceList = devices;
             updateDeviceList();
             updateOnlineCount(devices.length);
         });
 
-        // Handle new device connection
         connection.on("DeviceConnected", (device) => {
             console.log("Device connected:", device);
-            // Remove if exists, then add
             deviceList = deviceList.filter(d => d.deviceId !== device.deviceId);
             deviceList.push(device);
             updateDeviceList();
             updateOnlineCount(deviceList.length);
         });
 
-        // Handle device updates
         connection.on("DeviceUpdated", (device) => {
             const index = deviceList.findIndex(d => d.deviceId === device.deviceId);
             if (index !== -1) {
@@ -162,7 +166,6 @@
             updateDeviceList();
         });
 
-        // Handle device disconnection
         connection.on("DeviceDisconnected", (deviceId) => {
             deviceList = deviceList.filter(d => d.deviceId !== deviceId);
             updateDeviceList();
@@ -171,10 +174,9 @@
 
         function updateOnlineCount(count) {
             document.getElementById('online-devices-count').textContent = count;
-            // Cập nhật cả navbar badge
             const navBadge = document.getElementById('navbar-device-count');
             if (navBadge) navBadge.textContent = count;
-            
+
             const status = document.getElementById('online-devices-status');
             if (count === 0) {
                 status.textContent = 'Không có thiết bị nào đang kết nối';
@@ -187,7 +189,7 @@
 
         function updateDeviceList() {
             const tbody = document.getElementById('device-list');
-            
+
             if (deviceList.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có thiết bị nào đang kết nối</td></tr>';
                 return;
@@ -195,11 +197,11 @@
 
             tbody.innerHTML = deviceList.map(device => {
                 const stateBadge = getStateBadge(device.state);
-                const location = device.lastLatitude && device.lastLongitude 
+                const location = device.lastLatitude && device.lastLongitude
                     ? `${device.lastLatitude.toFixed(4)}, ${device.lastLongitude.toFixed(4)}`
                     : 'Không xác định';
                 const connectedTime = new Date(device.connectedAt).toLocaleString('vi-VN');
-                
+
                 return `
                     <tr data-device-id="${device.deviceId}">
                         <td>
@@ -229,7 +231,6 @@
                 const resp = await fetch(`/api/v1/auth/admin/revoke-device/${deviceId}`, { method: 'POST' });
                 const data = await resp.json();
                 alert(data.message || 'Đã revoke.');
-                // Refresh device list
                 await connection.invoke("RefreshDeviceList");
             } catch (e) {
                 alert('Lỗi: ' + e.message);
@@ -265,7 +266,6 @@
             return div.innerHTML;
         }
 
-        // Start connection and join admin group
         let refreshInterval = null;
 
         async function start() {
@@ -277,7 +277,6 @@
                 document.getElementById('live-badge').classList.remove('bg-secondary');
                 document.getElementById('live-badge').classList.add('bg-success');
 
-                // Auto-refresh danh sách thiết bị mỗi 10 giây
                 if (refreshInterval) clearInterval(refreshInterval);
                 refreshInterval = setInterval(async () => {
                     try {
@@ -300,7 +299,10 @@
             document.getElementById('live-badge').textContent = 'RECONNECTING';
             document.getElementById('live-badge').classList.remove('bg-success');
             document.getElementById('live-badge').classList.add('bg-warning');
-            if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
         });
 
         connection.onreconnected(() => {
@@ -309,7 +311,6 @@
             document.getElementById('live-badge').classList.remove('bg-warning');
             document.getElementById('live-badge').classList.add('bg-success');
             connection.invoke("JoinAdminGroup");
-            // Khôi phục auto-refresh
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(async () => {
                 try {
@@ -320,6 +321,9 @@
             }, 10000);
         });
 
-        start();
+        document.addEventListener('DOMContentLoaded', function () {
+            buildTopPoiChart();
+            start();
+        });
     </script>
 }

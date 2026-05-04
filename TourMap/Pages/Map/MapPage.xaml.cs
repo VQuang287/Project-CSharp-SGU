@@ -92,21 +92,6 @@ public partial class MapPage : ContentPage
         // ═══════════════════════════════════════════
         // FLOATING HEADER
         // ═══════════════════════════════════════════
-        var avatar = new Border
-        {
-            WidthRequest = 40, HeightRequest = 40,
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E0F5F0"),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
-            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
-            Content = new Label { Text = "👤", FontSize = 20, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center }
-        };
-        var avatarTap = new TapGestureRecognizer();
-        avatarTap.Tapped += async (s, e) =>
-        {
-            try { await Shell.Current.GoToAsync(nameof(ProfilePage)); } catch { }
-        };
-        avatar.GestureRecognizers.Add(avatarTap);
-
         _headerSubtitle = new Label { 
             Text = _loc["MapSubtitle"] ?? "Khánh Hội", 
             FontFamily = "InterBold", FontSize = 20, 
@@ -115,18 +100,13 @@ public partial class MapPage : ContentPage
         
         var titleStack = new VerticalStackLayout
         {
-            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Start,
+            Spacing = 0,
             Children =
             {
                 new Label { Text = _loc["MapTitle"] ?? "Audio Tour", FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280") },
                 _headerSubtitle
             }
-        };
-
-        var headerGrid = new Grid
-        {
-            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-            Children = { titleStack, avatar.WithColumn(1) }
         };
 
         var headerCard = new Border
@@ -135,10 +115,11 @@ public partial class MapPage : ContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
             Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
             Shadow = new Shadow { Brush = Microsoft.Maui.Graphics.Colors.Black, Opacity = 0.05f, Radius = 8, Offset = new Point(0, 4) },
-            Padding = new Thickness(16),
+            Padding = new Thickness(14, 12),
+            HorizontalOptions = LayoutOptions.Start,
             Margin = new Thickness(16, 44, 16, 0),
             VerticalOptions = LayoutOptions.Start,
-            Content = new VerticalStackLayout { Children = { headerGrid } }
+            Content = titleStack
         };
 
         // ═══════════════════════════════════════════

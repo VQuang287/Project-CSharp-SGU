@@ -38,9 +38,6 @@ namespace TourMap
             builder.Services.AddTransient<Pages.SettingsPage>();
             builder.Services.AddTransient<Pages.OfflinePacksPage>();
             builder.Services.AddTransient<Pages.SplashPage>();
-            builder.Services.AddTransient<Pages.LoginPage>();
-            builder.Services.AddTransient<Pages.RegisterPage>();
-            builder.Services.AddTransient<Pages.ProfilePage>();
             builder.Services.AddTransient<AppShell>();
             // SYS-H02 fix: MainPage is not used in current auth flow; registered Transient in case of future use
             builder.Services.AddTransient<MainPage>();

@@ -260,7 +260,7 @@ namespace TourMap
             // 10.0.2.2 = host machine IP from Android emulator
             return new[]
             {
-            "http://192.168.1.7:5042",
+            "http://192.168.1.221:5042",
             "http://10.0.2.2:5042",
             "http://localhost:5042"
         };

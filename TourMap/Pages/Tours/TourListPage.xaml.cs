@@ -9,7 +9,6 @@ public partial class TourListPage : ContentPage
 {
     private readonly DatabaseService _dbService;
     private readonly SyncService _syncService;
-    private readonly string _serverBaseUrl;
 
     public ObservableCollection<TourViewModel> Tours { get; } = new();
 
@@ -20,7 +19,6 @@ public partial class TourListPage : ContentPage
         InitializeComponent();
         _dbService = dbService;
         _syncService = syncService;
-        _serverBaseUrl = BackendEndpoints.GetCandidateServerBaseUrls().FirstOrDefault()?.TrimEnd('/') ?? "http://localhost:5042";
         
         BindingContext = this;
         ToursCollection.ItemsSource = Tours;
@@ -66,7 +64,7 @@ public partial class TourListPage : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"[TourList] Error loading tours: {ex.Message}");
-            await DisplayAlert("Lỗi", $"Không thể tải danh sách tour: {ex.Message}", "OK");
+            await DisplayAlertAsync("Lỗi", $"Không thể tải danh sách tour: {ex.Message}", "OK");
         }
         finally
         {
@@ -75,7 +73,7 @@ public partial class TourListPage : ContentPage
         }
     }
 
-    private async void OnTourSelected(object sender, SelectionChangedEventArgs e)
+    private async void OnTourSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.CurrentSelection.FirstOrDefault() is TourViewModel tour)
         {
@@ -86,29 +84,44 @@ public partial class TourListPage : ContentPage
         }
     }
 
-    private async void OnSyncClicked(object sender, EventArgs e)
+    private async void OnSyncClicked(object? sender, EventArgs e)
     {
         LoadingIndicator.IsRunning = true;
         
         try
         {
-            var success = await _syncService.SyncPoisFromServerAsync(_serverBaseUrl);
-            var tourSuccess = await _syncService.SyncToursFromServerAsync(_serverBaseUrl);
-            
-            if (success && tourSuccess)
+            var candidates = BackendEndpoints.GetCandidateServerBaseUrls();
+            var synced = false;
+
+            foreach (var serverUrl in candidates)
             {
-                await DisplayAlert("Thành công", "Đã đồng bộ dữ liệu", "OK");
+                var poiSuccess = await _syncService.SyncPoisFromServerAsync(serverUrl);
+                if (!poiSuccess)
+                    continue;
+
+                var tourSuccess = await _syncService.SyncToursFromServerAsync(serverUrl);
+                if (!tourSuccess)
+                    continue;
+
+                BackendEndpoints.RememberWorkingServerFromUrl(serverUrl);
+                synced = true;
+                break;
+            }
+
+            if (synced)
+            {
+                await DisplayAlertAsync("Thành công", "Đã đồng bộ dữ liệu", "OK");
                 await LoadToursAsync();
             }
             else
             {
-                await DisplayAlert("Lỗi", "Đồng bộ thất bại, vui lòng thử lại", "OK");
+                await DisplayAlertAsync("Lỗi", "Không kết nối được backend. Kiểm tra server hoặc URL rồi thử lại.", "OK");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[TourList] Sync error: {ex.Message}");
-            await DisplayAlert("Lỗi", $"Đồng bộ thất bại: {ex.Message}", "OK");
+            await DisplayAlertAsync("Lỗi", $"Đồng bộ thất bại: {ex.Message}", "OK");
         }
         finally
         {

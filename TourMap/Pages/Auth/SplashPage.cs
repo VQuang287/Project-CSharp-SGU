@@ -6,6 +6,7 @@ public class SplashPage : ContentPage
 {
     private readonly AuthService? _authService;
     private readonly DeviceTrackingService? _deviceTrackingService;
+    private bool _languageConfirmed;
 
     public SplashPage() : this(TryResolveAuthService(), TryResolveDeviceTrackingService())
     {
@@ -103,69 +104,61 @@ public class SplashPage : ContentPage
         base.OnAppearing();
         try
         {
+            // Keep splash on screen until user explicitly chooses a language.
+            // We only preload previously saved language for UI text consistency.
             var savedLang = Preferences.Default.Get("selected_language", string.Empty);
-            var hasPendingPoiDeepLink = !string.IsNullOrEmpty(DeepLinkHelper.PeekPendingPoiId());
-
-            if (string.IsNullOrEmpty(savedLang))
-            {
-                if (!hasPendingPoiDeepLink)
-                {
-                    return;
-                }
-
-                var fallbackLanguage = LocalizationService.SupportedLanguages
-                    .Select(x => x.Code)
-                    .FirstOrDefault() ?? "vi";
-                Preferences.Default.Set("selected_language", fallbackLanguage);
-                LocalizationService.Current.CurrentLanguage = fallbackLanguage;
-                await Task.Delay(300);
-            }
-            else
+            if (!string.IsNullOrWhiteSpace(savedLang))
             {
                 LocalizationService.Current.CurrentLanguage = savedLang;
-                await Task.Delay(600);
             }
 
-            // === AUTH CHECK ===
-            if (_authService != null)
+            if (_languageConfirmed)
             {
-                await _authService.InitializeAsync();
-                if (_authService.IsAuthenticated)
-                {
-                    NavigateToShell();
-                    return;
-                }
-
-                if (hasPendingPoiDeepLink)
-                {
-                    var guestSignedIn = await _authService.LoginAnonymousAsync();
-                    if (guestSignedIn)
-                    {
-                        NavigateToShell();
-                        return;
-                    }
-                }
-
-                NavigateToLogin();
-                return;
+                await EnsureGuestSessionAsync();
+                NavigateToShell();
             }
-
-            // Fallback: no auth service → go to shell directly
-            NavigateToShell();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex.Message}");
-            NavigateToLogin();
         }
     }
 
     private async Task SelectLanguageAndProceed(string lang)
     {
+        _languageConfirmed = true;
         Preferences.Default.Set("selected_language", lang);
         LocalizationService.Current.CurrentLanguage = lang;
         await Task.Delay(200);
-        NavigateToLogin();
+        await EnsureGuestSessionAsync();
+        NavigateToShell();
+    }
+
+    private async Task EnsureGuestSessionAsync()
+    {
+        if (_authService == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _authService.InitializeAsync();
+            if (_authService.IsAuthenticated)
+            {
+                return;
+            }
+
+            var guestSignedIn = await _authService.LoginAnonymousAsync();
+            if (!guestSignedIn)
+            {
+                Console.WriteLine("[SplashPage] Guest session not established. App continues in offline-first mode.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SplashPage] Guest session setup failed: {ex.Message}");
+        }
     }
 
     private async void NavigateToShell()
@@ -233,21 +226,6 @@ public class SplashPage : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"[SplashPage] Lỗi Parse Deeplink QR: {ex.Message}");
-        }
-    }
-
-    private void NavigateToLogin()
-    {
-        if (Application.Current?.Windows.FirstOrDefault() is Window window)
-        {
-            var authService = _authService ?? TryResolveAuthService();
-            if (authService != null)
-            {
-                window.Page = new LoginPage(authService);
-                return;
-            }
-
-            window.Page = ServiceHelper.GetService<AppShell>();
         }
     }
 
