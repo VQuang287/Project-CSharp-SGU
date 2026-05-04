@@ -14,29 +14,13 @@ public partial class PoiListPage : ContentPage
 
     // Data
     private List<Poi> _allPois = new();
-    private string _activeFilter = "all";
     private string _searchQuery = string.Empty;
 
     // UI refs
     private readonly CollectionView _listView;
     private readonly Entry _searchEntry;
-    private readonly HorizontalStackLayout _filterRow;
-    private readonly Label _nearbyBadge;
-    private readonly Label _visitedBadge;
     private readonly Label _totalLabel;
     private readonly Label _titleLabel;
-
-    // Filter definitions (from Figma POIListScreen)
-    private static readonly (string Id, string Emoji)[] Filters =
-    {
-        ("all", "🗺️"),
-        ("food", "🍜"),
-        ("heritage", "🏛️"),
-        ("temple", "⛩️"),
-        ("market", "🏪"),
-        ("park", "🌿"),
-        ("culture", "🎭"),
-    };
 
     public PoiListPage() : this(ServiceHelper.GetService<DatabaseService>())
     {
@@ -58,22 +42,20 @@ public partial class PoiListPage : ContentPage
             TextColor = Color.FromArgb("#18181B"),
         };
 
-        // ─── Stats Row ───
-        _nearbyBadge = CreateBadge(string.Format(_loc["PoiNearbyFormat"] ?? "📍 {0} gần bạn", 0), "#E0F5F0", "#0D7A5F", true);
-        _visitedBadge = CreateBadge(string.Format(_loc["PoiVisitedFormat"] ?? "🎧 {0} đã nghe", 0), "#DCFCE7", "#22C55E", false);
+        // ─── Stats Row ─── (Chỉ hiển thị tổng số POI)
         _totalLabel = new Label
         {
-            Text = string.Format(_loc["PoiTotalFormat"] ?? "{0} tổng cộng", 0),
+            Text = "Số POI đang có: 0",
             FontFamily = "InterRegular",
-            FontSize = 11,
-            TextColor = Color.FromArgb("#9CA3AF"),
+            FontSize = 12,
+            TextColor = Color.FromArgb("#0D7A5F"),
             VerticalOptions = LayoutOptions.Center,
         };
 
         var statsRow = new HorizontalStackLayout
         {
             Spacing = 8,
-            Children = { _nearbyBadge, _visitedBadge, _totalLabel }
+            Children = { _totalLabel }
         };
 
         // ─── Search ───
@@ -111,28 +93,13 @@ public partial class PoiListPage : ContentPage
             }
         };
 
-        // ─── Filter Chips ───
-        _filterRow = new HorizontalStackLayout { Spacing = 8 };
-        foreach (var f in Filters)
-        {
-            var chip = CreateFilterChip(f.Id, GetFilterLabel(f.Id), f.Emoji);
-            _filterRow.Children.Add(chip);
-        }
-
-        var filterScroll = new ScrollView
-        {
-            Orientation = ScrollOrientation.Horizontal,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
-            Content = _filterRow,
-        };
-
-        // ─── Header Container ───
+        // ─── Header Container ─── (Không có filter chips)
         var headerContainer = new VerticalStackLayout
         {
             BackgroundColor = Colors.White,
             Padding = new Thickness(16, 4, 16, 12),
             Spacing = 10,
-            Children = { _titleLabel, statsRow, searchBox, filterScroll }
+            Children = { _titleLabel, statsRow, searchBox }
         };
 
         // ─── POI List ───
@@ -210,48 +177,14 @@ public partial class PoiListPage : ContentPage
         ApplyFilter();
     }
 
-    private void OnFilterTapped(string filterId)
-    {
-        _activeFilter = filterId;
-        UpdateFilterChipStyles();
-        ApplyFilter();
-    }
-
     private void ApplyFilter()
     {
         var filtered = _allPois.Where(p =>
         {
-            var searchableText = GetSearchableText(p);
-
-            // Category filter — map seed data tags to categories
-            if (_activeFilter != "all")
-            {
-                // Best-effort keyword matching across all available language fields.
-                var matchesFilter = _activeFilter switch
-                {
-                    "food" => searchableText.Contains("ẩm thực", StringComparison.OrdinalIgnoreCase)
-                              || searchableText.Contains("food", StringComparison.OrdinalIgnoreCase)
-                              || searchableText.Contains("restaurant", StringComparison.OrdinalIgnoreCase),
-                    "heritage" => searchableText.Contains("di tích", StringComparison.OrdinalIgnoreCase)
-                                  || searchableText.Contains("lịch sử", StringComparison.OrdinalIgnoreCase)
-                                  || searchableText.Contains("heritage", StringComparison.OrdinalIgnoreCase)
-                                  || searchableText.Contains("history", StringComparison.OrdinalIgnoreCase),
-                    "temple" => searchableText.Contains("chùa", StringComparison.OrdinalIgnoreCase)
-                                || searchableText.Contains("temple", StringComparison.OrdinalIgnoreCase),
-                    "market" => searchableText.Contains("chợ", StringComparison.OrdinalIgnoreCase)
-                                || searchableText.Contains("market", StringComparison.OrdinalIgnoreCase),
-                    "park" => searchableText.Contains("công viên", StringComparison.OrdinalIgnoreCase)
-                              || searchableText.Contains("park", StringComparison.OrdinalIgnoreCase),
-                    "culture" => searchableText.Contains("văn hóa", StringComparison.OrdinalIgnoreCase)
-                                 || searchableText.Contains("culture", StringComparison.OrdinalIgnoreCase),
-                    _ => true
-                };
-                if (!matchesFilter) return false;
-            }
-
-            // Search
+            // Search only - no category filter
             if (!string.IsNullOrWhiteSpace(_searchQuery))
             {
+                var searchableText = GetSearchableText(p);
                 return searchableText.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase);
             }
             return true;
@@ -265,9 +198,7 @@ public partial class PoiListPage : ContentPage
     private void UpdateStats()
     {
         var total = _allPois.Count;
-        _nearbyBadge.Text = string.Format(_loc["PoiNearbyFormat"] ?? "📍 {0} gần bạn", total);
-        _visitedBadge.Text = string.Format(_loc["PoiVisitedFormat"] ?? "🎧 {0} đã nghe", 0);
-        _totalLabel.Text = string.Format(_loc["PoiTotalFormat"] ?? "{0} tổng cộng", total);
+        _totalLabel.Text = $"Số POI đang có: {total}";
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -288,34 +219,7 @@ public partial class PoiListPage : ContentPage
         };
     }
 
-    private Border CreateFilterChip(string id, string label, string emoji)
-    {
-        var isActive = id == _activeFilter;
-        var chipLabel = new Label
-        {
-            Text = $"{emoji} {label}",
-            FontFamily = "InterMedium",
-            FontSize = 11,
-            TextColor = isActive ? Colors.White : Color.FromArgb("#6B7280"),
-            VerticalOptions = LayoutOptions.Center,
-        };
-
-        var chip = new Border
-        {
-            BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1"),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
-            Stroke = Colors.Transparent,
-            Padding = new Thickness(12, 6),
-            Content = chipLabel,
-        };
-
-        chip.GestureRecognizers.Add(new TapGestureRecognizer
-        {
-            Command = new Command(() => OnFilterTapped(id))
-        });
-
-        return chip;
-    }
+    // Filter chips removed - app now shows all POIs with search only
 
     private void OnLanguageChanged()
     {
@@ -328,9 +232,6 @@ public partial class PoiListPage : ContentPage
                 _titleLabel.Text = _loc["PoiListTitle"] ?? "Địa điểm";
                 _searchEntry.Placeholder = _loc["SearchPlaceholder"] ?? "Tìm điểm tham quan...";
                 
-                // Rebuild filter chips with new language
-                RebuildFilterChips();
-                
                 // Refresh stats labels
                 UpdateStats();
                 _listView.EmptyView = CreateEmptyView();
@@ -342,31 +243,6 @@ public partial class PoiListPage : ContentPage
                 Console.WriteLine($"[PoiListPage] Error in OnLanguageChanged: {ex.Message}");
             }
         });
-    }
-
-    private void RebuildFilterChips()
-    {
-        _filterRow.Children.Clear();
-        foreach (var f in Filters)
-        {
-            var chip = CreateFilterChip(f.Id, GetFilterLabel(f.Id), f.Emoji);
-            _filterRow.Children.Add(chip);
-        }
-        UpdateFilterChipStyles();
-    }
-
-    private void UpdateFilterChipStyles()
-    {
-        for (int i = 0; i < _filterRow.Children.Count && i < Filters.Length; i++)
-        {
-            if (_filterRow.Children[i] is Border chip && chip.Content is Label label)
-            {
-                var filterId = Filters[i].Id;
-                var isActive = filterId == _activeFilter;
-                chip.BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1");
-                label.TextColor = isActive ? Colors.White : Color.FromArgb("#6B7280");
-            }
-        }
     }
 
     /// <summary>

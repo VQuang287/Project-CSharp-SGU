@@ -1,13 +1,14 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using TourMap.Models;
 using TourMap.Services;
 
 namespace TourMap.Pages.Tours;
 
 [QueryProperty(nameof(TourId), "tourId")]
-public partial class TourDetailPage : ContentPage
+public partial class TourDetailPage : ContentPage, INotifyPropertyChanged
 {
     private readonly DatabaseService _dbService;
     private string _tourId = string.Empty;
@@ -64,7 +65,7 @@ public partial class TourDetailPage : ContentPage
             _tour = await _dbService.GetTourByIdAsync(TourId);
             if (_tour == null)
             {
-                await DisplayAlertAsync("Lỗi", "Không tìm thấy tour", "OK");
+                await DisplayAlert("Lỗi", "Không tìm thấy tour", "OK");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -127,11 +128,11 @@ public partial class TourDetailPage : ContentPage
         return await Task.FromResult(Preferences.Default.Get<bool>($"visited_{poiId}", false));
     }
 
-    private async void OnStartTourClicked(object? sender, EventArgs e)
+    private async void OnStartTourClicked(object sender, EventArgs e)
     {
         if (TourPois.Count == 0)
         {
-            await DisplayAlertAsync("Thông báo", "Tour này chưa có quán nào", "OK");
+            await DisplayAlert("Thông báo", "Tour này chưa có quán nào", "OK");
             return;
         }
 
@@ -139,9 +140,10 @@ public partial class TourDetailPage : ContentPage
         await Shell.Current.GoToAsync($"//map?tourId={TourId}");
     }
 
-    protected override void OnPropertyChanged([CallerMemberName] string propertyName = null!)
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null!)
     {
-        base.OnPropertyChanged(propertyName);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 

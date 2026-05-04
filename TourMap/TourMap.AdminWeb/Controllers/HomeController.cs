@@ -45,14 +45,20 @@ public class HomeController : Controller
         var onlineDevices = await _dbContext.DeviceConnections
             .CountAsync(d => d.LastHeartbeatAt > fiveMinutesAgo && d.State != ConnectionState.Offline);
 
+        // Calculate average listening time
+        var avgDuration = await _dbContext.PlaybackHistories
+            .AsNoTracking()
+            .Where(x => x.DurationSeconds > 0)
+            .AverageAsync(x => (double?)x.DurationSeconds) ?? 0;
+
         var model = new AdminDashboardViewModel
         {
             TotalPois = await _dbContext.Pois.CountAsync(),
             ActiveTours = await _dbContext.Tours.CountAsync(x => x.IsActive),
             TotalPlays = await _dbContext.PlaybackHistories.CountAsync(),
-            ActiveMobileUsers = await _dbContext.MobileUsers.CountAsync(u => u.Role != "Guest"),
             TotalQrCodes = await _dbContext.QrCodeEntries.CountAsync(),
             OnlineDevices = onlineDevices,
+            AvgListeningTime = TimeSpan.FromSeconds(avgDuration),
             TopPois = topPois.Select(x => new PoiPlaybackItem
             {
                 PoiId = x.PoiId,

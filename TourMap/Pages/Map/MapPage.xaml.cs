@@ -21,7 +21,6 @@ public partial class MapPage : ContentPage
     private readonly TourRuntimeService _tourRuntimeService;
     private readonly GeofenceEngine _geofenceEngine;
     private readonly NarrationEngine _narrationEngine;
-    private readonly AuthService _authService;
     private readonly AutoSyncService _autoSyncService;
     private readonly MapControl _mapControl;
     private readonly LocalizationService _loc;
@@ -57,7 +56,6 @@ public partial class MapPage : ContentPage
         ServiceHelper.GetService<TourRuntimeService>(),
         ServiceHelper.GetService<GeofenceEngine>(),
         ServiceHelper.GetService<NarrationEngine>(),
-        ServiceHelper.GetService<AuthService>(),
         ServiceHelper.GetService<AutoSyncService>())
     {
     }
@@ -67,7 +65,6 @@ public partial class MapPage : ContentPage
         TourRuntimeService tourRuntimeService,
         GeofenceEngine geofenceEngine,
         NarrationEngine narrationEngine,
-        AuthService authService,
         AutoSyncService autoSyncService)
     {
         InitializeComponent();
@@ -75,7 +72,6 @@ public partial class MapPage : ContentPage
         _tourRuntimeService = tourRuntimeService;
         _geofenceEngine = geofenceEngine;
         _narrationEngine = narrationEngine;
-        _authService = authService;
         _autoSyncService = autoSyncService;
         _loc = LocalizationService.Current;
 
@@ -92,6 +88,17 @@ public partial class MapPage : ContentPage
         // ═══════════════════════════════════════════
         // FLOATING HEADER
         // ═══════════════════════════════════════════
+        // Note: Profile navigation removed - app works in anonymous mode
+        // Avatar replaced with simple decorative element
+        var headerIcon = new Border
+        {
+            WidthRequest = 40, HeightRequest = 40,
+            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E0F5F0"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
+            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
+            Content = new Label { Text = "�️", FontSize = 20, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center }
+        };
+
         _headerSubtitle = new Label { 
             Text = _loc["MapSubtitle"] ?? "Khánh Hội", 
             FontFamily = "InterBold", FontSize = 20, 
@@ -100,13 +107,18 @@ public partial class MapPage : ContentPage
         
         var titleStack = new VerticalStackLayout
         {
-            HorizontalOptions = LayoutOptions.Start,
-            Spacing = 0,
+            VerticalOptions = LayoutOptions.Center,
             Children =
             {
                 new Label { Text = _loc["MapTitle"] ?? "Audio Tour", FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280") },
                 _headerSubtitle
             }
+        };
+
+        var headerGrid = new Grid
+        {
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+            Children = { titleStack, headerIcon.WithColumn(1) }
         };
 
         var headerCard = new Border
@@ -115,11 +127,10 @@ public partial class MapPage : ContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
             Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
             Shadow = new Shadow { Brush = Microsoft.Maui.Graphics.Colors.Black, Opacity = 0.05f, Radius = 8, Offset = new Point(0, 4) },
-            Padding = new Thickness(14, 12),
-            HorizontalOptions = LayoutOptions.Start,
+            Padding = new Thickness(16),
             Margin = new Thickness(16, 44, 16, 0),
             VerticalOptions = LayoutOptions.Start,
-            Content = titleStack
+            Content = new VerticalStackLayout { Children = { headerGrid } }
         };
 
         // ═══════════════════════════════════════════
@@ -292,7 +303,7 @@ public partial class MapPage : ContentPage
     {
         if (!_runtimeInitialized)
         {
-            await _authService.InitializeAsync();
+            // Auth removed - proceed directly to location permission
 
             // Always request location permission BEFORE starting GPS tracking/runtime.
             var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();

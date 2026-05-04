@@ -386,7 +386,7 @@
                             <textarea id="Description" name="Description" class="form-control mb-3" rows="4" placeholder="Nhập nội dung thuyết minh tiếng Việt...">@viScript</textarea>
                             <div class="d-flex gap-2">
                                 <button type="button" id="btnSaveViScript" class="btn btn-success btn-action">
-                                    <i class="bi bi-save"></i> Lưu VI
+                                    <i class="bi bi-save"></i> Lưu TTS
                                 </button>
                                 <button type="button" id="btnPreviewViScript" class="btn btn-outline-primary btn-action">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -405,8 +405,8 @@
                             </div>
                             <textarea id="lang-script-en" class="form-control mb-3" rows="4" placeholder="English script...">@scriptEn</textarea>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-action btn-save-lang" data-lang="en">
-                                    <i class="bi bi-save"></i> Lưu EN
+                                <button type="button" class="btn btn-warning btn-action btn-translate-single" data-lang="en" data-lang-name="English">
+                                    <i class="bi bi-translate"></i> Dịch
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-action btn-preview-lang" data-lang="en">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -425,8 +425,8 @@
                             </div>
                             <textarea id="lang-script-zh" class="form-control mb-3" rows="4" placeholder="中文脚本...">@scriptZh</textarea>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-action btn-save-lang" data-lang="zh">
-                                    <i class="bi bi-save"></i> Lưu ZH
+                                <button type="button" class="btn btn-warning btn-action btn-translate-single" data-lang="zh" data-lang-name="Chinese">
+                                    <i class="bi bi-translate"></i> Dịch
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-action btn-preview-lang" data-lang="zh">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -445,8 +445,8 @@
                             </div>
                             <textarea id="lang-script-ko" class="form-control mb-3" rows="4" placeholder="한국어 스크립트...">@scriptKo</textarea>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-action btn-save-lang" data-lang="ko">
-                                    <i class="bi bi-save"></i> Lưu KO
+                                <button type="button" class="btn btn-warning btn-action btn-translate-single" data-lang="ko" data-lang-name="Korean">
+                                    <i class="bi bi-translate"></i> Dịch
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-action btn-preview-lang" data-lang="ko">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -465,8 +465,8 @@
                             </div>
                             <textarea id="lang-script-ja" class="form-control mb-3" rows="4" placeholder="日本語スクリプト...">@scriptJa</textarea>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-action btn-save-lang" data-lang="ja">
-                                    <i class="bi bi-save"></i> Lưu JA
+                                <button type="button" class="btn btn-warning btn-action btn-translate-single" data-lang="ja" data-lang-name="Japanese">
+                                    <i class="bi bi-translate"></i> Dịch
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-action btn-preview-lang" data-lang="ja">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -485,8 +485,8 @@
                             </div>
                             <textarea id="lang-script-fr" class="form-control mb-3" rows="4" placeholder="Script français...">@scriptFr</textarea>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-action btn-save-lang" data-lang="fr">
-                                    <i class="bi bi-save"></i> Lưu FR
+                                <button type="button" class="btn btn-warning btn-action btn-translate-single" data-lang="fr" data-lang-name="French">
+                                    <i class="bi bi-translate"></i> Dịch
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-action btn-preview-lang" data-lang="fr">
                                     <i class="bi bi-play-fill"></i> Nghe thử
@@ -497,11 +497,6 @@
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-end mt-3">
-                    <button type="button" id="btnSaveAllFromVi" class="btn btn-danger btn-action">
-                        <i class="bi bi-save-fill"></i> Lưu Tất Cả 6 Ngôn Ngữ
-                    </button>
-                </div>
             </div>
 
             <!-- Tọa độ -->
@@ -845,13 +840,28 @@
                 });
             });
 
-            document.querySelectorAll('.btn-save-lang').forEach(function (button) {
+            // Single language translate buttons (for en, zh, ko, ja, fr)
+            document.querySelectorAll('.btn-translate-single').forEach(function (button) {
                 button.addEventListener('click', async function () {
                     const lang = button.dataset.lang;
+                    const langName = button.dataset.langName;
+                    const sourceText = document.getElementById('Description').value || '';
+
+                    if (!sourceText.trim()) {
+                        showModal('Bạn cần nhập Scripts TTS tiếng Việt trước khi dịch.', 'warning');
+                        return;
+                    }
+
                     try {
-                        await saveLanguage(lang);
+                        showModal(`Đang dịch sang ${langName}...`, 'info');
+                        const result = await postJson(translateUrl, { sourceText: sourceText });
+                        const translations = result.translations || {};
+                        const translatedText = translations[lang] || '';
+
+                        setScriptValue(lang, translatedText);
+                        showModal(`Đã dịch sang ${langName} thành công!`, 'success');
                     } catch (error) {
-                        showStatus(error.message || `Lưu scripts ${languageLabels[lang]} thất bại.`, 'error');
+                        showModal(error.message || `Dịch sang ${langName} thất bại.`, 'error');
                     }
                 });
             });

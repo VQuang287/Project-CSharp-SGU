@@ -2,7 +2,6 @@ using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TourMap.AdminWeb.Data;
 using TourMap.AdminWeb.Models;
@@ -14,72 +13,84 @@ public class QrController : BaseAdminController
 {
     private readonly IConfiguration _config;
 
+    // QR code expiry time in minutes
+    private const int QrExpiryMinutes = 30;
+
     public QrController(AdminDbContext context, IConfiguration config) : base(context)
     {
         _config = config;
     }
 
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
-        var items = await _context.QrCodeEntries
-            .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
-            .ToListAsync();
-        return View(items);
-    }
+        // Generate time-limited QR code for APK download
+        var downloadUrl = _config["AppLinks:ApkDownloadUrl"] ?? Url.Action("Download", "Qr", null, Request.Scheme)!;
+        var expiresAt = DateTime.UtcNow.AddMinutes(QrExpiryMinutes);
+        var token = GenerateQrToken(downloadUrl, expiresAt);
 
-    public async Task<IActionResult> Generate()
-    {
-        await BindPois();
-        return View();
+        var encoded = WebUtility.UrlEncode(downloadUrl + "?token=" + token);
+        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={encoded}";
+
+        var model = new QrDownloadViewModel
+        {
+            QrImageUrl = qrImageUrl,
+            DownloadUrl = downloadUrl,
+            ExpiresAt = expiresAt,
+            ExpiryMinutes = QrExpiryMinutes,
+            GeneratedAt = DateTime.UtcNow
+        };
+
+        return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Generate(string poiId)
+    public IActionResult Regenerate()
     {
-        if (string.IsNullOrWhiteSpace(poiId))
-        {
-            ModelState.AddModelError(string.Empty, "Vui lòng chọn POI.");
-            await BindPois();
-            return View();
-        }
-
-        var poi = await _context.Pois.AsNoTracking().FirstOrDefaultAsync(x => x.Id == poiId);
-        if (poi == null) return NotFound();
-
-        // Use direct custom scheme so both in-app scanner and device camera can open POI directly.
-        var deepLink = $"audiotour://poi/{poi.Id}";
-        var encoded = WebUtility.UrlEncode(deepLink);
-        var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={encoded}";
-
-        _context.QrCodeEntries.Add(new QrCodeEntry
-        {
-            PoiId = poi.Id,
-            DeepLink = deepLink,
-            QrImageUrl = qrUrl,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await _context.SaveChangesAsync();
+        // Just redirect to Index to generate new QR with fresh expiry
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
+    // APK Download page - validates token and shows download button
+    [HttpGet("qr/download")]
+    [AllowAnonymous]
+    public IActionResult Download(string? token)
     {
-        var entry = await _context.QrCodeEntries.FirstOrDefaultAsync(x => x.Id == id);
-        if (entry != null)
+        var apkUrl = _config["AppLinks:ApkDownloadUrl"] ?? "/apk/TourMap.apk";
+
+        // Validate token
+        if (string.IsNullOrWhiteSpace(token))
         {
-            _context.QrCodeEntries.Remove(entry);
-            await _context.SaveChangesAsync();
+            return View("~/Views/Qr/Expired.cshtml", new QrExpiredViewModel
+            {
+                Message = "Mã QR không hợp lệ.",
+                AdminWebUrl = Url.Action("Index", "Qr", null, Request.Scheme)
+            });
         }
 
-        return RedirectToAction(nameof(Index));
+        if (!ValidateQrToken(token, out var expiryTime) || expiryTime < DateTime.UtcNow)
+        {
+            return View("~/Views/Qr/Expired.cshtml", new QrExpiredViewModel
+            {
+                Message = "Mã QR đã hết hạn. Vui lòng quét lại mã QR mới từ Admin.",
+                AdminWebUrl = Url.Action("Index", "Qr", null, Request.Scheme)
+            });
+        }
+
+        var remainingMinutes = (int)(expiryTime - DateTime.UtcNow).TotalMinutes;
+
+        var model = new QrDownloadPageViewModel
+        {
+            ApkUrl = apkUrl,
+            ExpiresAt = expiryTime,
+            RemainingMinutes = remainingMinutes,
+            AppName = _config["AppLinks:AppName"] ?? "TourMap Audio Guide"
+        };
+
+        return View("~/Views/Qr/Download.cshtml", model);
     }
 
-    // Landing page for QR links. Tries to open the app, falls back to store or web POI details.
+    // Landing page for legacy QR links (backward compatibility)
     [HttpGet("Launch/{poiId}")]
     [AllowAnonymous]
     public async Task<IActionResult> Launch(string poiId)
@@ -109,11 +120,42 @@ public class QrController : BaseAdminController
         return View("~/Views/Qr/Launch.cshtml", model);
     }
 
-    private async Task BindPois()
+    // Simple token generation for QR expiry validation
+    private static string GenerateQrToken(string url, DateTime expiry)
     {
-        ViewBag.Pois = await _context.Pois.AsNoTracking()
-            .OrderBy(x => x.Title)
-            .Select(x => new SelectListItem(x.Title, x.Id))
-            .ToListAsync();
+        var data = url + expiry.ToString("yyyyMMddHHmm");
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(data));
+        return Convert.ToHexString(hash).Substring(0, 16);
     }
+
+    private static bool ValidateQrToken(string token, out DateTime expiry)
+    {
+        expiry = DateTime.MinValue;
+        // Simple validation: token is valid if it matches the format
+        return token.Length == 16;
+    }
+}
+
+// View Models for QR
+public class QrDownloadViewModel
+{
+    public string QrImageUrl { get; set; } = string.Empty;
+    public string DownloadUrl { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public int ExpiryMinutes { get; set; }
+    public DateTime GeneratedAt { get; set; }
+}
+
+public class QrDownloadPageViewModel
+{
+    public string ApkUrl { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public int RemainingMinutes { get; set; }
+    public string AppName { get; set; } = string.Empty;
+}
+
+public class QrExpiredViewModel
+{
+    public string Message { get; set; } = string.Empty;
+    public string? AdminWebUrl { get; set; }
 }

@@ -2,6 +2,8 @@ using TourMap.Models;
 
 namespace TourMap.Services;
 
+// Note: Authentication removed - app now works in anonymous mode only
+
 /// <summary>
 /// App-level runtime orchestration:
 /// - load latest POIs from SQLite into geofence

@@ -2,19 +2,20 @@ using TourMap.Services;
 
 namespace TourMap.Pages;
 
+/// <summary>
+/// Splash Page - No authentication, users are anonymous by default.
+/// Only handles language selection and connects to device tracking.
+/// </summary>
 public class SplashPage : ContentPage
 {
-    private readonly AuthService? _authService;
     private readonly DeviceTrackingService? _deviceTrackingService;
-    private bool _languageConfirmed;
 
-    public SplashPage() : this(TryResolveAuthService(), TryResolveDeviceTrackingService())
+    public SplashPage() : this(TryResolveDeviceTrackingService())
     {
     }
 
-    public SplashPage(AuthService? authService, DeviceTrackingService? deviceTrackingService)
+    public SplashPage(DeviceTrackingService? deviceTrackingService)
     {
-        _authService = authService;
         _deviceTrackingService = deviceTrackingService;
         InitializeUI();
     }
@@ -104,143 +105,132 @@ public class SplashPage : ContentPage
         base.OnAppearing();
         try
         {
-            // Keep splash on screen until user explicitly chooses a language.
-            // We only preload previously saved language for UI text consistency.
             var savedLang = Preferences.Default.Get("selected_language", string.Empty);
-            if (!string.IsNullOrWhiteSpace(savedLang))
+            
+            if (string.IsNullOrEmpty(savedLang))
             {
-                LocalizationService.Current.CurrentLanguage = savedLang;
+                // First time - show language selection, wait for user
+                Console.WriteLine("[SplashPage] No language selected, showing UI");
+                return;
             }
 
-            if (_languageConfirmed)
-            {
-                await EnsureGuestSessionAsync();
-                NavigateToShell();
-            }
+            // Has saved language - auto proceed after delay
+            Console.WriteLine($"[SplashPage] Saved language: {savedLang}");
+            LocalizationService.Current.CurrentLanguage = savedLang;
+            
+            // Wait for UI to fully render
+            await Task.Delay(500);
+            
+            // Navigate to main app
+            NavigateToShell();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex.Message}");
+            Console.WriteLine($"[SplashPage] Error in OnAppearing: {ex}");
         }
     }
 
     private async Task SelectLanguageAndProceed(string lang)
     {
-        _languageConfirmed = true;
         Preferences.Default.Set("selected_language", lang);
         LocalizationService.Current.CurrentLanguage = lang;
         await Task.Delay(200);
-        await EnsureGuestSessionAsync();
         NavigateToShell();
-    }
-
-    private async Task EnsureGuestSessionAsync()
-    {
-        if (_authService == null)
-        {
-            return;
-        }
-
-        try
-        {
-            await _authService.InitializeAsync();
-            if (_authService.IsAuthenticated)
-            {
-                return;
-            }
-
-            var guestSignedIn = await _authService.LoginAnonymousAsync();
-            if (!guestSignedIn)
-            {
-                Console.WriteLine("[SplashPage] Guest session not established. App continues in offline-first mode.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[SplashPage] Guest session setup failed: {ex.Message}");
-        }
     }
 
     private async void NavigateToShell()
     {
-        // Connect to device tracking hub
-        if (_deviceTrackingService != null)
+        try
         {
+            // Mark onboarding completed
+            Preferences.Default.Set("onboarding_completed", true);
+
+            // Get AppShell service
+            AppShell? shell = null;
             try
             {
-                var hubUrls = BackendEndpoints.GetDeviceHubUrls().ToList();
-                foreach (var hubUrl in hubUrls)
-                {
-                    try
-                    {
-                        await _deviceTrackingService.ConnectAsync(hubUrl);
-                        BackendEndpoints.RememberWorkingServerFromUrl(hubUrl);
-                        Console.WriteLine($"[SplashPage] Connected to device tracking hub at {hubUrl}");
-                        break;
-                    }
-                    catch (Exception) when (hubUrl != hubUrls.Last())
-                    {
-                        Console.WriteLine($"[SplashPage] Failed to connect to {hubUrl}, trying next...");
-                    }
-                }
+                shell = ServiceHelper.GetService<AppShell>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SplashPage] Failed to connect device tracking: {ex.Message}");
-                // Continue anyway - app should work without tracking
+                Console.WriteLine($"[SplashPage] Failed to get AppShell: {ex.Message}");
             }
-        }
-        
-        if (Application.Current?.Windows.FirstOrDefault() is Window window)
-        {
-            // Always route authenticated users to shell UI.
-            // Mark onboarding completed to avoid returning to legacy main menu UI.
-            Preferences.Default.Set("onboarding_completed", true);
-            window.Page = ServiceHelper.GetService<AppShell>();
-        }
 
-        // If app was launched via deeplink (stored by platform MainActivity), navigate to POI detail
-        try
-        {
-            var finalPoiId = DeepLinkHelper.ConsumePendingPoiId();
-            if (!string.IsNullOrEmpty(finalPoiId))
+            if (shell == null)
             {
-                // Chờ Routing thiết lập xong UI rồi mới Navigate
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(500); // Chờ AppShell khởi tạo Frame
-                    MainThread.BeginInvokeOnMainThread(async () =>
-                    {
-                        try
-                        {
-                            await Shell.Current.GoToAsync($"{nameof(Pages.PoiDetailPage)}?poiId={finalPoiId}");
-                        }
-                        catch (Exception navEx)
-                        {
-                            Console.WriteLine($"[SplashPage] Deep link navigation failed: {navEx.Message}");
-                        }
-                    });
-                });
+                Console.WriteLine("[SplashPage] ERROR: AppShell is null, creating new instance");
+                shell = new AppShell();
             }
+
+            // Navigate on main thread with delay
+            await Task.Delay(100);
+            
+            var window = Application.Current?.Windows.FirstOrDefault();
+            if (window == null)
+            {
+                Console.WriteLine("[SplashPage] ERROR: No window available");
+                return;
+            }
+
+            // Set the page
+            window.Page = shell;
+            Console.WriteLine("[SplashPage] Navigated to AppShell");
+
+            // Fire and forget device tracking connection
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_deviceTrackingService != null)
+                    {
+                        var hubUrls = BackendEndpoints.GetDeviceHubUrls().ToList();
+                        foreach (var hubUrl in hubUrls)
+                        {
+                            try
+                            {
+                                await _deviceTrackingService.ConnectAsync(hubUrl);
+                                BackendEndpoints.RememberWorkingServerFromUrl(hubUrl);
+                                Console.WriteLine($"[SplashPage] Connected to {hubUrl}");
+                                break;
+                            }
+                            catch { /* ignore */ }
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+            });
+
+            // Handle deep link (fire and forget)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(800);
+                try
+                {
+                    var poiId = DeepLinkHelper.ConsumePendingPoiId();
+                    if (!string.IsNullOrEmpty(poiId))
+                    {
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            try
+                            {
+                                await Shell.Current.GoToAsync($"{nameof(Pages.PoiDetailPage)}?poiId={poiId}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[SplashPage] Deep link failed: {ex.Message}");
+                            }
+                        });
+                    }
+                }
+                catch { /* ignore */ }
+            });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SplashPage] Lỗi Parse Deeplink QR: {ex.Message}");
+            Console.WriteLine($"[SplashPage] CRITICAL ERROR: {ex}");
         }
     }
 
-    private static AuthService? TryResolveAuthService()
-    {
-        try
-        {
-            return ServiceHelper.GetService<AuthService>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-    
     private static DeviceTrackingService? TryResolveDeviceTrackingService()
     {
         try

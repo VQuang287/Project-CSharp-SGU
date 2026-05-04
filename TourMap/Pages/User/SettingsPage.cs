@@ -106,16 +106,14 @@ public class SettingsPage : ContentPage
         var versionRow = CreateSettingRow("ℹ️", loc["VersionLabel"] ?? "Phiên bản", versionText, true, out _versionTitle);
 
         var infoSection = new VerticalStackLayout { Children = { _infoHeader, CreateGroupCard(new VerticalStackLayout { Children = { versionRow } }) } };
-        
-        var bottomPadding = new BoxView { HeightRequest = 40, Color = Colors.Transparent };
 
         Content = new ScrollView
         {
             Content = new VerticalStackLayout
             {
                 Spacing = 24,
-                Padding = new Thickness(16, 0, 16, 16),
-                Children = { _headerTitle, langSection, prefSection, offlineSection, dataSection, infoSection, bottomPadding }
+                Padding = new Thickness(16, 0, 16, 24), // Bottom padding đủ để tránh thanh đen
+                Children = { _headerTitle, langSection, prefSection, offlineSection, dataSection, infoSection }
             }
         };
 

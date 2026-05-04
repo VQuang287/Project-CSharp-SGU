@@ -6,7 +6,6 @@ namespace TourMap
     {
         private const string OnboardingCompletedKey = "onboarding_completed";
         private readonly SyncService _syncService;
-        private readonly AuthService _authService;
         private readonly TourRuntimeService _tourRuntimeService;
         private readonly LocalizationService _loc;
         private readonly Label _syncStatusLabel;
@@ -18,10 +17,9 @@ namespace TourMap
         private readonly Button _openQrBtn;
         private readonly Button _settingsBtn;
 
-        public MainPage(SyncService syncService, AuthService authService, TourRuntimeService tourRuntimeService)
+        public MainPage(SyncService syncService, TourRuntimeService tourRuntimeService)
         {
             _syncService = syncService;
-            _authService = authService;
             _tourRuntimeService = tourRuntimeService;
             _loc = LocalizationService.Current;
 
@@ -227,8 +225,7 @@ namespace TourMap
                 var loc = LocalizationService.Current;
                 _syncStatusLabel.Text = loc["Syncing"];
 
-                // Authenticate (Anonymous Device Login) first
-                await _authService.InitializeAsync();
+                // Auth removed - proceed directly to sync
 
                 var success = false;
                 foreach (var serverUrl in GetSyncBaseUrls())
@@ -260,7 +257,7 @@ namespace TourMap
             // 10.0.2.2 = host machine IP from Android emulator
             return new[]
             {
-            "http://192.168.1.221:5042",
+            "http://192.168.1.7:5042",
             "http://10.0.2.2:5042",
             "http://localhost:5042"
         };

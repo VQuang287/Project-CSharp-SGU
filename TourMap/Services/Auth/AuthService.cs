@@ -141,6 +141,72 @@ public class AuthService
     }
 
     // ═══════════════════════════════════════════════════════════
+    // Anonymous Device Login (Guest mode) - for SignalR authentication
+    // ═══════════════════════════════════════════════════════════
+    public async Task<AuthResult> LoginAnonymousAsync()
+    {
+        try
+        {
+            var deviceId = GetOrCreateDeviceId();
+            var request = new { DeviceId = deviceId };
+
+            Exception? lastConnectException = null;
+
+            foreach (var baseUrl in BackendEndpoints.GetAuthBaseUrls())
+            {
+                try
+                {
+                    _logger.LogInformation("[Auth] Trying anonymous login at {0}", baseUrl);
+                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login", request);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (result != null)
+                        {
+                            await SaveTokensAsync(result);
+                            BackendEndpoints.RememberWorkingServerFromUrl(baseUrl);
+                            _logger.LogInformation("[Auth] Anonymous login success at {0}", baseUrl);
+                            return new AuthResult(true);
+                        }
+
+                        return new AuthResult(false, "Server trả về dữ liệu không hợp lệ.");
+                    }
+
+                    var error = await response.Content.ReadAsStringAsync();
+                    var serverMsg = TryExtractServerMessage(error);
+                    _logger.LogWarning("[Auth] Anonymous login failed at {0}: {1} - {2}", baseUrl, (int)response.StatusCode, serverMsg ?? error);
+                    continue;
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastConnectException = ex;
+                    _logger.LogWarning("[Auth] Anonymous login request failed at {0}: {1}", baseUrl, ex.Message);
+                    continue;
+                }
+                catch (TaskCanceledException ex)
+                {
+                    lastConnectException = ex;
+                    _logger.LogWarning("[Auth] Anonymous login timeout at {0}", baseUrl);
+                    continue;
+                }
+            }
+
+            if (lastConnectException != null)
+            {
+                _logger.LogWarning("[Auth] All anonymous login endpoints failed. Last error: {0}", lastConnectException.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Anonymous login error: {ex.Message}");
+        }
+
+        return new AuthResult(false, "Không thể kết nối đến server.");
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // Register new account
     // ═══════════════════════════════════════════════════════════
     public async Task<AuthResult> RegisterAsync(string email, string password, string displayName)
@@ -215,55 +281,6 @@ public class AuthService
         }
 
         return new AuthResult(false, "Không thể kết nối đến server.");
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // Anonymous Device Login (Guest mode — kept for backward compatibility)
-    // ═══════════════════════════════════════════════════════════
-    public async Task<bool> LoginAnonymousAsync()
-    {
-        try
-        {
-            // QUAN TRỌNG: Xóa token cũ trước khi login dạng khách
-            // để không bị dính token của tài khoản đã đăng nhập trước đó
-            await ClearTokensAsync();
-            CurrentToken = null;
-            CurrentUser = null;
-            _httpClient.DefaultRequestHeaders.Authorization = null;
-
-            _deviceId = GetOrCreateDeviceId();
-            var request = new { DeviceId = _deviceId };
-
-            foreach (var baseUrl in BackendEndpoints.GetAuthBaseUrls())
-            {
-                try
-                {
-                    _logger.LogInformation("[Auth] Trying anonymous login at {0}", baseUrl);
-                    var response = await _httpClient.PostAsJsonAsync($"{baseUrl}/login", request);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadFromJsonAsync<AuthResponse>(
-                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                        if (result != null)
-                        {
-                            await SaveTokensAsync(result);
-                            BackendEndpoints.RememberWorkingServerFromUrl(baseUrl);
-                            _logger.LogInformation("[Auth] Anonymous login success. Role: {0}", result.User?.Role);
-                            return true;
-                        }
-                    }
-                }
-                catch (HttpRequestException) { continue; }
-                catch (TaskCanceledException) { continue; }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Auth Error: {ex.Message}");
-        }
-
-        return false;
     }
 
     // ═══════════════════════════════════════════════════════════

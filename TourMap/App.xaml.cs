@@ -8,14 +8,17 @@ namespace TourMap
         private readonly Pages.SplashPage _splashPage;
         private readonly Services.AutoSyncService _autoSyncService;
         private readonly Services.DeviceTrackingService _deviceTracking;
+        private readonly Services.AuthService _authService;
 
-        public App(Pages.SplashPage splashPage, Services.AutoSyncService autoSyncService, Services.DeviceTrackingService deviceTracking)
+        public App(Pages.SplashPage splashPage, Services.AutoSyncService autoSyncService, Services.DeviceTrackingService deviceTracking, Services.AuthService authService)
         {
             _splashPage = splashPage;
             _autoSyncService = autoSyncService;
             _deviceTracking = deviceTracking;
+            _authService = authService;
             InitializeComponent();
         }
+        // Note: Auth removed - all users are treated as anonymous guests
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
@@ -25,6 +28,30 @@ namespace TourMap
             {
                 try
                 {
+                    // Initialize auth - get anonymous token for SignalR
+                    await _authService.InitializeAsync();
+                    if (!_authService.IsAuthenticated)
+                    {
+                        Console.WriteLine("[App] Getting initial anonymous auth token...");
+                        var authResult = await _authService.LoginAnonymousAsync();
+                        if (authResult.Success)
+                        {
+                            Console.WriteLine("[App] Anonymous auth token obtained successfully");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[App] Failed to get anonymous token: {authResult.ErrorMessage}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[App] Auth initialization failed: {ex.Message}");
+                }
+
+                try
+                {
+                    // Auth removed - sync works in anonymous mode
                     await _autoSyncService.EnsureSyncedAsync("app-created");
                 }
                 catch (Exception ex)
@@ -48,6 +75,17 @@ namespace TourMap
                 try
                 {
                     Console.WriteLine("[App] App resumed - ensuring device tracking connected...");
+                    
+                    // Đảm bảo có JWT token cho SignalR authentication
+                    if (!_authService.IsAuthenticated)
+                    {
+                        Console.WriteLine("[App] Getting anonymous auth token...");
+                        var authResult = await _authService.LoginAnonymousAsync();
+                        if (!authResult.Success)
+                        {
+                            Console.WriteLine($"[App] Failed to get anonymous token: {authResult.ErrorMessage}");
+                        }
+                    }
                     
                     // Luôn disconnect trước để reset state
                     if (_deviceTracking.IsConnected)

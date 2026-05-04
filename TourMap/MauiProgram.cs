@@ -38,8 +38,9 @@ namespace TourMap
             builder.Services.AddTransient<Pages.SettingsPage>();
             builder.Services.AddTransient<Pages.OfflinePacksPage>();
             builder.Services.AddTransient<Pages.SplashPage>();
+            // Auth pages removed - app works in anonymous mode only
             builder.Services.AddTransient<AppShell>();
-            // SYS-H02 fix: MainPage is not used in current auth flow; registered Transient in case of future use
+            // SYS-H02 fix: MainPage registered for compatibility
             builder.Services.AddTransient<MainPage>();
             
             // === Tour Pages ===
@@ -51,12 +52,12 @@ namespace TourMap
             builder.Services.AddSingleton<Services.NarrationEngine>();
             builder.Services.AddSingleton<Services.TourRuntimeService>();
 
-            // === Phase 2 & 3: Audio Player, Sync & Auth ===
+            // === Phase 2 & 3: Audio Player, Sync ===
             builder.Services.AddSingleton<Services.IAudioPlayerService, Services.AudioPlayerService>();
             
             // BUG-W01 fix: Use HttpClient from DI instead of manual new HttpClient()
-            // Register as Singleton to match MainPage's Singleton lifetime
             builder.Services.AddHttpClient();
+            // Auth service needed for SignalR authentication
             builder.Services.AddSingleton<Services.AuthService>();
             builder.Services.AddSingleton<Services.SyncService>();
             builder.Services.AddSingleton<Services.AutoSyncService>();
@@ -65,7 +66,7 @@ namespace TourMap
             // === Phase 3.3: Logging Framework ===
             builder.Services.AddSingleton<Services.ILoggerService, Services.LoggerService>();
 
-            // === Phase 3.4: Auto Download (thay thế tab Offline) ===
+            // === Phase 3.4: Auto Download ===
             builder.Services.AddSingleton<Services.AutoDownloadService>();
 
             // === Platform-specific Services (Android) ===

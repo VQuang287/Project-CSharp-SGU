@@ -26,14 +26,7 @@
             ContentTemplate="{DataTemplate pages:PoiListPage}"
             Route="PoiListPage" />
 
-        <!-- Tab 3: QR Scanner -->
-        <ShellContent
-            x:Name="QrTab"
-            Title="{Binding [QrBtn], Source={x:Static services:LocalizationService.Current}}"
-            ContentTemplate="{DataTemplate pages:QrScannerPage}"
-            Route="QrScannerPage" />
-
-        <!-- Tab 4: Settings (Cài đặt) -->
+        <!-- Tab 3: Settings (Cài đặt) -->
         <ShellContent
             x:Name="SettingsTab"
             Title="{Binding [SettingsTitle], Source={x:Static services:LocalizationService.Current}}"

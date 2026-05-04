@@ -13,9 +13,10 @@ namespace TourMap
             Services.LocalizationService.Current.LanguageChanged += OnLanguageChanged;
             ApplyLocalization();
 
-            // Tab pages (MapPage, QrScannerPage, SettingsPage) are self-registered via TabBar in XAML
+            // Tab pages (MapPage, PoiListPage, SettingsPage) are self-registered via TabBar in XAML
             // Only register pages that are navigated to via GoToAsync push-nav
             Routing.RegisterRoute(nameof(Pages.PoiDetailPage), typeof(Pages.PoiDetailPage));
+            // Auth pages removed - app works in anonymous mode only
             
             // Tour pages
             Routing.RegisterRoute(nameof(Pages.Tours.TourListPage), typeof(Pages.Tours.TourListPage));
@@ -26,17 +27,19 @@ namespace TourMap
         {
             base.OnAppearing();
 
-            await EnsureDeviceTrackingConnectedAsync();
-            await NavigatePendingDeepLinkAsync();
-
-            if (_runtimeBootstrapped)
-                return;
-            _runtimeBootstrapped = true;
-
             try
             {
+                // Auth removed - connect device tracking directly (fire and forget)
+                _ = ConnectDeviceTrackingAsync();
+                
+                // Handle deep link
+                _ = NavigatePendingDeepLinkAsync();
+
+                if (_runtimeBootstrapped)
+                    return;
+                _runtimeBootstrapped = true;
+
                 // Proactively request location permission & start runtime.
-                // This ensures users who already completed onboarding still get GPS prompt.
                 var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
                 if (status != PermissionStatus.Granted)
                 {
@@ -48,7 +51,7 @@ namespace TourMap
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AppShell] Runtime bootstrap failed: {ex.Message}");
+                Console.WriteLine($"[AppShell] Runtime bootstrap failed: {ex}");
             }
         }
 
@@ -70,18 +73,20 @@ namespace TourMap
             }
         }
 
-        private async Task EnsureDeviceTrackingConnectedAsync()
+        private async Task ConnectDeviceTrackingAsync()
         {
             if (_deviceTrackingConnecting)
                 return;
 
             try
             {
-                var authService = Services.ServiceHelper.GetService<Services.AuthService>();
-                await authService.InitializeAsync();
-                // Guest cũng được connect device tracking (không cần check IsAuthenticated)
-
                 var trackingService = Services.ServiceHelper.GetService<Services.DeviceTrackingService>();
+                if (trackingService == null)
+                {
+                    Console.WriteLine("[AppShell] DeviceTrackingService is null");
+                    return;
+                }
+
                 if (trackingService.IsConnected)
                     return;
 
@@ -107,7 +112,7 @@ namespace TourMap
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AppShell] EnsureDeviceTrackingConnectedAsync failed: {ex.Message}");
+                Console.WriteLine($"[AppShell] ConnectDeviceTrackingAsync failed: {ex}");
             }
             finally
             {
@@ -125,7 +130,6 @@ namespace TourMap
             var loc = Services.LocalizationService.Current;
             MapTab.Title = loc["MapBtn"];
             PoiListTab.Title = loc["PoiListBtn"];
-            QrTab.Title = loc["QrBtn"];
             SettingsTab.Title = loc["SettingsTitle"];
         }
     }

@@ -27,9 +27,6 @@ public class PoiDetailPage : ContentPage
     }
 
     private Poi? _poi;
-    // REMOVED: Local language selection - now always uses system language
-    // private string _selectedLang = "vi";
-    private string _selectedSpeed = "1x";
     private bool _isPlaying = false;
 
     // UI refs
@@ -44,20 +41,14 @@ public class PoiDetailPage : ContentPage
     private readonly Label _statusLabel;
     private readonly Label _timeCurrentLabel;
     private readonly Label _timeRemainingLabel;
-    private readonly Label _statAudioLabel;
-    private readonly Label _statWalkLabel;
-    private readonly Label _gpsLabel;
     private readonly ProgressBar _progressBar;
     private readonly Button _playPauseBtn;
-    // REMOVED: Language selector - now uses system language
-    // private readonly HorizontalStackLayout _langRow;
-    private readonly HorizontalStackLayout _speedRow;
     private readonly BoxView _waveformPlaceholder;
 
     // REMOVED: Per-POI language selection - now always uses system language from LocalizationService
     // private static readonly string[] LangCodes = { "vi", "en", "ko", "zh" };
     // private static readonly string[] LangLabels = { "VI", "EN", "KO", "ZH" };
-    private static readonly string[] SpeedOptions = { "0.75x", "1x", "1.25x", "1.5x" };
+    // Speed options removed - using default speed only
 
     public PoiDetailPage() : this(
         ServiceHelper.GetService<DatabaseService>(),
@@ -115,19 +106,11 @@ public class PoiDetailPage : ContentPage
             VerticalOptions = LayoutOptions.Start,
             Margin = new Thickness(16, 44, 0, 0),
         };
-        backBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await Shell.Current.GoToAsync("..")) });
-
-        // Like + Share buttons
-        var likeBtn = CreateOverlayButton("♡");
-        var shareBtn = CreateOverlayButton("↗");
-        var topRightBtns = new HorizontalStackLayout
-        {
-            Spacing = 8,
-            HorizontalOptions = LayoutOptions.End,
-            VerticalOptions = LayoutOptions.Start,
-            Margin = new Thickness(0, 44, 16, 0),
-            Children = { likeBtn, shareBtn }
-        };
+        backBtn.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => 
+        { 
+            try { await Shell.Current.GoToAsync(".."); } 
+            catch { /* Fallback: try going back */ }
+        })});
 
         // Category badge + title overlay at bottom
         _categoryBadge = new Label
@@ -165,27 +148,7 @@ public class PoiDetailPage : ContentPage
         var heroGrid = new Grid
         {
             HeightRequest = 208,
-            Children = { _heroImage, gradientOverlay, backBtn, topRightBtns, bottomInfo }
-        };
-
-        // ═══════════════════════════════════════════
-        // QUICK STATS ROW
-        // ═══════════════════════════════════════════
-        _statAudioLabel = new Label { Text = "— " + (LocalizationService.Current["AudioStat"] ?? "thuyết minh"), FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center };
-        _statWalkLabel = new Label { Text = "— " + (LocalizationService.Current["WalkStat"] ?? "phút đi bộ"), FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center };
-        
-        var audioStatRow = new HorizontalStackLayout { Spacing = 4, Children = { new Label { Text = "🕐", FontSize = 13 }, _statAudioLabel } };
-        var walkStatRow = new HorizontalStackLayout { Spacing = 4, Children = { new Label { Text = "🚶", FontSize = 13 }, _statWalkLabel } };
-
-        var statsRow = new HorizontalStackLayout
-        {
-            Spacing = 16, Padding = new Thickness(16, 12, 16, 8),
-            Children =
-            {
-                CreateStatItem("📍", "—"),
-                audioStatRow,
-                walkStatRow,
-            }
+            Children = { _heroImage, gradientOverlay, backBtn, bottomInfo }
         };
 
         // ═══════════════════════════════════════════
@@ -304,19 +267,6 @@ public class PoiDetailPage : ContentPage
             Children = { skipBackBtn, _playPauseBtn, skipFwdBtn }
         };
 
-        // Speed selector
-        _speedRow = new HorizontalStackLayout
-        {
-            HorizontalOptions = LayoutOptions.Center,
-            Spacing = 8,
-            Margin = new Thickness(0, 4, 0, 0),
-        };
-        foreach (var s in SpeedOptions)
-        {
-            var speedBtn = CreateSpeedChip(s);
-            _speedRow.Children.Add(speedBtn);
-        }
-
         // Status label
         _statusLabel = new Label
         {
@@ -332,35 +282,8 @@ public class PoiDetailPage : ContentPage
             Padding = new Thickness(16, 12),
             Margin = new Thickness(0, 8, 0, 0),
             Spacing = 4,
-            Children = { audioHeaderRow, _audioTypeLabel, _waveformPlaceholder, _progressBar, timeRow, controlsRow, _speedRow, _statusLabel }
+            Children = { audioHeaderRow, _audioTypeLabel, _waveformPlaceholder, _progressBar, timeRow, controlsRow, _statusLabel }
         };
-
-        // ═══════════════════════════════════════════
-        // MAP LINK
-        // ═══════════════════════════════════════════
-        var mapIcon = new Border
-        {
-            WidthRequest = 32, HeightRequest = 32,
-            BackgroundColor = Color.FromArgb("#E0F5F0"),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
-            Stroke = Colors.Transparent,
-            Content = new Label { Text = "📍", FontSize = 15, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center },
-        };
-
-        _gpsLabel = new Label { Text = loc["GpsCoordinates"] ?? "Tọa độ GPS", FontFamily = "InterMedium", FontSize = 13, TextColor = Color.FromArgb("#18181B"), VerticalOptions = LayoutOptions.Center };
-        var mapInfo = new HorizontalStackLayout
-        {
-            Spacing = 8,
-            Padding = new Thickness(16, 12),
-            BackgroundColor = Colors.White,
-            Children =
-            {
-                mapIcon,
-                _gpsLabel,
-            }
-        };
-        mapInfo.Margin = new Thickness(0, 8, 0, 0);
-        mapInfo.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(OnShowCoordinates) });
 
         // ═══════════════════════════════════════════
         // FULL LAYOUT
@@ -371,11 +294,10 @@ public class PoiDetailPage : ContentPage
             Children =
             {
                 heroGrid,
-                new VerticalStackLayout { BackgroundColor = Colors.White, Padding = new Thickness(0, 4, 0, 8), Children = { statsRow } },
                 descSection,
                 audioSection,
-                mapInfo,
-                new BoxView { HeightRequest = 24 }, // Bottom padding
+                // Bottom padding only - no black bar
+                new BoxView { HeightRequest = 16, BackgroundColor = Colors.Transparent },
             }
         };
 
@@ -572,97 +494,9 @@ public class PoiDetailPage : ContentPage
         };
     }
 
-    private void OnSpeedSelected(string speed)
-    {
-        _selectedSpeed = speed;
-        UpdateSpeedChipStyles();
-        
-        // Parse speed value and apply to narration engine
-        if (float.TryParse(speed.Replace("x", ""), out float speedValue))
-        {
-            _narrationEngine.Speed = speedValue;
-            Console.WriteLine($"[PoiDetailPage] ⚡ Speed changed to {speedValue}x");
-        }
-    }
-
-    private async void OnShowCoordinates()
-    {
-        if (_poi == null) return;
-        
-        var coordinates = $"Lat: {_poi.Latitude:F6}\nLon: {_poi.Longitude:F6}";
-        await DisplayAlertAsync("Tọa độ", coordinates, "OK");
-    }
-
     // ═══════════════════════════════════════════════════════════
     // UI Factory Methods
     // ═══════════════════════════════════════════════════════════
-
-    private Border CreateOverlayButton(string icon)
-    {
-        return new Border
-        {
-            WidthRequest = 36, HeightRequest = 36,
-            BackgroundColor = Color.FromRgba(0, 0, 0, 0.3),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = Colors.Transparent,
-            Content = new Label { Text = icon, FontSize = 16, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center },
-        };
-    }
-
-    private HorizontalStackLayout CreateStatItem(string icon, string text)
-    {
-        return new HorizontalStackLayout
-        {
-            Spacing = 4,
-            Children =
-            {
-                new Label { Text = icon, FontSize = 13 },
-                new Label { Text = text, FontFamily = "InterRegular", FontSize = 12, TextColor = Color.FromArgb("#6B7280"), VerticalOptions = LayoutOptions.Center },
-            }
-        };
-    }
-
-    private Border CreateSpeedChip(string speed)
-    {
-        var isActive = speed == _selectedSpeed;
-        var chipLabel = new Label
-        {
-            Text = speed,
-            FontFamily = "InterMedium", FontSize = 11,
-            TextColor = isActive ? Colors.White : Color.FromArgb("#9CA3AF"),
-            HorizontalTextAlignment = TextAlignment.Center,
-            VerticalTextAlignment = TextAlignment.Center,
-        };
-
-        var chip = new Border
-        {
-            Padding = new Thickness(12, 4),
-            BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1"),
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
-            Stroke = Colors.Transparent,
-            Content = chipLabel,
-        };
-
-        chip.GestureRecognizers.Add(new TapGestureRecognizer
-        {
-            Command = new Command(() => OnSpeedSelected(speed))
-        });
-
-        return chip;
-    }
-
-    private void UpdateSpeedChipStyles()
-    {
-        for (int i = 0; i < _speedRow.Children.Count; i++)
-        {
-            if (_speedRow.Children[i] is Border chip && chip.Content is Label label)
-            {
-                var isActive = SpeedOptions[i] == _selectedSpeed;
-                chip.BackgroundColor = isActive ? Color.FromArgb("#0D7A5F") : Color.FromArgb("#F6F5F1");
-                label.TextColor = isActive ? Colors.White : Color.FromArgb("#9CA3AF");
-            }
-        }
-    }
     
     private void OnLanguageChanged()
     {
@@ -679,9 +513,6 @@ public class PoiDetailPage : ContentPage
                 _descHeaderLabel.Text = loc["PoiDetailDescription"] ?? "Chi tiết";
                 _audioHeaderLabel.Text = loc["PoiDetailAudio"] ?? "Thuyết minh audio";
                 _audioTypeLabel.Text = loc["AudioTts"] ?? "🎧 TTS";
-                _gpsLabel.Text = loc["GpsCoordinates"] ?? "Tọa độ GPS";
-                _statAudioLabel.Text = "— " + (loc["AudioStat"] ?? "thuyết minh");
-                _statWalkLabel.Text = "— " + (loc["WalkStat"] ?? "phút đi bộ");
                 _playPauseBtn.Text = _isPlaying ? "⏸" : "▶";
                 
                 if (_poi != null)

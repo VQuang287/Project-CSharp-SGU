@@ -24,8 +24,9 @@ public static class BackendEndpoints
 
         // Dev defaults - UPDATE THIS to match your PC's IP address
         // Find your IP: cmd -> ipconfig -> IPv4 Address (e.g., 192.168.1.5)
+        // Order: ngrok first (allows cross-network access), then LAN (local fallback)
         AddAuthorityFromUrl(candidates, "https://nectar-fade-repose.ngrok-free.dev"); // ngrok tunnel (cross-network)
-        AddAuthorityFromUrl(candidates, "http://192.168.1.221:5042"); // LAN IP (this machine)
+        AddAuthorityFromUrl(candidates, "http://192.168.1.4:5042"); // LAN IP (local fallback)
         AddAuthorityFromUrl(candidates, "http://10.0.2.2:5042"); // Android emulator -> host machine
         AddAuthorityFromUrl(candidates, "http://localhost:5042");
         AddAuthorityFromUrl(candidates, "http://127.0.0.1:5042");

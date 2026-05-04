@@ -7,6 +7,7 @@ namespace TourMap.Services;
 /// <summary>
 /// Sync Service — đồng bộ dữ liệu POI từ Admin Server (Backend API) về SQLite local.
 /// Gọi API /api/sync/pois → parse JSON → upsert vào local DB.
+/// Note: Auth removed - sync works in anonymous mode
 /// </summary>
 public class SyncService
 {
@@ -15,6 +16,7 @@ public class SyncService
     private readonly AuthService _authService;
 
     // BUG-W01 fix: Accept IHttpClientFactory via DI to prevent socket exhaustion
+    // Auth service needed for JWT token
     public SyncService(IHttpClientFactory httpClientFactory, DatabaseService dbService, AuthService authService)
     {
         _dbService = dbService;
@@ -38,16 +40,20 @@ public class SyncService
                 url += $"?since={Uri.EscapeDataString(lastSync)}";
             }
 
-            // Use per-request auth header to avoid thread-safety issues (SYS-C03 fix)
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            // Add JWT token if available
             if (!string.IsNullOrEmpty(_authService.CurrentToken))
             {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
+                Console.WriteLine("[Sync] 🔐 Using JWT token for authentication");
+            }
+            else
+            {
+                Console.WriteLine("[Sync] ⚠️ No JWT token available - sync may fail if API requires auth");
             }
 
             Console.WriteLine($"[Sync] 🔄 Đang đồng bộ từ: {url}");
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -158,15 +164,10 @@ public class SyncService
     /// <summary>
     /// Tải file audio MP3 từ server về local storage.
     /// </summary>
-    private async Task<string?> DownloadAudioAsync(string? audioUrl, string serverBaseUrl, string poiId)
+    private async Task<string?> DownloadAudioAsync(string audioUrl, string serverBaseUrl, string poiId)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(audioUrl))
-            {
-                return null;
-            }
-
             // Nếu audioUrl là relative path → ghép với serverBaseUrl
             var fullUrl = audioUrl.StartsWith("http")
                 ? audioUrl
@@ -252,15 +253,10 @@ public class SyncService
         {
             var url = $"{serverBaseUrl.TrimEnd('/')}/api/v1/tours/sync/tours";
 
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (!string.IsNullOrEmpty(_authService.CurrentToken))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authService.CurrentToken);
-            }
-
+            // Auth removed - no JWT token needed
             Console.WriteLine($"[Sync] 🔄 Đang đồng bộ Tours từ: {url}");
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();

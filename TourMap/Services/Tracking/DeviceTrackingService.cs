@@ -11,8 +11,8 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
 {
     private HubConnection? _hubConnection;
     private readonly ILoggerService _logger;
-    private readonly AuthService _authService;
     private readonly ILocationService? _locationService;
+    private readonly AuthService _authService;
     
     private Timer? _heartbeatTimer;
     private readonly SemaphoreSlim _heartbeatLock = new(1, 1);
@@ -42,7 +42,7 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
     public string? DeviceType { get; private set; }
 
     public DeviceTrackingService(
-        ILoggerService logger, 
+        ILoggerService logger,
         AuthService authService,
         ILocationService? locationService = null)
     {
@@ -71,13 +71,22 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
 
         try
         {
+            // Build SignalR URL with JWT token for authentication
+            var token = _authService.CurrentToken;
+            var hubUrlWithToken = hubUrl;
+            if (!string.IsNullOrEmpty(token))
+            {
+                var separator = hubUrl.Contains("?") ? "&" : "?";
+                hubUrlWithToken = $"{hubUrl}{separator}access_token={Uri.EscapeDataString(token)}";
+                _logger.LogDebug("Added JWT token to SignalR URL");
+            }
+            else
+            {
+                _logger.LogWarning("No JWT token available for SignalR connection");
+            }
+
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl(hubUrl, options =>
-                {
-                    // Động: luôn đọc token hiện tại từ AuthService (không capture by value)
-                    // Khi user logout → login guest, token sẽ tự động cập nhật
-                    options.AccessTokenProvider = () => Task.FromResult(_authService.CurrentToken);
-                })
+                .WithUrl(hubUrlWithToken)
                 .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
                 .Build();
 
@@ -137,15 +146,14 @@ public class DeviceTrackingService : INotifyPropertyChanged, IDisposable
 
         try
         {
-            var user = _authService.CurrentUser;
             var appVersion = AppInfo.VersionString;
 
-            await _hubConnection.InvokeAsync("RegisterDevice", 
-                DeviceId, 
-                DeviceType, 
-                appVersion, 
-                user?.Id, 
-                user?.DisplayName ?? "Guest");
+            await _hubConnection.InvokeAsync("RegisterDevice",
+                DeviceId,
+                DeviceType,
+                appVersion,
+                null,
+                "Anonymous");
 
             _logger.LogInformation("Device registered successfully. DeviceId: {DeviceId}", DeviceId);
         }

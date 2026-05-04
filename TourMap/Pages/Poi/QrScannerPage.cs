@@ -22,6 +22,8 @@ public class QrScannerPage : ContentPage
     private readonly CameraView _cameraView;
     private readonly Label _statusLabel;
     private readonly BoxView _scanBox;
+    private readonly Border _torchBtnBg;
+    private readonly Label _torchIcon;
     private readonly Border _successCard;
     private readonly Label _successPoiTitle;
     private readonly Label _successPoiDesc;
@@ -33,6 +35,7 @@ public class QrScannerPage : ContentPage
     
     // State
     private bool _isProcessing;
+    private bool _torchOn;
     private CancellationTokenSource? _cameraStartCts;
     private Models.Poi? _scannedPoi;
 
@@ -215,6 +218,16 @@ public class QrScannerPage : ContentPage
         {
             Children = { _cameraView, overlayGrid, _successCard }
         };
+    }
+
+    private void ToggleTorch()
+    {
+        _torchOn = !_torchOn;
+        if (_cameraView.CameraEnabled)
+        {
+            _cameraView.TorchOn = _torchOn;
+        }
+        _torchBtnBg.BackgroundColor = _torchOn ? Color.FromArgb("#F5A623") : Color.FromRgba(1.0, 1.0, 1.0, 0.15);
     }
 
     protected override async void OnAppearing()
@@ -453,6 +466,7 @@ public class QrScannerPage : ContentPage
         }
         
         _isProcessing = false;
+        _torchOn = false;
         Console.WriteLine("[QR] OnDisappearing complete");
     }
 

@@ -173,18 +173,22 @@ public class PoisController : BaseAdminController
             poi.AudioUrlKo = existingPoi.AudioUrlKo;
             poi.AudioUrlJa = existingPoi.AudioUrlJa;
             poi.AudioUrlFr = existingPoi.AudioUrlFr;
-            poi.DescriptionEn = existingPoi.DescriptionEn;
-            poi.DescriptionZh = existingPoi.DescriptionZh;
-            poi.DescriptionKo = existingPoi.DescriptionKo;
-            poi.DescriptionJa = existingPoi.DescriptionJa;
-            poi.DescriptionFr = existingPoi.DescriptionFr;
-            // Preserve TTS scripts only if form didn't submit new values (null/empty)
-            if (string.IsNullOrEmpty(poi.TtsScriptVi)) poi.TtsScriptVi = existingPoi.TtsScriptVi;
-            if (string.IsNullOrEmpty(poi.TtsScriptEn)) poi.TtsScriptEn = existingPoi.TtsScriptEn;
-            if (string.IsNullOrEmpty(poi.TtsScriptZh)) poi.TtsScriptZh = existingPoi.TtsScriptZh;
-            if (string.IsNullOrEmpty(poi.TtsScriptKo)) poi.TtsScriptKo = existingPoi.TtsScriptKo;
-            if (string.IsNullOrEmpty(poi.TtsScriptJa)) poi.TtsScriptJa = existingPoi.TtsScriptJa;
-            if (string.IsNullOrEmpty(poi.TtsScriptFr)) poi.TtsScriptFr = existingPoi.TtsScriptFr;
+
+            // Update TTS scripts from form (auto-save all languages)
+            poi.TtsScriptVi = poi.TtsScriptVi ?? existingPoi.TtsScriptVi;
+            poi.TtsScriptEn = poi.TtsScriptEn ?? existingPoi.TtsScriptEn;
+            poi.TtsScriptZh = poi.TtsScriptZh ?? existingPoi.TtsScriptZh;
+            poi.TtsScriptKo = poi.TtsScriptKo ?? existingPoi.TtsScriptKo;
+            poi.TtsScriptJa = poi.TtsScriptJa ?? existingPoi.TtsScriptJa;
+            poi.TtsScriptFr = poi.TtsScriptFr ?? existingPoi.TtsScriptFr;
+
+            // Sync Description fields with TTS scripts
+            poi.Description = poi.TtsScriptVi;
+            poi.DescriptionEn = poi.TtsScriptEn;
+            poi.DescriptionZh = poi.TtsScriptZh;
+            poi.DescriptionKo = poi.TtsScriptKo;
+            poi.DescriptionJa = poi.TtsScriptJa;
+            poi.DescriptionFr = poi.TtsScriptFr;
 
             if (ImageFile != null)
             {

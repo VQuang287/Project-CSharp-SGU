@@ -8,13 +8,13 @@
   3) Execute the script.
 */
 
-IF DB_ID(N'TourMap_AdminWeb') IS NULL
+IF DB_ID(N'TourMapAdmin') IS NULL
 BEGIN
-    CREATE DATABASE [TourMap_AdminWeb];
+    CREATE DATABASE [TourMapAdmin];
 END
 GO
 
-USE [TourMap_AdminWeb];
+USE [TourMapAdmin];
 GO
 
 /* =========================
@@ -263,5 +263,5 @@ BEGIN
 END
 GO
 
-PRINT N'TourMap_AdminWeb database schema is ready.';
+PRINT N'TourMapAdmin database schema is ready.';
 GO

@@ -1,0 +1,38 @@
+@model TourMap.AdminWeb.Controllers.QrExpiredViewModel
+
+@{
+    ViewData["Title"] = "Mã QR Hết Hạn";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px;">
+                            <i class="bi bi-x-octagon fs-1 text-danger"></i>
+                        </div>
+                        <h3 class="text-danger">Mã QR Không Hợp Lệ</h3>
+                    </div>
+
+                    <p class="text-muted mb-4">@Model.Message</p>
+
+                    @if (!string.IsNullOrEmpty(Model.AdminWebUrl))
+                    {
+                        <a href="@Model.AdminWebUrl" class="btn btn-primary">
+                            <i class="bi bi-arrow-left"></i> Quay lại trang QR
+                        </a>
+                    }
+
+                    <div class="mt-4 text-muted small">
+                        <p class="mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Vui lòng liên hệ quản trị viên để được cấp mã QR mới.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
