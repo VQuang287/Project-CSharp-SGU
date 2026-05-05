@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TourMap - Ứng dụng hướng dẫn âm thanh đa ngôn ngữ cho Phố Ẩm Thực Vĩnh Khánh">
+    <title>TourMap - Audio Tour Guide | Tải Ứng Dụng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #0d7a5f 0%, #128c6e 100%);
+            --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--secondary-gradient);
+            min-height: 100vh;
+        }
+        .hero-section {
+            padding: 60px 0;
+            color: white;
+        }
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            background: var(--primary-gradient);
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 20px 40px rgba(13, 122, 95, 0.3);
+        }
+        .app-icon i {
+            font-size: 60px;
+            color: white;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: transform 0.3s;
+            height: 100%;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .feature-icon i {
+            font-size: 28px;
+            color: white;
+        }
+        .download-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .btn-download {
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 16px;
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(13, 122, 95, 0.3);
+        }
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(13, 122, 95, 0.4);
+            color: white;
+        }
+        .screenshot-placeholder {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .badge-language {
+            background: rgba(13, 122, 95, 0.1);
+            color: #0d7a5f;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 2px;
+            display: inline-block;
+        }
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .step-number {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-8">
+                    <div class="app-icon">
+                        <i class="bi bi-headphones"></i>
+                    </div>
+                    <h1 class="display-4 fw-bold mb-3">TourMap</h1>
+                    <p class="lead mb-4">Ứng dụng hướng dẫn âm thanh đa ngôn ngữ<br>khám phá Phố Ẩm Thực Vĩnh Khánh</p>
+                    <div class="mb-4">
+                        <span class="badge-language">🇻🇳 Tiếng Việt</span>
+                        <span class="badge-language">🇺🇸 English</span>
+                        <span class="badge-language">🇨🇳 中文</span>
+                        <span class="badge-language">🇰🇷 한국어</span>
+                        <span class="badge-language">🇯🇵 日本語</span>
+                        <span class="badge-language">🇫🇷 Français</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-geo-alt-fill"></i>
+                        </div>
+                        <h5>Thuyết Minh Tự Động</h5>
+                        <p class="text-muted mb-0">Kích hoạt audio khi đến gần điểm tham quan nhờ GPS</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-headphones"></i>
+                        </div>
+                        <h5>6 Ngôn Ngữ</h5>
+                        <p class="text-muted mb-0">Hỗ trợ VI, EN, ZH, KO, JA, FR - tự động chuyển đổi</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-wifi-off"></i>
+                        </div>
+                        <h5>Hoạt Động Offline</h5>
+                        <p class="text-muted mb-0">Tải dữ liệu một lần, sử dụng mọi lúc không cần mạng</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-map-fill"></i>
+                        </div>
+                        <h5>10 Địa Điểm</h5>
+                        <p class="text-muted mb-0">Khám phá các quán ăn nổi tiếng tại Phố Ẩm Thực Vĩnh Khánh</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-6">
+                    <div class="download-card text-center">
+                        <h2 class="fw-bold mb-4">📱 Tải Ứng Dụng</h2>
+                        
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Phiên bản mới nhất:</strong> v1.0.0
+                        </div>
+
+                        <a href="https://github.com/vquang287/tourmap-landing/releases/download/v1.0.0/TourMap.apk" 
+                           class="btn-download mb-4" 
+                           download>
+                            <i class="bi bi-download fs-4"></i>
+                            <span>Tải APK Ngay (85 MB)</span>
+                        </a>
+
+                        <div class="text-muted small">
+                            <p class="mb-2"><i class="bi bi-android2 me-2"></i>Yêu cầu: Android 6.0+ (API 23)</p>
+                            <p class="mb-0"><i class="bi bi-shield-check me-2"></i>Ứng dụng an toàn, không chứa virus</p>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3">Hướng Dẫn Cài Đặt</h5>
+                        
+                        <div class="text-start">
+                            <div class="step-item">
+                                <div class="step-number">1</div>
+                                <div>
+                                    <strong>Tải file APK</strong>
+                                    <p class="text-muted small mb-0">Nhấn nút "Tải APK Ngay" và đợi file tải xong</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">2</div>
+                                <div>
+                                    <strong>Cho phép cài đặt</strong>
+                                    <p class="text-muted small mb-0">Mở file APK → Chọn "Cài đặt" → Cho phép "Nguồn không xác định" nếu được hỏi</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">3</div>
+                                <div>
+                                    <strong>Mở ứng dụng</strong>
+                                    <p class="text-muted small mb-0">Cài đặt hoàn tất, mở TourMap và bắt đầu khám phá!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Info Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="feature-card h-100">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-images me-2 text-primary"></i>Screenshot</h5>
+                        <div class="screenshot-placeholder">
+                            <i class="bi bi-image fs-1"></i>
+                            <p class="mb-0 mt-2">Screenshot của ứng dụng sẽ được cập nhật</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="feature-card h-100 text-start">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-list-check me-2 text-primary"></i>Tính Năng Chính</h5>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Bản đồ tương tác với vị trí GPS</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Phát audio tự động khi đến gần POI</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hỗ trợ 6 ngôn ngữ (VI, EN, ZH, KO, JA, FR)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Làm việc offline sau khi tải dữ liệu</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Danh sách địa điểm với thông tin chi tiết</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Cài đặt ngôn ngữ và tùy chỉnh</li>
+                            <li><i class="bi bi-check-circle-fill text-success me-2"></i>Giao diện thân thiện, dễ sử dụng</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 text-center text-white-50">
+        <div class="container">
+            <p class="mb-0">© 2025 TourMap. Đồ án tốt nghiệp - SGU</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

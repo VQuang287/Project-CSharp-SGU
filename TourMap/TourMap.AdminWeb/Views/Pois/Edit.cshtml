@@ -331,6 +331,54 @@
                 </div>
             </div>
 
+            <!-- Vị trí địa lý -->
+            <div class="form-section">
+                <div class="section-title">Vị trí địa lý (Tọa độ GPS)</div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Latitude" class="form-label fw-medium">
+                            <i class="bi bi-geo-alt"></i> Vĩ độ (Latitude)
+                        </label>
+                        <input asp-for="Latitude" type="number" step="0.000001" class="form-control" placeholder="10.754900" />
+                        <span asp-validation-for="Latitude" class="text-danger small"></span>
+                        <div class="form-text text-muted">Vĩ độ: 10.7xxx (Phố ẩm thực Vĩnh Khánh)</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Longitude" class="form-label fw-medium">
+                            <i class="bi bi-geo-alt"></i> Kinh độ (Longitude)
+                        </label>
+                        <input asp-for="Longitude" type="number" step="0.000001" class="form-control" placeholder="106.715600" />
+                        <span asp-validation-for="Longitude" class="text-danger small"></span>
+                        <div class="form-text text-muted">Kinh độ: 106.7xxx (Phố ẩm thực Vĩnh Khánh)</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="RadiusMeters" class="form-label fw-medium">
+                            <i class="bi bi-bullseye"></i> Bán kính kích hoạt (mét)
+                        </label>
+                        <input asp-for="RadiusMeters" type="number" min="10" max="500" class="form-control" />
+                        <span asp-validation-for="RadiusMeters" class="text-danger small"></span>
+                        <div class="form-text text-muted">Khoảng cách tính từ tâm POI để tự động phát audio (mặc định: 50m)</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Priority" class="form-label fw-medium">
+                            <i class="bi bi-sort-numeric-down"></i> Độ ưu tiên
+                        </label>
+                        <input asp-for="Priority" type="number" class="form-control" />
+                        <span asp-validation-for="Priority" class="text-danger small"></span>
+                        <div class="form-text text-muted">Số cao ưu tiên hiển thị trước</div>
+                    </div>
+                </div>
+                <div class="alert alert-info d-flex align-items-center mt-2">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>
+                        <strong>Lưu ý:</strong> Tọa độ chính xác rất quan trọng để ứng dụng mobile tự động phát thuyết minh khi khách đi đến gần.
+                        <br><small>Dùng Google Maps để lấy tọa độ chính xác: Click chuột phải → "Vĩ độ, Kinh độ"</small>
+                    </div>
+                </div>
+            </div>
+
             <!-- Scripts đa ngôn ngữ -->
             <div class="form-section">
                 <div class="section-title d-flex justify-content-between align-items-center">
@@ -497,29 +545,6 @@
                     </div>
                 </div>
 
-            </div>
-
-            <!-- Tọa độ -->
-            <div class="form-section">
-                <div class="section-title">Vị trí & Cấu hình</div>
-                <div class="coords-grid">
-                    <div>
-                        <label asp-for="Latitude" class="form-label small fw-medium text-muted">Vĩ độ</label>
-                        <input name="Latitude" id="Latitude" class="form-control" type="text" inputmode="decimal" placeholder="10.7608247" value="@Model.Latitude.ToString().Replace(".", ",")" />
-                    </div>
-                    <div>
-                        <label asp-for="Longitude" class="form-label small fw-medium text-muted">Kinh độ</label>
-                        <input name="Longitude" id="Longitude" class="form-control" type="text" inputmode="decimal" placeholder="106.7034143" value="@Model.Longitude.ToString().Replace(".", ",")" />
-                    </div>
-                    <div>
-                        <label asp-for="RadiusMeters" class="form-label small fw-medium text-muted">Bán kính (m)</label>
-                        <input asp-for="RadiusMeters" class="form-control" type="number" min="1" max="10000" />
-                    </div>
-                    <div>
-                        <label asp-for="Priority" class="form-label small fw-medium text-muted">Ưu tiên</label>
-                        <input asp-for="Priority" class="form-control" type="number" />
-                    </div>
-                </div>
             </div>
 
             <!-- Footer Actions -->

@@ -235,44 +235,23 @@ END
 GO
 
 -- ============================================================================
--- SEED DATA: POIs (Food Tour - Phố Ẩm Thực Vĩnh Khánh)
+-- SEED DATA: POIs (Phố Ẩm Thực Vĩnh Khánh - 10 địa điểm chính xác)
 -- ============================================================================
 
-IF NOT EXISTS (SELECT * FROM Pois WHERE Title = N'Ốc Oanh')
+IF NOT EXISTS (SELECT * FROM Pois WHERE Title = N'Ốc Oánh')
 BEGIN
-    INSERT INTO Pois (Id, Title, Description, Latitude, Longitude, Priority, RadiusMeters, MapLink, IsActive, UpdatedAt)
+    INSERT INTO Pois (Id, Title, Description, Latitude, Longitude, Priority, RadiusMeters, ImageUrl, MapLink, IsActive, UpdatedAt)
     VALUES 
-    -- ===== Các quán ốc nổi tiếng =====
-    (NEWID(), N'Ốc Oanh', N'Quán ốc nổi tiếng phố Vĩnh Khánh, đa dạng các món ốc xào, nướng', 10.7608247, 106.7034143, 10, 40, 'https://maps.app.goo.gl/ocOanhVK', 1, GETUTCDATE()),
-    (NEWID(), N'Ốc Đào', N'Quán ốc lâu đời, nổi tiếng với ốc hương, ốc mỡ, ốc len xào dừa', 10.7609123, 106.7039856, 10, 35, 'https://maps.app.goo.gl/ocDaoVK', 1, GETUTCDATE()),
-    (NEWID(), N'Ốc Như', N'Quán ốc bình dân, giá rẻ, đông khách', 10.7606543, 106.7045234, 8, 30, NULL, 1, GETUTCDATE()),
-
-    -- ===== Lẩu và nướng =====
-    (NEWID(), N'Lẩu Dê Nhất Ly', N'Lẩu dê nổi tiếng với nước dùng đậm đà, thịt dê tươi', 10.7611784, 106.705375, 9, 40, 'https://maps.app.goo.gl/laudeVK', 1, GETUTCDATE()),
-    (NEWID(), N'Lẩu Bò Tí Chuối', N'Lẩu bò lá giang, lẩu bò nhúng dấm đặc trưng', 10.7612345, 106.7058234, 8, 35, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Sườn Nướng Mật Ong', N'Sườn nướng thơm lừng, mật ong caramelized', 10.7608234, 106.7041234, 7, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Bò Nướng Lá Lốt', N'Bò cuốn lá lốt nướng than hoa, chấm mắm nêm', 10.7609234, 106.7046234, 7, 30, NULL, 1, GETUTCDATE()),
-
-    -- ===== Bánh và mì =====
-    (NEWID(), N'Bánh Canh Cua', N'Bánh canh cua sợi to, nước dùng sánh đặc, thịt cua tươi', 10.7610234, 106.7052345, 8, 30, 'https://maps.app.goo.gl/banhcanhVK', 1, GETUTCDATE()),
-    (NEWID(), N'Bánh Mì Phú Lộc', N'Bánh mì nướng muối ớt, topping đa dạng', 10.7607234, 106.7038234, 7, 25, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Bánh Xèo Tôm Nhảy', N'Bánh xèo giòn rụm, tôm tươi, nước mắm chua ngọt', 10.7611234, 106.7054234, 7, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Bánh Bèo Chén', N'Bánh bèo chén nóng hổi, tôm chấy, mỡ hành', 10.7608234, 106.7043234, 6, 25, NULL, 1, GETUTCDATE()),
-
-    -- ===== Chè và giải khát =====
-    (NEWID(), N'Chè Vĩnh Khánh', N'Chè thái, chè khúc bạch, chè trái cây giải nhiệt', 10.7609234, 106.7047234, 6, 25, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Sinh Tố Bơ Đậu Phộng', N'Sinh tố bơ béo ngậy, đậu phộng rang giòn', 10.7610234, 106.7051234, 5, 20, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Nước Mía Sầu Riêng', N'Nước mía ép tươi, thêm sầu riêng độc đáo', 10.7608234, 106.7039234, 5, 20, NULL, 1, GETUTCDATE()),
-
-    -- ===== Các món đặc sản khác =====
-    (NEWID(), N'Gỏi Cuốn Tôm Thịt', N'Gỏi cuốn tươi ngon, nước chấm đậm đà', 10.7607234, 106.7045234, 6, 25, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Bún Thịt Nướng', N'Bún thịt nướng chả giò, nước mắm pha chua ngọt', 10.7612234, 106.7056234, 6, 25, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Cơm Tấm Sườn Bì', N'Cơm tấm sườn nướng, bì, chả trứng', 10.7609234, 106.7042234, 7, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Phá Lấu Bò', N'Phá lấu bò nước dừa, ăn kèm bánh mì', 10.7613234, 106.7059234, 6, 25, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Xiên Nướng Mix', N'Các loại xiên nướng: bò, gà, tôm, mực', 10.7608234, 106.7048234, 7, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Mực Nướng Sa Tế', N'Mực nướng sa tế cay cay, thơm nức', 10.7609234, 106.7053234, 8, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Tôm Nướng Muối Ớt', N'Tôm nướng muối ớt Tây Ninh, vỏ giòn thịt ngọt', 10.7610234, 106.7044234, 8, 30, NULL, 1, GETUTCDATE()),
-    (NEWID(), N'Cháo Hàu', N'Cháo hàu nóng hổi, hàu tươi ngon bổ dưỡng', 10.7606234, 106.7042234, 7, 30, NULL, 1, GETUTCDATE());
+    (NEWID(), N'Ốc Oánh', N'Quán ốc nổi tiếng tại Phố ẩm thực Vĩnh Khánh với các món ốc tươi ngon, giá bình dân. Địa chỉ: 534 Vĩnh Khánh, Phường 8, Quận 4, TP. HCM.', 10.7607194, 106.7032972, 1, 50, 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=800&q=80', 'https://maps.google.com/?q=10.7607194,106.7032972', 1, GETUTCDATE()),
+    (NEWID(), N'Quán Ốc Thảo', N'Quán ốc Thảo chuyên các món hải sản tươi sống, chế biến đậm đà hương vị miền Nam. Địa chỉ: 383 Vĩnh Khánh, Phường 8, Quận 4, TP. HCM.', 10.7616799, 106.7023636, 2, 50, 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80', 'https://maps.google.com/?q=10.7616799,106.7023636', 1, GETUTCDATE()),
+    (NEWID(), N'Lãng Quán', N'Lãng Quán - Điểm đến lý tưởng cho những buổi tụ tập bạn bè với không gian thoáng đãng và món ăn đa dạng. Địa chỉ: 531 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.7611131, 106.7054162, 3, 50, 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=800&q=80', 'https://maps.google.com/?q=10.7611131,106.7054162', 1, GETUTCDATE()),
+    (NEWID(), N'Ớt Xiêm Quán', N'Ớt Xiêm Quán nổi tiếng với các món cay đặc trưng, phù hợp cho những thực khách thích hương vị mạnh. Địa chỉ: 568 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.7611663, 106.7057009, 4, 50, 'https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=800&q=80', 'https://maps.google.com/?q=10.7611663,106.7057009', 1, GETUTCDATE()),
+    (NEWID(), N'Chilli Lẩu Nướng Quán', N'Chilli Lẩu Nướng Quán - Không gian hiện đại với các món lẩu và nướng đa dạng, phù hợp cho cả gia đình. Địa chỉ: 232 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.760693, 106.7036324, 5, 50, 'https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=800&q=80', 'https://maps.google.com/?q=10.760693,106.7036324', 1, GETUTCDATE()),
+    (NEWID(), N'Quán ốc Sáu Nở', N'Quán ốc Sáu Nở - Địa điểm quen thuộc của dân sành ăn ốc với thực đơn phong phú và giá cả hợp lý. Địa chỉ: 128 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.7609643, 106.702942, 6, 50, 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=800&q=80', 'https://maps.google.com/?q=10.7609643,106.702942', 1, GETUTCDATE()),
+    (NEWID(), N'Quán Ốc Vũ', N'Quán Ốc Vũ - Chuyên các món ốc và hải sản tươi ngon, phục vụ nhanh chóng và chuyên nghiệp. Địa chỉ: 37 Vĩnh Khánh, Phường 8, Quận 4, TP. HCM.', 10.7614025, 106.7027047, 7, 50, 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&q=80', 'https://maps.google.com/?q=10.7614025,106.7027047', 1, GETUTCDATE()),
+    (NEWID(), N'Ốc Cúc Vĩnh Khánh', N'Ốc Cúc Vĩnh Khánh - Quán ốc lâu năm với công thức chế biến độc đáo, giữ chân thực khách bằng chất lượng và hương vị. Địa chỉ: 129 Vĩnh Khánh, Phường 8, Quận 4, TP. HCM.', 10.761224, 106.7026292, 8, 50, 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80', 'https://maps.google.com/?q=10.761224,106.7026292', 1, GETUTCDATE()),
+    (NEWID(), N'Sushi Ko', N'Sushi Ko - Nhà hàng Nhật Bản với sushi và sashimi tươi ngon, không gian sang trọng và ấm cúng. Địa chỉ: 122 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.7607387, 106.7046509, 9, 50, 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80', 'https://maps.google.com/?q=10.7607387,106.7046509', 1, GETUTCDATE()),
+    (NEWID(), N'An An Quán', N'An An Quán - Quán ăn gia đình với các món ăn Việt truyền thống, không gian ấm cúng và giá cả phải chăng. Địa chỉ: 122 Vĩnh Khánh, Phường 10, Quận 4, TP. HCM.', 10.7606347, 106.7044488, 10, 50, 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=800&q=80', 'https://maps.google.com/?q=10.7606347,106.7044488', 1, GETUTCDATE());
 END
 GO
 
@@ -292,11 +271,11 @@ BEGIN
 
     -- Add POIs to tour (in order)
     INSERT INTO TourPoiMappings (TourId, PoiId, OrderIndex)
-    SELECT @TourId, Id, ROW_NUMBER() OVER (ORDER BY Priority DESC, Title) as OrderIndex
+    SELECT @TourId, Id, ROW_NUMBER() OVER (ORDER BY Priority ASC, Title) as OrderIndex
     FROM Pois 
-    WHERE Title IN (N'Ốc Oanh', N'Ốc Đào', N'Lẩu Dê Nhất Ly', N'Bánh Canh Cua', 
-                    N'Mực Nướng Sa Tế', N'Tôm Nướng Muối Ớt', N'Cơm Tấm Sườn Bì',
-                    N'Xiên Nướng Mix', N'Cháo Hàu', N'Chè Vĩnh Khánh');
+    WHERE Title IN (N'Ốc Oánh', N'Quán Ốc Thảo', N'Lãng Quán', N'Ớt Xiêm Quán', 
+                    N'Chilli Lẩu Nướng Quán', N'Quán ốc Sáu Nở', N'Quán Ốc Vũ',
+                    N'Ốc Cúc Vĩnh Khánh', N'Sushi Ko', N'An An Quán');
 END
 GO
 
@@ -322,7 +301,23 @@ JOIN Pois p ON tm.PoiId = p.Id
 ORDER BY tm.OrderIndex;
 */
 
+-- ============================================================================
+-- UPDATE IMAGE URLs (Run this if POIs already exist without images)
+-- ============================================================================
+
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=800&q=80' WHERE Title = N'Ốc Oánh';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80' WHERE Title = N'Quán Ốc Thảo';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=800&q=80' WHERE Title = N'Lãng Quán';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=800&q=80' WHERE Title = N'Ớt Xiêm Quán';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=800&q=80' WHERE Title = N'Chilli Lẩu Nướng Quán';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=800&q=80' WHERE Title = N'Quán ốc Sáu Nở';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&q=80' WHERE Title = N'Quán Ốc Vũ';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80' WHERE Title = N'Ốc Cúc Vĩnh Khánh';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80' WHERE Title = N'Sushi Ko';
+UPDATE Pois SET ImageUrl = 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=800&q=80' WHERE Title = N'An An Quán';
+GO
+
 PRINT 'Database setup completed successfully!';
 PRINT 'Default admin: username=admin (create password via web interface)';
-PRINT 'Sample tour: Tour Ẩm Thực Phố Vĩnh Khánh with 10 POIs';
+PRINT 'Sample tour: Tour Ẩm Thực Phố Vĩnh Khánh with 10 accurate POIs + images';
 GO

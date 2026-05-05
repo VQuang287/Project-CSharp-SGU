@@ -21,6 +21,9 @@ namespace TourMap
             // Tour pages
             Routing.RegisterRoute(nameof(Pages.Tours.TourListPage), typeof(Pages.Tours.TourListPage));
             Routing.RegisterRoute(nameof(Pages.Tours.TourDetailPage), typeof(Pages.Tours.TourDetailPage));
+            
+            // Home page
+            Routing.RegisterRoute(nameof(Pages.HomePage), typeof(Pages.HomePage));
         }
 
         protected override async void OnAppearing()
@@ -128,6 +131,7 @@ namespace TourMap
         private void ApplyLocalization()
         {
             var loc = Services.LocalizationService.Current;
+            HomeTab.Title = loc["HomeBtn"];
             MapTab.Title = loc["MapBtn"];
             PoiListTab.Title = loc["PoiListBtn"];
             SettingsTab.Title = loc["SettingsTitle"];

@@ -446,6 +446,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "MyFavorites", "Yêu thích của tôi" },
         { "NoFavorites", "Chưa có địa điểm yêu thích" },
         { "ChangePasswordBtn", "🔐 Đổi mật khẩu" },
+        // Home Page
+        { "HomeBtn", "🏠 Trang chủ" },
+        { "HomeWelcome", "Xin chào!" },
+        { "HomeSubtitle", "Sẵn sàng khám phá Phố Ẩm Thực Vĩnh Khánh?" },
+        { "StartTour", "Bắt đầu Tour" },
+        { "FeaturedPois", "Địa điểm nổi bật" },
     };
 
     private static readonly Dictionary<string, string> English = new()
@@ -608,6 +614,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "GamificationPlaces", "Places visited" },
         { "GamificationBadges", "Badges" },
         { "MyFavorites", "My Favorites" },
+        // Home Page
+        { "HomeBtn", "🏠 Home" },
+        { "HomeWelcome", "Welcome!" },
+        { "HomeSubtitle", "Ready to explore Vinh Khanh Food Street?" },
+        { "StartTour", "Start Tour" },
+        { "FeaturedPois", "Featured Places" },
     };
 
     private static readonly Dictionary<string, string> Chinese = new()
@@ -709,6 +721,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "GpsCoordinates", "GPS坐标" },
         { "AudioStat", "解说" },
         { "WalkStat", "分钟步行" },
+        // Home Page
+        { "HomeBtn", "🏠 首页" },
+        { "HomeWelcome", "欢迎！" },
+        { "HomeSubtitle", "准备好探索荣庆美食街了吗？" },
+        { "StartTour", "开始游览" },
+        { "FeaturedPois", "热门景点" },
     };
 
     private static readonly Dictionary<string, string> Korean = new()
@@ -810,6 +828,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "GpsCoordinates", "GPS 좌표" },
         { "AudioStat", "해설" },
         { "WalkStat", "분 도보" },
+        // Home Page
+        { "HomeBtn", "🏠 홈" },
+        { "HomeWelcome", "환영합니다!" },
+        { "HomeSubtitle", "빈칸 푸드 스트리트를 탐험할 준비가 되셨나요?" },
+        { "StartTour", "투어 시작" },
+        { "FeaturedPois", "추천 장소" },
     };
 
     private static readonly Dictionary<string, string> Japanese = new()
@@ -911,6 +935,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "GpsCoordinates", "GPS座標" },
         { "AudioStat", "解説" },
         { "WalkStat", "分徒歩" },
+        // Home Page
+        { "HomeBtn", "🏠 ホーム" },
+        { "HomeWelcome", "ようこそ！" },
+        { "HomeSubtitle", "ヴィンカン グルメ通りを探索する準備はできましたか？" },
+        { "StartTour", "ツアー開始" },
+        { "FeaturedPois", "おすすめスポット" },
     };
 
     private static readonly Dictionary<string, string> French = new()
@@ -1012,6 +1042,12 @@ public class LocalizationService : INotifyPropertyChanged
         { "GpsCoordinates", "Coordonnées GPS" },
         { "AudioStat", "audio" },
         { "WalkStat", "min à pied" },
+        // Home Page
+        { "HomeBtn", "🏠 Accueil" },
+        { "HomeWelcome", "Bienvenue!" },
+        { "HomeSubtitle", "Prêt à explorer la Rue Gastronomique Vinh Khanh?" },
+        { "StartTour", "Commencer la visite" },
+        { "FeaturedPois", "Lieux en vedette" },
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

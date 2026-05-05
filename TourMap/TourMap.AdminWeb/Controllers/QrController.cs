@@ -24,7 +24,8 @@ public class QrController : BaseAdminController
     public IActionResult Index()
     {
         // Generate time-limited QR code for APK download
-        var downloadUrl = _config["AppLinks:ApkDownloadUrl"] ?? Url.Action("Download", "Qr", null, Request.Scheme)!;
+        var baseUrl = GetPublicBaseUrl();
+        var downloadUrl = _config["AppLinks:ApkDownloadUrl"] ?? $"{baseUrl}/qr/download";
         var expiresAt = DateTime.UtcNow.AddMinutes(QrExpiryMinutes);
         var token = GenerateQrToken(downloadUrl, expiresAt);
 
@@ -133,6 +134,32 @@ public class QrController : BaseAdminController
         expiry = DateTime.MinValue;
         // Simple validation: token is valid if it matches the format
         return token.Length == 16;
+    }
+
+    /// <summary>
+    /// Get public base URL - detects ngrok or other reverse proxy URLs
+    /// </summary>
+    private string GetPublicBaseUrl()
+    {
+        // Check for ngrok or reverse proxy headers
+        var forwardedHost = Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        var forwardedProto = Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+
+        if (!string.IsNullOrEmpty(forwardedHost))
+        {
+            var scheme = string.IsNullOrEmpty(forwardedProto) ? "https" : forwardedProto;
+            return $"{scheme}://{forwardedHost}";
+        }
+
+        // Check if request host contains ngrok domain
+        var host = Request.Host.Host;
+        if (host.Contains("ngrok-free.app") || host.Contains("ngrok.io"))
+        {
+            return $"{Request.Scheme}://{Request.Host}";
+        }
+
+        // Fallback to configured public URL or current URL
+        return _config["AppLinks:PublicBaseUrl"] ?? $"{Request.Scheme}://{Request.Host}";
     }
 }
 

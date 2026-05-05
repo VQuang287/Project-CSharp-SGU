@@ -28,16 +28,23 @@ public class SyncService
     /// <summary>
     /// Đồng bộ toàn bộ POI từ server. Gọi khi mở app (nếu có mạng).
     /// </summary>
-    public async Task<bool> SyncPoisFromServerAsync(string serverBaseUrl)
+    public async Task<bool> SyncPoisFromServerAsync(string serverBaseUrl, bool forceFullSync = false)
     {
         try
         {
             // Build URL with optional last-sync timestamp
             var lastSync = Preferences.Default.Get<string>("last_sync_time", string.Empty);
             var url = $"{serverBaseUrl.TrimEnd('/')}/api/v1/pois/sync/pois";
-            if (!string.IsNullOrEmpty(lastSync))
+            
+            // Chỉ thêm since filter nếu không force full sync và có lastSync
+            if (!forceFullSync && !string.IsNullOrEmpty(lastSync))
             {
                 url += $"?since={Uri.EscapeDataString(lastSync)}";
+                Console.WriteLine($"[Sync] 📅 Incremental sync since: {lastSync}");
+            }
+            else if (forceFullSync)
+            {
+                Console.WriteLine("[Sync] 🔄 Force full sync - fetching all POIs from database");
             }
 
             // Add JWT token if available
@@ -63,6 +70,10 @@ public class SyncService
                 Console.WriteLine("[Sync] ⚠️ Không có dữ liệu mới từ Server");
                 return true; // Thành công (không có gì để update)
             }
+
+            // Luôn xóa POI cũ và thay thế bằng POI mới từ server để đảm bảo đồng nhất
+            Console.WriteLine("[Sync] 🗑️ Clearing local POIs before sync...");
+            await _dbService.DeleteAllPoisAsync();
 
             int count = 0;
             foreach (var dto in pois)
@@ -138,6 +149,8 @@ public class SyncService
 
             // Lưu thời gian sync
             Preferences.Default.Set("last_sync_time", DateTime.UtcNow.ToString("O"));
+            
+            Console.WriteLine($"[Sync] ✅ Sync completed: {count} POIs saved to local database");
 
             return true;
         }

@@ -140,12 +140,22 @@ public class PoisController : BaseAdminController
         var lngStr = Request.Form["Longitude"].ToString().Replace(",", ".");
         
         if (double.TryParse(latStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat))
+        {
             poi.Latitude = lat;
+            // Validation: Vĩ độ Việt Nam ~8-23°N
+            if (lat < 8.0 || lat > 23.0)
+                ModelState.AddModelError("Latitude", "Vĩ độ ngoài phạm vi Việt Nam (8°N - 23°N). Vui lòng kiểm tra lại.");
+        }
         else
             ModelState.AddModelError("Latitude", "Vĩ độ không hợp lệ. Vui lòng nhập số (ví dụ: 10.7608247 hoặc 10,7608247)");
         
         if (double.TryParse(lngStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng))
+        {
             poi.Longitude = lng;
+            // Validation: Kinh độ Việt Nam ~102-110°E
+            if (lng < 102.0 || lng > 110.0)
+                ModelState.AddModelError("Longitude", "Kinh độ ngoài phạm vi Việt Nam (102°E - 110°E). Vui lòng kiểm tra lại.");
+        }
         else
             ModelState.AddModelError("Longitude", "Kinh độ không hợp lệ. Vui lòng nhập số (ví dụ: 106.7034143 hoặc 106,7034143)");
 
@@ -524,5 +534,43 @@ public class PoisController : BaseAdminController
             results,
             message = $"Đã lưu {savedCount}/6 scripts vào database."
         });
+    }
+
+    // POST: /Pois/UpdateImageUrls - Batch update ImageUrl for existing POIs
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateImageUrls()
+    {
+        var imageUrls = new Dictionary<string, string>
+        {
+            ["Ốc Oánh"] = "https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=800&q=80",
+            ["Quán Ốc Thảo"] = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
+            ["Lãng Quán"] = "https://images.unsplash.com/photo-1553621042-f6e147245754?w=800&q=80",
+            ["Ớt Xiêm Quán"] = "https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=800&q=80",
+            ["Chilli Lẩu Nướng Quán"] = "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=800&q=80",
+            ["Quán ốc Sáu Nở"] = "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=800&q=80",
+            ["Quán Ốc Vũ"] = "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&q=80",
+            ["Ốc Cúc Vĩnh Khánh"] = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80",
+            ["Sushi Ko"] = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80",
+            ["An An Quán"] = "https://images.unsplash.com/photo-1555126634-323283e090fa?w=800&q=80"
+        };
+
+        int updatedCount = 0;
+        foreach (var (title, url) in imageUrls)
+        {
+            var poi = await _context.Pois.FirstOrDefaultAsync(p => p.Title == title);
+            if (poi != null && string.IsNullOrEmpty(poi.ImageUrl))
+            {
+                poi.ImageUrl = url;
+                poi.UpdatedAt = DateTime.UtcNow;
+                updatedCount++;
+            }
+        }
+
+        if (updatedCount > 0)
+            await _context.SaveChangesAsync();
+
+        TempData["Success"] = $"Đã cập nhật {updatedCount} POIs với ảnh.";
+        return RedirectToAction(nameof(Index));
     }
 }

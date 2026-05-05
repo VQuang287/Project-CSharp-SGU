@@ -9,13 +9,15 @@ namespace TourMap
         private readonly Services.AutoSyncService _autoSyncService;
         private readonly Services.DeviceTrackingService _deviceTracking;
         private readonly Services.AuthService _authService;
+        private readonly Services.DatabaseService _dbService;
 
-        public App(Pages.SplashPage splashPage, Services.AutoSyncService autoSyncService, Services.DeviceTrackingService deviceTracking, Services.AuthService authService)
+        public App(Pages.SplashPage splashPage, Services.AutoSyncService autoSyncService, Services.DeviceTrackingService deviceTracking, Services.AuthService authService, Services.DatabaseService dbService)
         {
             _splashPage = splashPage;
             _autoSyncService = autoSyncService;
             _deviceTracking = deviceTracking;
             _authService = authService;
+            _dbService = dbService;
             InitializeComponent();
         }
         // Note: Auth removed - all users are treated as anonymous guests
@@ -51,8 +53,26 @@ namespace TourMap
 
                 try
                 {
+                    // Kiểm tra xem có phải là lần đầu chạy app hoặc không có POI nào
+                    var hasExistingPois = await _dbService.HasAnyPoiAsync();
+                    var isFirstRun = !Preferences.Default.ContainsKey("has_completed_first_sync");
+                    var forceFullSync = isFirstRun || !hasExistingPois;
+                    
+                    if (forceFullSync)
+                    {
+                        Console.WriteLine("[App] First run or no POIs - forcing full sync from database...");
+                        // Xóa last_sync_time để bắt buộc lấy tất cả POI
+                        Preferences.Default.Remove("last_sync_time");
+                    }
+                    
                     // Auth removed - sync works in anonymous mode
-                    await _autoSyncService.EnsureSyncedAsync("app-created");
+                    var syncSuccess = await _autoSyncService.EnsureSyncedAsync("app-created", force: true, forceFullSync: forceFullSync);
+                    
+                    if (syncSuccess)
+                    {
+                        Preferences.Default.Set("has_completed_first_sync", true);
+                        Console.WriteLine("[App] ✅ First sync completed successfully");
+                    }
                 }
                 catch (Exception ex)
                 {

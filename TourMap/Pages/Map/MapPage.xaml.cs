@@ -26,8 +26,6 @@ public partial class MapPage : ContentPage
     private readonly LocalizationService _loc;
 
     // UI Overlays
-    private readonly Label _gpsBadgeLabel;
-    private readonly Border _gpsBadge;
     private readonly Label _headerSubtitle;
     
     // Audio Player Bar
@@ -133,27 +131,7 @@ public partial class MapPage : ContentPage
             Content = new VerticalStackLayout { Children = { headerGrid } }
         };
 
-        // ═══════════════════════════════════════════
-        // GPS BADGE
-        // ═══════════════════════════════════════════
-        _gpsBadgeLabel = new Label { Text = _loc["GpsOff"] ?? "GPS đang tắt", FontFamily = "InterMedium", FontSize = 10, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF"), VerticalOptions = LayoutOptions.Center };
-        _gpsBadge = new Border
-        {
-            BackgroundColor = Microsoft.Maui.Graphics.Colors.White,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
-            Shadow = new Shadow { Brush = Microsoft.Maui.Graphics.Colors.Black, Opacity = 0.1f, Radius = 4, Offset = new Point(0, 2) },
-            Padding = new Thickness(8, 4),
-            Margin = new Thickness(16, 12, 0, 0),
-            HorizontalOptions = LayoutOptions.Start,
-            Content = new HorizontalStackLayout
-            {
-                Spacing = 4,
-                Children = { new Label { Text = "●", FontSize = 10, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF"), VerticalOptions = LayoutOptions.Center }, _gpsBadgeLabel }
-            }
-        };
-
-        var topOverlay = new VerticalStackLayout { Children = { headerCard, _gpsBadge }, InputTransparent = true, CascadeInputTransparent = false };
+        var topOverlay = new VerticalStackLayout { Children = { headerCard }, InputTransparent = true, CascadeInputTransparent = false };
 
         // ═══════════════════════════════════════════
         // POI PREVIEW CARD
@@ -274,8 +252,6 @@ public partial class MapPage : ContentPage
             _autoSyncService.SyncCompleted -= OnAutoSyncCompleted;
             _autoSyncService.SyncCompleted += OnAutoSyncCompleted;
 
-            var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-            UpdateGpsBadge(status == PermissionStatus.Granted);
         }
         catch (Exception ex)
         {
@@ -295,8 +271,6 @@ public partial class MapPage : ContentPage
         
         // Unsubscribe from language changes
         _loc.LanguageChanged -= OnLanguageChanged;
-        
-        UpdateGpsBadge(false);
     }
 
     private async Task EnsureRuntimeInitializedAsync()
@@ -311,8 +285,6 @@ public partial class MapPage : ContentPage
             {
                 status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             }
-            UpdateGpsBadge(status == PermissionStatus.Granted);
-
             // Start runtime first (non-blocking GPS loop) so UI can continue.
             await _tourRuntimeService.InitializeAsync();
             _runtimeInitialized = true;
@@ -382,15 +354,6 @@ public partial class MapPage : ContentPage
         _hasCenteredInitialViewport = true;
     }
 
-    private void UpdateGpsBadge(bool active)
-    {
-        _gpsBadgeLabel.Text = active ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
-        _gpsBadgeLabel.TextColor = active ? Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F") : Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF");
-        if (_gpsBadge.Content is HorizontalStackLayout h)
-            if (h.Children[0] is Label dot)
-                dot.TextColor = active ? Microsoft.Maui.Graphics.Color.FromArgb("#22C55E") : Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF");
-    }
-
     private void OnGpsLocationChanged(Location location)
     {
         _hasGpsFix = true;
@@ -458,9 +421,6 @@ public partial class MapPage : ContentPage
                         break;
                 }
                 
-                // Update GPS badge
-                var isGpsActive = _gpsBadgeLabel.TextColor?.ToArgbHex() == Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F")?.ToArgbHex();
-                _gpsBadgeLabel.Text = isGpsActive ? (_loc["GpsOn"] ?? "GPS đang bật") : (_loc["GpsOff"] ?? "GPS đang tắt");
             }
             catch (Exception ex)
             {

@@ -12,14 +12,21 @@
     Shell.TabBarUnselectedColor="#9CA3AF">
 
     <TabBar>
-        <!-- Tab 1: Map (Bản đồ) -->
+        <!-- Tab 1: Home (Trang chủ) -->
+        <ShellContent
+            x:Name="HomeTab"
+            Title="{Binding [HomeBtn], Source={x:Static services:LocalizationService.Current}}"
+            ContentTemplate="{DataTemplate pages:HomePage}"
+            Route="HomePage" />
+
+        <!-- Tab 2: Map (Bản đồ) -->
         <ShellContent
             x:Name="MapTab"
             Title="{Binding [MapBtn], Source={x:Static services:LocalizationService.Current}}"
             ContentTemplate="{DataTemplate pages:MapPage}"
             Route="MapPage" />
 
-        <!-- Tab 2: POI List (Địa điểm) -->
+        <!-- Tab 3: POI List (Địa điểm) -->
         <ShellContent
             x:Name="PoiListTab"
             Title="{Binding [PoiListBtn], Source={x:Static services:LocalizationService.Current}}"

@@ -23,7 +23,7 @@ public sealed class AutoSyncService
 
     public event EventHandler<AutoSyncCompletedEventArgs>? SyncCompleted;
 
-    public async Task<bool> EnsureSyncedAsync(string reason, bool force = false, CancellationToken cancellationToken = default)
+    public async Task<bool> EnsureSyncedAsync(string reason, bool force = false, bool forceFullSync = false, CancellationToken cancellationToken = default)
     {
         if (!force && DateTime.UtcNow - _lastAttemptUtc < MinimumSyncInterval)
             return false;
@@ -48,7 +48,7 @@ public sealed class AutoSyncService
 
                 try
                 {
-                    if (!await _syncService.SyncPoisFromServerAsync(serverUrl))
+                    if (!await _syncService.SyncPoisFromServerAsync(serverUrl, forceFullSync))
                         continue;
 
                     BackendEndpoints.RememberWorkingServerFromUrl(serverUrl);

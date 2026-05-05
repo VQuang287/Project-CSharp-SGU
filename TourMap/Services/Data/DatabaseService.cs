@@ -550,6 +550,35 @@ public class DatabaseService : IDisposable
         finally { _writeLock.Release(); }
     }
 
+    /// <summary>Kiểm tra xem có bất kỳ POI nào trong database không.</summary>
+    public async Task<bool> HasAnyPoiAsync()
+    {
+        await InitAsync();
+        if (_db == null)
+            return _inMemoryFallbackPois?.Any() ?? false;
+
+        return await _db!.Table<Poi>().CountAsync() > 0;
+    }
+
+    /// <summary>Xóa tất cả POI trong database. Dùng cho full sync.</summary>
+    public async Task DeleteAllPoisAsync()
+    {
+        await InitAsync();
+        if (_db == null)
+        {
+            _inMemoryFallbackPois?.Clear();
+            return;
+        }
+
+        await _writeLock.WaitAsync();
+        try
+        {
+            await _db!.ExecuteAsync("DELETE FROM Poi;");
+            Console.WriteLine("[Database] 🗑️ All POIs deleted for full sync");
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public async Task AddPlaybackHistoryAsync(PlaybackHistoryEntry history)
     {
         await InitAsync();
