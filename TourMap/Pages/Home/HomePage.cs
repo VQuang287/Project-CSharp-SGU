@@ -14,15 +14,21 @@ public class HomePage : ContentPage
     private readonly DatabaseService _databaseService;
     private readonly AutoSyncService _autoSyncService;
 
-    // UI Elements
+    // UI Elements - Header
     private Label _welcomeLabel = null!;
     private Label _subtitleLabel = null!;
-    private Button _startTourButton = null!;
+    private Label _currentTimeLabel = null!;
+
+    // Stats
+    private Label _poiCountLabel = null!;
+    private Label _syncStatusLabel = null!;
+    private Label _poiCountText = null!;
+    private Label _syncStatusText = null!;
+
+    // Featured Section
     private Label _featuredPoisLabel = null!;
     private VerticalStackLayout _featuredPoisList = null!;
-    private Label _poiCountLabel = null!;
-    private Label _tourCountLabel = null!;
-    private Label _syncStatusLabel = null!;
+    private Button _viewAllButton = null!;
 
     public HomePage()
     {
@@ -37,163 +43,232 @@ public class HomePage : ContentPage
 
     private void BuildUI()
     {
-        BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F8F9FA");
+        // Modern gradient background
+        Background = new LinearGradientBrush(
+            new GradientStopCollection
+            {
+                new GradientStop(Microsoft.Maui.Graphics.Color.FromArgb("#F8F9FA"), 0.0f),
+                new GradientStop(Microsoft.Maui.Graphics.Color.FromArgb("#E8F5F0"), 1.0f)
+            },
+            new Point(0, 0),
+            new Point(0, 1));
 
-        // Header labels
-        _welcomeLabel = new Label { FontFamily = "InterBold", FontSize = 24, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937") };
-        _subtitleLabel = new Label { FontFamily = "InterRegular", FontSize = 14, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280") };
+        Shell.SetNavBarIsVisible(this, false);
 
-        // Start Tour Button
-        _startTourButton = new Button
+        // ═══════════════════════════════════════════
+        // HEADER SECTION
+        // ═══════════════════════════════════════════
+        _welcomeLabel = new Label
         {
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"),
-            TextColor = Microsoft.Maui.Graphics.Colors.White,
             FontFamily = "InterBold",
-            FontSize = 14,
-            CornerRadius = 12,
-            Padding = new Thickness(16, 12),
-            Margin = new Thickness(0, 12, 0, 0)
+            FontSize = 28,
+            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937"),
+            Opacity = 0
         };
 
-        // Featured POIs section
-        _featuredPoisLabel = new Label { FontFamily = "InterBold", FontSize = 16, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937"), Margin = new Thickness(0, 8, 0, 0) };
-        _featuredPoisList = new VerticalStackLayout { Spacing = 12 };
+        _subtitleLabel = new Label
+        {
+            FontFamily = "InterRegular",
+            FontSize = 14,
+            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"),
+            Opacity = 0
+        };
 
-        // Stats labels
-        _poiCountLabel = new Label { FontFamily = "InterBold", FontSize = 24, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"), HorizontalOptions = LayoutOptions.Center };
-        _tourCountLabel = new Label { FontFamily = "InterBold", FontSize = 24, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"), HorizontalOptions = LayoutOptions.Center };
-        _syncStatusLabel = new Label { FontFamily = "InterBold", FontSize = 24, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#22C55E"), HorizontalOptions = LayoutOptions.Center };
+        _currentTimeLabel = new Label
+        {
+            FontFamily = "InterMedium",
+            FontSize = 12,
+            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"),
+            HorizontalOptions = LayoutOptions.End
+        };
 
-        // Stats grid
+        var headerGrid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            Children =
+            {
+                new VerticalStackLayout
+                {
+                    Spacing = 4,
+                    Children = { _welcomeLabel, _subtitleLabel }
+                },
+                _currentTimeLabel.WithColumn(1)
+            }
+        };
+
+        // ═══════════════════════════════════════════
+        // STATS SECTION
+        // ═══════════════════════════════════════════
+        _poiCountLabel = new Label { FontFamily = "InterBold", FontSize = 28, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"), HorizontalOptions = LayoutOptions.Center };
+        _poiCountText = new Label { FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"), HorizontalOptions = LayoutOptions.Center };
+        _syncStatusLabel = new Label { FontFamily = "InterBold", FontSize = 28, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#22C55E"), HorizontalOptions = LayoutOptions.Center };
+        _syncStatusText = new Label { FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"), HorizontalOptions = LayoutOptions.Center };
+
         var statsGrid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitionCollection
             {
                 new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Star),
                 new ColumnDefinition(GridLength.Star)
             },
-            ColumnSpacing = 12
+            ColumnSpacing = 12,
+            Margin = new Thickness(0, 4, 0, 4)
         };
 
-        statsGrid.Children.Add(CreateStatCard(_poiCountLabel, "Địa điểm"));
-        statsGrid.Children.Add(CreateStatCard(_tourCountLabel, "Tour").WithColumn(1));
-        statsGrid.Children.Add(CreateStatCard(_syncStatusLabel, "Đồng bộ").WithColumn(2));
+        statsGrid.Children.Add(CreateModernStatCard(_poiCountLabel, _poiCountText, "#E8F5F0"));
+        statsGrid.Children.Add(CreateModernStatCard(_syncStatusLabel, _syncStatusText, "#D1FAE5").WithColumn(1));
 
-        // Tour featured card
-        var tourCard = new Border
+        // ═══════════════════════════════════════════
+        // FEATURED POIS SECTION
+        // ═══════════════════════════════════════════
+        _featuredPoisLabel = new Label
         {
-            BackgroundColor = Microsoft.Maui.Graphics.Colors.White,
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
-            Stroke = new SolidColorBrush(Microsoft.Maui.Graphics.Color.FromArgb("#E5E7EB")),
-            Padding = new Thickness(0)
-        };
-
-        var tourImage = new Image
-        {
-            Source = "https://images.unsplash.com/photo-1553621042-f6e147245754?w=800&q=80",
-            Aspect = Aspect.AspectFill,
-            HeightRequest = 160
-        };
-
-        var tourTitle = new Label
-        {
-            Text = "Tour Ẩm Thực Vĩnh Khánh",
             FontFamily = "InterBold",
             FontSize = 18,
-            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937")
+            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937"),
+            Margin = new Thickness(0, 8, 0, 0)
         };
 
-        var tourDesc = new Label
+        _viewAllButton = new Button
         {
-            Text = "Khám phá 10 địa điểm ẩm thực nổi tiếng trên con phố Vĩnh Khánh",
-            FontFamily = "InterRegular",
-            FontSize = 14,
-            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"),
-            LineBreakMode = LineBreakMode.WordWrap
+            FontFamily = "InterMedium",
+            FontSize = 13,
+            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F"),
+            BackgroundColor = Microsoft.Maui.Graphics.Colors.Transparent,
+            Padding = new Thickness(8, 4),
+            HorizontalOptions = LayoutOptions.End
         };
 
-        var tourMeta = new HorizontalStackLayout
+        var sectionHeader = new Grid
         {
-            Spacing = 12,
-            Margin = new Thickness(0, 8, 0, 0),
-            Children =
+            ColumnDefinitions = new ColumnDefinitionCollection
             {
-                new Label { Text = "10 địa điểm", FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F") },
-                new Label { Text = "•", TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF") },
-                new Label { Text = "1 tour", FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F") },
-                new Label { Text = "•", TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#9CA3AF") },
-                new Label { Text = "Audio tự động", FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F") }
-            }
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            Children = { _featuredPoisLabel, _viewAllButton.WithColumn(1) }
         };
 
-        var tourContent = new VerticalStackLayout
-        {
-            Padding = new Thickness(16),
-            Spacing = 8,
-            Children = { tourTitle, tourDesc, tourMeta, _startTourButton }
-        };
+        _featuredPoisList = new VerticalStackLayout { Spacing = 12 };
 
-        var tourLayout = new VerticalStackLayout { Children = { tourImage, tourContent } };
-        tourCard.Content = tourLayout;
-
-        // Main layout
+        // ═══════════════════════════════════════════
+        // MAIN LAYOUT
+        // ═══════════════════════════════════════════
         var mainLayout = new VerticalStackLayout
         {
-            Padding = new Thickness(20),
+            Padding = new Thickness(20, 16, 20, 32),
             Spacing = 20,
             Children =
             {
-                new VerticalStackLayout { Spacing = 8, Children = { _welcomeLabel, _subtitleLabel } },
-                tourCard,
+                headerGrid,
                 statsGrid,
-                _featuredPoisLabel,
+                sectionHeader,
                 _featuredPoisList
             }
         };
 
-        Content = new ScrollView { Content = mainLayout };
+        Content = new ScrollView
+        {
+            Content = mainLayout,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Never
+        };
+
+        // Update time
+        UpdateCurrentTime();
     }
 
-    private Border CreateStatCard(Label valueLabel, string label)
+    private static HorizontalStackLayout CreateIconLabel(string icon, string text)
     {
-        return new Border
+        return new HorizontalStackLayout
         {
-            BackgroundColor = Microsoft.Maui.Graphics.Colors.White,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
-            Stroke = new SolidColorBrush(Microsoft.Maui.Graphics.Color.FromArgb("#E5E7EB")),
-            Padding = new Thickness(12),
-            Content = new VerticalStackLayout
+            Spacing = 4,
+            Children =
             {
-                HorizontalOptions = LayoutOptions.Center,
-                Spacing = 4,
-                Children =
-                {
-                    valueLabel,
-                    new Label { Text = label, FontFamily = "InterMedium", FontSize = 11, TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"), HorizontalOptions = LayoutOptions.Center }
-                }
+                new Label { Text = icon, FontSize = 12, VerticalOptions = LayoutOptions.Center },
+                new Label { Text = text, FontFamily = "InterMedium", FontSize = 12, TextColor = Microsoft.Maui.Graphics.Color.FromRgba(255, 255, 255, 0.9), VerticalOptions = LayoutOptions.Center }
             }
         };
     }
 
+    private static Border CreateModernStatCard(Label valueLabel, Label textLabel, string bgColor)
+    {
+        return new Border
+        {
+            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb(bgColor),
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
+            Shadow = new Shadow
+            {
+                Brush = Microsoft.Maui.Graphics.Colors.Black,
+                Opacity = 0.05f,
+                Radius = 8,
+                Offset = new Point(0, 2)
+            },
+            Padding = new Thickness(16, 14),
+            Content = new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                Spacing = 2,
+                Children = { valueLabel, textLabel }
+            }
+        };
+    }
+
+    private void UpdateCurrentTime()
+    {
+        var now = DateTime.Now;
+        _currentTimeLabel.Text = now.ToString("HH:mm");
+    }
+
     private void SetupLocalization()
     {
-        _welcomeLabel.Text = _loc["HomeWelcome"] ?? "Xin chào!";
-        _subtitleLabel.Text = _loc["HomeSubtitle"] ?? "Sẵn sàng khám phá Phố Ẩm Thực Vĩnh Khánh?";
-        _startTourButton.Text = _loc["StartTour"] ?? "Bắt đầu Tour";
-        _featuredPoisLabel.Text = _loc["FeaturedPois"] ?? "Địa điểm nổi bật";
+        // Header
+        _welcomeLabel.Text = _loc["HomeWelcome"] ?? "Welcome!";
+        _subtitleLabel.Text = _loc["HomeSubtitle"] ?? "Ready to explore?";
+
+        // Stats
+        _poiCountText.Text = _loc["PoiCountLabel"] ?? "places";
+        _syncStatusText.Text = _loc["SyncStatusLabel"] ?? "synced";
+
+        // Section
+        _featuredPoisLabel.Text = _loc["FeaturedPois"] ?? "Featured Places";
+        _viewAllButton.Text = _loc["ExploreNow"] ?? "Explore →";
+
+        // Fade in animation
+        FadeInLabel(_welcomeLabel, 100);
+        FadeInLabel(_subtitleLabel, 200);
+    }
+
+    private static void FadeInLabel(Label label, uint delay)
+    {
+        label.Opacity = 0;
+        label.TranslationY = 10;
+        label.FadeTo(1, 400, Easing.CubicOut);
+        label.TranslateTo(0, 0, 400, Easing.CubicOut);
     }
 
     private void SetupEvents()
     {
-        _startTourButton.Clicked += OnStartTourClicked;
+        _viewAllButton.Clicked += OnViewAllClicked;
         _loc.LanguageChanged += OnLanguageChanged;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadDataAsync();
+
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[HomePage] OnAppearing error: {ex.Message}");
+        }
     }
 
     private async Task LoadDataAsync()
@@ -206,12 +281,9 @@ public class HomePage : ContentPage
             _featuredPoisList.Children.Clear();
             foreach (var poi in pois.Take(5))
             {
-                _featuredPoisList.Children.Add(CreatePoiCard(poi));
+                _featuredPoisList.Children.Add(CreateModernPoiCard(poi));
             }
 
-            _tourCountLabel.Text = "1";
-
-            // Sync status - always show synced for now
             _syncStatusLabel.Text = "✓";
             _syncStatusLabel.TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#22C55E");
         }
@@ -221,40 +293,46 @@ public class HomePage : ContentPage
         }
     }
 
-    private View CreatePoiCard(Poi poi)
+    private View CreateModernPoiCard(Poi poi)
     {
         var card = new Border
         {
             BackgroundColor = Microsoft.Maui.Graphics.Colors.White,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
-            Stroke = new SolidColorBrush(Microsoft.Maui.Graphics.Color.FromArgb("#E5E7EB")),
-            Padding = new Thickness(12),
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
+            Shadow = new Shadow
+            {
+                Brush = Microsoft.Maui.Graphics.Colors.Black,
+                Opacity = 0.08f,
+                Radius = 12,
+                Offset = new Point(0, 4)
+            },
+            Padding = new Thickness(0),
             GestureRecognizers =
             {
                 new TapGestureRecognizer
                 {
-                    Command = new Command(() => OnPoiTapped(poi.Id))
+                    Command = new Command(async () => await OnPoiTappedSafe(poi.Id))
                 }
             }
         };
 
-        var layout = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitionCollection
-            {
-                new ColumnDefinition(GridLength.Auto),
-                new ColumnDefinition(GridLength.Star)
-            },
-            ColumnSpacing = 12
-        };
-
+        // Image with gradient placeholder
         var imageBorder = new Border
         {
-            WidthRequest = 60,
-            HeightRequest = 60,
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E5E7EB"),
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            WidthRequest = 80,
+            HeightRequest = 80,
+            Background = new LinearGradientBrush(
+                new GradientStopCollection
+                {
+                    new GradientStop(Microsoft.Maui.Graphics.Color.FromArgb("#E8F5F0"), 0.0f),
+                    new GradientStop(Microsoft.Maui.Graphics.Color.FromArgb("#D1FAE5"), 1.0f)
+                },
+                new Point(0, 0),
+                new Point(1, 1)),
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
             Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
+            Margin = new Thickness(12),
             Content = new Image
             {
                 Source = string.IsNullOrEmpty(poi.ImageUrl) ? "poi_placeholder.png" : poi.ImageUrl,
@@ -265,20 +343,21 @@ public class HomePage : ContentPage
         var textLayout = new VerticalStackLayout
         {
             Spacing = 4,
-            VerticalOptions = LayoutOptions.Center
+            VerticalOptions = LayoutOptions.Center,
+            Padding = new Thickness(0, 12, 12, 12)
         };
 
         var titleLabel = new Label
         {
             Text = poi.Title,
             FontFamily = "InterBold",
-            FontSize = 14,
+            FontSize = 15,
             TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#1F2937")
         };
 
         var descLabel = new Label
         {
-            Text = poi.Description?.Length > 60 ? poi.Description.Substring(0, 60) + "..." : poi.Description,
+            Text = poi.Description?.Length > 50 ? poi.Description.Substring(0, 50) + "..." : poi.Description,
             FontFamily = "InterRegular",
             FontSize = 12,
             TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#6B7280"),
@@ -286,30 +365,98 @@ public class HomePage : ContentPage
             MaxLines = 2
         };
 
+        // Priority badge
+        var badgeText = poi.Priority > 5 ? "⭐ " + (_loc["PoiPriorityHigh"] ?? "High") : (_loc["PoiPriorityFeatured"] ?? "Featured");
+        var badge = new Border
+        {
+            BackgroundColor = poi.Priority > 5
+                ? Microsoft.Maui.Graphics.Color.FromArgb("#FEF3C7")
+                : Microsoft.Maui.Graphics.Color.FromArgb("#E8F5F0"),
+            StrokeShape = new RoundRectangle { CornerRadius = 6 },
+            Stroke = Microsoft.Maui.Graphics.Colors.Transparent,
+            Padding = new Thickness(6, 2),
+            HorizontalOptions = LayoutOptions.Start,
+            Content = new Label
+            {
+                Text = badgeText,
+                FontFamily = "InterMedium",
+                FontSize = 10,
+                TextColor = poi.Priority > 5
+                    ? Microsoft.Maui.Graphics.Color.FromArgb("#92400E")
+                    : Microsoft.Maui.Graphics.Color.FromArgb("#0D7A5F")
+            }
+        };
+
+        textLayout.Children.Add(badge);
         textLayout.Children.Add(titleLabel);
         textLayout.Children.Add(descLabel);
+
+        var layout = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 0
+        };
 
         layout.Children.Add(imageBorder);
         layout.Children.Add(textLayout);
         Grid.SetColumn(textLayout, 1);
 
         card.Content = layout;
+
+        // Add press effect
+        card.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(() =>
+            {
+                card.ScaleTo(0.98, 100);
+                card.ScaleTo(1, 100);
+            })
+        });
+
         return card;
     }
 
-    private async void OnPoiTapped(string poiId)
+    private async Task OnPoiTappedSafe(string poiId)
     {
-        await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
+        try
+        {
+            await Shell.Current.GoToAsync($"{nameof(PoiDetailPage)}?poiId={poiId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[HomePage] Navigation failed: {ex.Message}");
+        }
     }
 
-    private async void OnStartTourClicked(object? sender, EventArgs e)
+    private async void OnViewAllClicked(object? sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync(nameof(Tours.TourListPage));
+        try
+        {
+            if (sender is Button btn)
+            {
+                await btn.FadeTo(0.6, 100);
+                await btn.FadeTo(1, 100);
+            }
+            await Shell.Current.GoToAsync(nameof(PoiListPage));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[HomePage] View all failed: {ex.Message}");
+        }
     }
 
     private void OnLanguageChanged()
     {
-        MainThread.BeginInvokeOnMainThread(SetupLocalization);
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            SetupLocalization();
+            // Reload POI data to update card badges with new language
+            await LoadDataAsync();
+        });
     }
 
     protected override void OnDisappearing()

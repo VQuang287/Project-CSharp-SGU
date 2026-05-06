@@ -32,17 +32,33 @@ public class SyncService
     {
         try
         {
+            if (!_authService.IsAuthenticated)
+            {
+                Console.WriteLine("[Sync] 🔐 Token missing or expired - refreshing auth before sync");
+                var refreshed = await _authService.RefreshTokenAsync();
+                if (!refreshed)
+                {
+                    var loginResult = await _authService.LoginAnonymousAsync();
+                    if (!loginResult.Success)
+                    {
+                        Console.WriteLine($"[Sync] ⚠️ Unable to authenticate for sync: {loginResult.ErrorMessage}");
+                    }
+                }
+            }
+
             // Build URL with optional last-sync timestamp
             var lastSync = Preferences.Default.Get<string>("last_sync_time", string.Empty);
+            var hasLastSync = !string.IsNullOrWhiteSpace(lastSync);
+            var shouldFullSync = forceFullSync || !hasLastSync;
             var url = $"{serverBaseUrl.TrimEnd('/')}/api/v1/pois/sync/pois";
             
-            // Chỉ thêm since filter nếu không force full sync và có lastSync
-            if (!forceFullSync && !string.IsNullOrEmpty(lastSync))
+            // Chỉ thêm since filter nếu không full sync và có lastSync
+            if (!shouldFullSync && hasLastSync)
             {
                 url += $"?since={Uri.EscapeDataString(lastSync)}";
                 Console.WriteLine($"[Sync] 📅 Incremental sync since: {lastSync}");
             }
-            else if (forceFullSync)
+            else if (shouldFullSync)
             {
                 Console.WriteLine("[Sync] 🔄 Force full sync - fetching all POIs from database");
             }
@@ -55,6 +71,7 @@ public class SyncService
             }
             else
             {
+                _httpClient.DefaultRequestHeaders.Authorization = null;
                 Console.WriteLine("[Sync] ⚠️ No JWT token available - sync may fail if API requires auth");
             }
 
@@ -64,16 +81,21 @@ public class SyncService
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
-            var pois = ParsePoisFromJson(json);
+            var payload = ParsePoisFromJson(json);
+            var pois = payload.Pois;
             if (pois == null || pois.Count == 0)
             {
                 Console.WriteLine("[Sync] ⚠️ Không có dữ liệu mới từ Server");
+                PersistLastSyncTime(payload.ServerTimeUtc);
                 return true; // Thành công (không có gì để update)
             }
 
-            // Luôn xóa POI cũ và thay thế bằng POI mới từ server để đảm bảo đồng nhất
-            Console.WriteLine("[Sync] 🗑️ Clearing local POIs before sync...");
-            await _dbService.DeleteAllPoisAsync();
+            if (shouldFullSync)
+            {
+                // Chỉ xóa POI cũ khi full sync để tránh mất dữ liệu khi sync incremental
+                Console.WriteLine("[Sync] 🗑️ Clearing local POIs before full sync...");
+                await _dbService.DeleteAllPoisAsync();
+            }
 
             int count = 0;
             foreach (var dto in pois)
@@ -147,8 +169,8 @@ public class SyncService
 
             Console.WriteLine($"[Sync] ✅ Đồng bộ thành công {count} POI");
 
-            // Lưu thời gian sync
-            Preferences.Default.Set("last_sync_time", DateTime.UtcNow.ToString("O"));
+            // Lưu thời gian sync dựa trên server time nếu có
+            PersistLastSyncTime(payload.ServerTimeUtc);
             
             Console.WriteLine($"[Sync] ✅ Sync completed: {count} POIs saved to local database");
 
@@ -232,10 +254,10 @@ public class SyncService
         }
     }
 
-    private static List<SyncPoiDto>? ParsePoisFromJson(string json)
+    private static SyncPoisResponse ParsePoisFromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
-            return new List<SyncPoiDto>();
+            return new SyncPoisResponse();
 
         var options = new JsonSerializerOptions
         {
@@ -247,14 +269,25 @@ public class SyncService
             // Hỗ trợ format mới: { serverTimeUtc, pois: [...] }
             var wrapped = JsonSerializer.Deserialize<SyncPoisResponse>(json, options);
             if (wrapped?.Pois != null)
-                return wrapped.Pois;
+                return wrapped;
         }
         catch
         {
             // fallback parse list thuần
         }
 
-        return JsonSerializer.Deserialize<List<SyncPoiDto>>(json, options);
+        var list = JsonSerializer.Deserialize<List<SyncPoiDto>>(json, options);
+        return new SyncPoisResponse
+        {
+            ServerTimeUtc = DateTime.UtcNow,
+            Pois = list ?? new List<SyncPoiDto>()
+        };
+    }
+
+    private static void PersistLastSyncTime(DateTime serverTimeUtc)
+    {
+        var effectiveTime = serverTimeUtc == default ? DateTime.UtcNow : serverTimeUtc;
+        Preferences.Default.Set("last_sync_time", effectiveTime.ToString("O"));
     }
 
     /// <summary>

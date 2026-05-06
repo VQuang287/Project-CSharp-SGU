@@ -176,6 +176,14 @@ public class LocalizationService : INotifyPropertyChanged
     #endif
     }
 
+    /// <summary>
+    /// Re-detect system language and update if changed (call this when app resumes)
+    /// </summary>
+    public void RefreshSystemLanguage()
+    {
+        DetectSystemLanguage();
+    }
+
     public string this[string key] => GetString(key);
 
     public string GetString(string key)
@@ -452,15 +460,6 @@ public class LocalizationService : INotifyPropertyChanged
         { "HomeSubtitle", "Sẵn sàng khám phá Phố Ẩm Thực Vĩnh Khánh?" },
         { "StartTour", "Bắt đầu Tour" },
         { "FeaturedPois", "Địa điểm nổi bật" },
-        { "TourTitle", "Tour Ẩm Thực Vĩnh Khánh" },
-        { "TourDesc", "Khám phá 10 địa điểm ẩm thực nổi tiếng trên con phố Vĩnh Khánh" },
-        { "PoiCountLabel", "địa điểm" },
-        { "TourCountLabel", "tour" },
-        { "SyncStatusLabel", "đồng bộ" },
-        { "TourMetaPlaces", "địa điểm" },
-        { "TourMetaAudio", "Audio tự động" },
-        { "ExploreNow", "Khám phá ngay" },
-        { "ReadyToExplore", "Sẵn sàng khám phá" },
     };
 
     private static readonly Dictionary<string, string> English = new()
@@ -629,15 +628,6 @@ public class LocalizationService : INotifyPropertyChanged
         { "HomeSubtitle", "Ready to explore Vinh Khanh Food Street?" },
         { "StartTour", "Start Tour" },
         { "FeaturedPois", "Featured Places" },
-        { "TourTitle", "Vinh Khanh Food Tour" },
-        { "TourDesc", "Discover 10 famous food spots on Vinh Khanh Street" },
-        { "PoiCountLabel", "places" },
-        { "TourCountLabel", "tours" },
-        { "SyncStatusLabel", "synced" },
-        { "TourMetaPlaces", "places" },
-        { "TourMetaAudio", "Auto Audio" },
-        { "ExploreNow", "Explore Now" },
-        { "ReadyToExplore", "Ready to explore" },
     };
 
     private static readonly Dictionary<string, string> Chinese = new()
@@ -745,15 +735,6 @@ public class LocalizationService : INotifyPropertyChanged
         { "HomeSubtitle", "准备好探索荣庆美食街了吗？" },
         { "StartTour", "开始游览" },
         { "FeaturedPois", "热门景点" },
-        { "TourTitle", "荣庆美食之旅" },
-        { "TourDesc", "探索荣庆街上的10个著名美食地点" },
-        { "PoiCountLabel", "景点" },
-        { "TourCountLabel", "旅程" },
-        { "SyncStatusLabel", "已同步" },
-        { "TourMetaPlaces", "景点" },
-        { "TourMetaAudio", "自动音频" },
-        { "ExploreNow", "立即探索" },
-        { "ReadyToExplore", "准备探索" },
     };
 
     private static readonly Dictionary<string, string> Korean = new()
@@ -861,15 +842,6 @@ public class LocalizationService : INotifyPropertyChanged
         { "HomeSubtitle", "빈칸 푸드 스트리트를 탐험할 준비가 되셨나요?" },
         { "StartTour", "투어 시작" },
         { "FeaturedPois", "추천 장소" },
-        { "TourTitle", "빈칸 푸드 투어" },
-        { "TourDesc", "빈칸 거리의 유명한 맛집 10곳을 발견하세요" },
-        { "PoiCountLabel", "장소" },
-        { "TourCountLabel", "투어" },
-        { "SyncStatusLabel", "동기화됨" },
-        { "TourMetaPlaces", "장소" },
-        { "TourMetaAudio", "자동 오디오" },
-        { "ExploreNow", "지금 탐험하기" },
-        { "ReadyToExplore", "탐험 준비 완료" },
     };
 
     private static readonly Dictionary<string, string> Japanese = new()
@@ -974,18 +946,9 @@ public class LocalizationService : INotifyPropertyChanged
         // Home Page
         { "HomeBtn", "🏠 ホーム" },
         { "HomeWelcome", "ようこそ！" },
-        { "HomeSubtitle", "ヴィンカン グルメ通りを探索する準備はできましたか？" },
-        { "StartTour", "ツアー開始" },
+        { "HomeSubtitle", "ヴィンカングルメ通りを探索する準備はできましたか？" },
+        { "StartTour", "ツアーを開始" },
         { "FeaturedPois", "おすすめスポット" },
-        { "TourTitle", "ヴィンカン フードツアー" },
-        { "TourDesc", "ヴィンカン通りの有名な美食スポット10店舗を発見" },
-        { "PoiCountLabel", "スポット" },
-        { "TourCountLabel", "ツアー" },
-        { "SyncStatusLabel", "同期済み" },
-        { "TourMetaPlaces", "スポット" },
-        { "TourMetaAudio", "自動音声" },
-        { "ExploreNow", "今すぐ探索" },
-        { "ReadyToExplore", "探索準備完了" },
     };
 
     private static readonly Dictionary<string, string> French = new()
@@ -1093,15 +1056,6 @@ public class LocalizationService : INotifyPropertyChanged
         { "HomeSubtitle", "Prêt à explorer la Rue Gastronomique Vinh Khanh?" },
         { "StartTour", "Commencer la visite" },
         { "FeaturedPois", "Lieux en vedette" },
-        { "TourTitle", "Visite Gastronomique Vinh Khanh" },
-        { "TourDesc", "Découvrez 10 spots culinaires célèbres sur la rue Vinh Khanh" },
-        { "PoiCountLabel", "lieux" },
-        { "TourCountLabel", "visites" },
-        { "SyncStatusLabel", "synchronisé" },
-        { "TourMetaPlaces", "lieux" },
-        { "TourMetaAudio", "Audio Auto" },
-        { "ExploreNow", "Explorer maintenant" },
-        { "ReadyToExplore", "Prêt à explorer" },
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;
