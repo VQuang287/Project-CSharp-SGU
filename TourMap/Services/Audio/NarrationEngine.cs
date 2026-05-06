@@ -32,10 +32,12 @@ public class NarrationEngine : IDisposable
     private readonly ITtsService _ttsService;
     private readonly IAudioPlayerService _audioPlayer;
     private readonly DatabaseService _databaseService;
+    private readonly PlaybackSyncService _playbackSyncService;
     private NarrationState _state = NarrationState.Idle;
     private Poi? _currentPoi;
     private string _currentTriggerType = "Unknown";
     private string _currentAudioSource = "TTS";
+    private DateTime _playbackStartUtc;
     private float _speed = 1.0f;
     private CancellationTokenSource? _cooldownCts;
     private bool _disposed;
@@ -67,11 +69,13 @@ public class NarrationEngine : IDisposable
     public NarrationEngine(
         ITtsService ttsService,
         IAudioPlayerService audioPlayer,
-        DatabaseService databaseService)
+        DatabaseService databaseService,
+        PlaybackSyncService playbackSyncService)
     {
         _ttsService = ttsService;
         _audioPlayer = audioPlayer;
         _databaseService = databaseService;
+        _playbackSyncService = playbackSyncService;
 
         _ttsService.SpeechCompleted += OnPlaybackCompleted;
         _audioPlayer.AudioCompleted += OnPlaybackCompleted;
@@ -125,6 +129,7 @@ public class NarrationEngine : IDisposable
         _currentPoi = poi;
         _currentTriggerType = triggerType;
         SetState(NarrationState.Playing);
+        _playbackStartUtc = DateTime.UtcNow;
 
 #if ANDROID
         RequestAudioFocus();
@@ -196,6 +201,7 @@ public class NarrationEngine : IDisposable
         }
 
         _currentPoi = null;
+        _playbackStartUtc = default;
         SetState(NarrationState.Idle);
     }
     
@@ -221,6 +227,7 @@ public class NarrationEngine : IDisposable
         _currentPoi = poi;
         _currentTriggerType = "Manual";
         SetState(NarrationState.Playing);
+        _playbackStartUtc = DateTime.UtcNow;
 
 #if ANDROID
         RequestAudioFocus();
@@ -294,6 +301,8 @@ public class NarrationEngine : IDisposable
             Console.WriteLine($"[Narration] Error saving playback history: {ex.Message}");
         }
 
+        _playbackStartUtc = default;
+
         Console.WriteLine($"[Narration] ✅ Phát xong POI \"{completedPoi?.Title}\" → COOLDOWN");
         SetState(NarrationState.Cooldown);
 
@@ -334,6 +343,12 @@ public class NarrationEngine : IDisposable
 
         try
         {
+            var durationSeconds = 0;
+            if (_playbackStartUtc != default)
+            {
+                durationSeconds = (int)Math.Max(1, Math.Round((DateTime.UtcNow - _playbackStartUtc).TotalSeconds));
+            }
+
             await _databaseService.AddPlaybackHistoryAsync(new PlaybackHistoryEntry
             {
                 PoiId = _currentPoi.Id,
@@ -342,6 +357,24 @@ public class NarrationEngine : IDisposable
                 AudioSource = _currentAudioSource,
                 PlayedAtUtc = DateTime.UtcNow
             });
+
+            var logRequest = new PlaybackLogRequest
+            {
+                PoiId = _currentPoi.Id,
+                DeviceId = PlaybackSyncService.GetOrCreateDeviceId(),
+                TriggerType = _currentTriggerType,
+                DurationSeconds = durationSeconds,
+                IsCompleted = true
+            };
+
+            try
+            {
+                _ = _playbackSyncService.LogPlaybackAsync(logRequest);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Narration] Playback log failed: {ex.Message}");
+            }
         }
         catch (Exception ex)
         {

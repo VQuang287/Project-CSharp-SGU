@@ -32,9 +32,6 @@ namespace TourMap
 
             try
             {
-                // Auth removed - connect device tracking directly (fire and forget)
-                _ = ConnectDeviceTrackingAsync();
-                
                 // Handle deep link
                 _ = NavigatePendingDeepLinkAsync();
 

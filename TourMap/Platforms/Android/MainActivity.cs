@@ -158,8 +158,9 @@ namespace TourMap
                     {
                         try
                         {
-                            await trackingService.UpdateStateAsync(3); // Offline = 3
-                            Console.WriteLine("[MainActivity] Sent Offline state from OnStop");
+                            await trackingService.UpdateStateAsync(DeviceState.Offline);
+                            await trackingService.DisconnectAsync();
+                            Console.WriteLine("[MainActivity] Sent Offline state and disconnected from OnStop");
                         }
                         catch (Exception ex)
                         {
@@ -193,7 +194,7 @@ namespace TourMap
                     {
                         try
                         {
-                            await trackingService.UpdateStateAsync(3); // Offline
+                            await trackingService.UpdateStateAsync(DeviceState.Offline);
                             await trackingService.DisconnectAsync();
                         }
                         catch { /* Best effort */ }

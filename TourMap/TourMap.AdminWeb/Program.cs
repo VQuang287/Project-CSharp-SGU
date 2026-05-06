@@ -279,6 +279,43 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 
+    // One-time trim: reset dashboard plays to 150 then let mobile app grow naturally.
+    try
+    {
+        var maintenanceDir = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+        Directory.CreateDirectory(maintenanceDir);
+        var resetFlag = Path.Combine(maintenanceDir, "playback_reset_150.flag");
+
+        if (!File.Exists(resetFlag))
+        {
+            var totalPlays = db.PlaybackHistories.Count();
+            if (totalPlays > 150)
+            {
+                var keepIds = db.PlaybackHistories
+                    .AsNoTracking()
+                    .OrderByDescending(x => x.Timestamp)
+                    .Take(150)
+                    .Select(x => x.Id)
+                    .ToList();
+
+                var toDelete = db.PlaybackHistories
+                    .Where(x => !keepIds.Contains(x.Id))
+                    .ToList();
+
+                db.PlaybackHistories.RemoveRange(toDelete);
+                db.SaveChanges();
+
+                logger.LogInformation("Playback histories trimmed to 150 from {Count}.", totalPlays);
+            }
+
+            File.WriteAllText(resetFlag, DateTime.UtcNow.ToString("O"));
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error trimming playback history to 150.");
+    }
+
     if (!db.UserLocationLogs.Any())
     {
         var rnd = new Random();

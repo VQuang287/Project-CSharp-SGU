@@ -176,29 +176,7 @@ public class SplashPage : ContentPage
             window.Page = shell;
             Console.WriteLine("[SplashPage] Navigated to AppShell");
 
-            // Fire and forget device tracking connection
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    if (_deviceTrackingService != null)
-                    {
-                        var hubUrls = BackendEndpoints.GetDeviceHubUrls().ToList();
-                        foreach (var hubUrl in hubUrls)
-                        {
-                            try
-                            {
-                                await _deviceTrackingService.ConnectAsync(hubUrl);
-                                BackendEndpoints.RememberWorkingServerFromUrl(hubUrl);
-                                Console.WriteLine($"[SplashPage] Connected to {hubUrl}");
-                                break;
-                            }
-                            catch { /* ignore */ }
-                        }
-                    }
-                }
-                catch { /* ignore */ }
-            });
+            // Device tracking connection removed as online/offline is handled by app lifecycle.
 
             // Handle deep link (fire and forget)
             _ = Task.Run(async () =>
